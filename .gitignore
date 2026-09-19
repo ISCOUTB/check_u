@@ -14,3 +14,6 @@ webapp/data/
 # repositorio (contienen nombre, numero de documento y fecha de
 # nacimiento de personas reales).
 test_samples/
+# evitar subir certificados confidenciales
+*.crt
+*.key
