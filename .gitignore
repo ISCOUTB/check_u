@@ -17,3 +17,6 @@ test_samples/
 # evitar subir certificados confidenciales
 *.crt
 *.key
+dist/
+*.spec
+build/
