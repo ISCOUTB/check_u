@@ -161,7 +161,7 @@ button:active {
             rgba(12, 25, 55, 0.85),
             rgba(12, 25, 55, 0.05)
         ),
-        url("../../public/images/gradosutb.png");
+        url("../images/gradosutb.png");
 
     background-size: cover;
     background-position: center;

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../style/style.css">
+    <link rel="stylesheet" href="style/style.css">
     <title>Iniciar sesión - CheckU Grados</title>
 </head>
 
@@ -16,8 +16,8 @@
 
             <div class="form_content">
                 <div class="flex space-between">
-                    <img class="logo" src="../../public/icons/checku_logo.png" alt="Logo de CheckU">
-                    <img class="logo" alt="" src="../../public/icons/logo_utb1.png" alt="Logo de la UTB">
+                    <img class="logo" src="icons/checku_logo.png" alt="Logo de CheckU">
+                    <img class="logo" src="icons/logo_utb1.png" alt="Logo de la UTB">
                 </div>
 
                 <h1>Iniciar sesión</h1>
