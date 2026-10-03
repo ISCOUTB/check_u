@@ -23,13 +23,13 @@ cd check_u/frontend
 6. Levantar el servidor PHP:
 
 ```powershell
-php -S localhost:8000
+php -S localhost:8000 -t public
 ```
 
 7. Abrir en el navegador:
 
 ```text
-http://localhost:8000/src/views/login.php
+http://localhost:8000
 ```
 
 8. ¡Listo! Ya podrás acceder al **LOGIN de CheckU**.
