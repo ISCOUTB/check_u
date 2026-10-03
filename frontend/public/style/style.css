@@ -1,0 +1,220 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    background: #ffffff;
+    color: #172033;
+}
+
+.login {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+}
+.flex {
+    display: flex;
+    align-items: center;
+}
+.space-between {
+    justify-content: space-between;
+}
+/* FORMULARIO */
+
+.login_form {
+    width: 50%;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+}
+
+.form_content {
+    width: 100%;
+    max-width: 430px;
+}
+
+.logo {
+    width: 90px;
+    height: auto;
+    margin-bottom: 35px;
+}
+
+h1 {
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.subtitle {
+    color: #697386;
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 35px;
+}
+
+/* INPUTS */
+
+.input_group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 22px;
+}
+
+.input_group label {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.input_group input {
+    width: 100%;
+    padding: 15px 14px;
+    border: 1px solid #d9dee8;
+    border-radius: 8px;
+    outline: none;
+    font-size: 15px;
+    transition: 0.2s;
+}
+
+.input_group input:focus {
+    border-color: #315efb;
+    box-shadow: 0 0 0 3px rgba(49, 94, 251, 0.1);
+}
+
+.input_group input::placeholder {
+    color: #a1a8b5;
+}
+
+/* CONTRASEÑA */
+
+.forgot {
+    text-align: right;
+    margin-top: -8px;
+    margin-bottom: 25px;
+}
+
+.forgot a {
+    color: #315efb;
+    font-size: 14px;
+    text-decoration: none;
+}
+
+.forgot a:hover {
+    text-decoration: underline;
+}
+
+/* BOTÓN */
+
+button {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    background: #315efb;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover {
+    background: #244bd4;
+}
+
+button:active {
+    transform: scale(0.99);
+}
+
+/* DESCRIPCIÓN */
+
+.description {
+    margin-top: 28px;
+    color: #8991a1;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+
+/* IMAGEN */
+
+.login_image {
+    width: 50%;
+    min-height: 100vh;
+    padding: 25px;
+}
+
+.image_content {
+    width: 100%;
+    height: 100%;
+    min-height: calc(100vh - 50px);
+    border-radius: 20px;
+    background-image:
+        linear-gradient(
+            to top,
+            rgba(12, 25, 55, 0.85),
+            rgba(12, 25, 55, 0.05)
+        ),
+        url("../images/gradosutb.png");
+
+    background-size: cover;
+    background-position: center;
+
+    display: flex;
+    align-items: flex-end;
+    padding: 55px;
+}
+
+.image_overlay {
+    max-width: 500px;
+    color: white;
+}
+
+.image_overlay span {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    opacity: 0.8;
+}
+
+.image_overlay h2 {
+    font-size: 38px;
+    line-height: 1.15;
+    margin: 12px 0;
+}
+
+.image_overlay p {
+    font-size: 16px;
+    line-height: 1.6;
+    opacity: 0.9;
+}
+
+
+/* RESPONSIVE */
+
+@media (max-width: 800px) {
+
+    .login {
+        flex-direction: column;
+    }
+
+    .login_form {
+        width: 100%;
+        min-height: 100vh;
+        padding: 30px;
+    }
+
+    .login_image {
+        display: none;
+    }
+
+    .form_content {
+        max-width: 500px;
+    }
+}
