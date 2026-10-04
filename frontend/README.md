@@ -1,35 +1,36 @@
-# Frontend CheckU
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Pasos para ejecutar el Frontend
+## Getting Started
 
-1. Descargar PHP en formato ZIP desde [aquí](https://downloads.php.net/~windows/releases/archives/php-8.5.11-nts-Win32-vs17-x64.zip).
+First, run the development server:
 
-2. Crear una carpeta llamada `php` en la raíz del disco (por ejemplo, `C:\php`) y descomprimir allí el contenido del ZIP descargado.
-
-3. Agregar la carpeta `C:\php` al **PATH** en las variables de entorno de Windows.
-
-4. Verificar que PHP esté correctamente configurado ejecutando en la terminal:
-
-```powershell
-php --version
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-5. Dirigirse a la carpeta del frontend:
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-```powershell
-cd check_u/frontend
-```
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-6. Levantar el servidor PHP:
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```powershell
-php -S localhost:8000 -t public
-```
+## Learn More
 
-7. Abrir en el navegador:
+To learn more about Next.js, take a look at the following resources:
 
-```text
-http://localhost:8000
-```
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-8. ¡Listo! Ya podrás acceder al **LOGIN de CheckU**.
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

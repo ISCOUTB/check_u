@@ -1,0 +1,39 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --background-e: rgb(246, 246, 248);
+    --surface: #ffffff;
+    --border: #e7e9ed;
+    --text: #20242a;
+    --text-secondary: #707781;
+
+    --valid: #2e9d67;
+    --valid-bg: #edf8f2;
+
+    --invalid: #d95353;
+    --invalid-bg: #fff0f0;
+
+    --inconsistent: #d9a928;
+    --inconsistent-bg: #fff9e7;
+
+    --review: #638fc7;
+    --review-bg: #edf4fc;
+
+    --primary: #1f2937;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--background);
+    color: var(--text);
+}

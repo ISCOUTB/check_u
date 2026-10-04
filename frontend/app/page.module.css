@@ -1,31 +1,21 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: Arial, Helvetica, sans-serif;
-}
-
-body {
-    min-height: 100vh;
-    background: #ffffff;
-    color: #172033;
-}
-
 .login {
     width: 100%;
     min-height: 100vh;
     display: flex;
 }
+
 .flex {
     display: flex;
     align-items: center;
 }
-.space-between {
+
+.spaceBetween {
     justify-content: space-between;
 }
+
 /* FORMULARIO */
 
-.login_form {
+.loginForm {
     width: 50%;
     min-height: 100vh;
     display: flex;
@@ -34,7 +24,7 @@ body {
     padding: 40px;
 }
 
-.form_content {
+.formContent {
     width: 100%;
     max-width: 430px;
 }
@@ -45,7 +35,7 @@ body {
     margin-bottom: 35px;
 }
 
-h1 {
+.login h1 {
     font-size: 36px;
     font-weight: 700;
     margin-bottom: 12px;
@@ -60,19 +50,19 @@ h1 {
 
 /* INPUTS */
 
-.input_group {
+.inputGroup {
     display: flex;
     flex-direction: column;
     gap: 8px;
     margin-bottom: 22px;
 }
 
-.input_group label {
+.inputGroup label {
     font-size: 14px;
     font-weight: 600;
 }
 
-.input_group input {
+.inputGroup input {
     width: 100%;
     padding: 15px 14px;
     border: 1px solid #d9dee8;
@@ -82,12 +72,12 @@ h1 {
     transition: 0.2s;
 }
 
-.input_group input:focus {
+.inputGroup input:focus {
     border-color: #315efb;
     box-shadow: 0 0 0 3px rgba(49, 94, 251, 0.1);
 }
 
-.input_group input::placeholder {
+.inputGroup input::placeholder {
     color: #a1a8b5;
 }
 
@@ -111,7 +101,7 @@ h1 {
 
 /* BOTÓN */
 
-button {
+.formContent button {
     width: 100%;
     padding: 15px;
     border: none;
@@ -124,11 +114,11 @@ button {
     transition: 0.2s;
 }
 
-button:hover {
+.formContent button:hover {
     background: #244bd4;
 }
 
-button:active {
+.formContent button:active {
     transform: scale(0.99);
 }
 
@@ -141,27 +131,27 @@ button:active {
     line-height: 1.6;
 }
 
-
 /* IMAGEN */
 
-.login_image {
+.loginImage {
     width: 50%;
     min-height: 100vh;
     padding: 25px;
 }
 
-.image_content {
+.imageContent {
     width: 100%;
     height: 100%;
     min-height: calc(100vh - 50px);
     border-radius: 20px;
+
     background-image:
         linear-gradient(
             to top,
             rgba(12, 25, 55, 0.85),
             rgba(12, 25, 55, 0.05)
         ),
-        url("../images/gradosutb.png");
+        url("/images/gradosutb.png");
 
     background-size: cover;
     background-position: center;
@@ -171,30 +161,29 @@ button:active {
     padding: 55px;
 }
 
-.image_overlay {
+.imageOverlay {
     max-width: 500px;
     color: white;
 }
 
-.image_overlay span {
+.imageOverlay span {
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 3px;
     opacity: 0.8;
 }
 
-.image_overlay h2 {
+.imageOverlay h2 {
     font-size: 38px;
     line-height: 1.15;
     margin: 12px 0;
 }
 
-.image_overlay p {
+.imageOverlay p {
     font-size: 16px;
     line-height: 1.6;
     opacity: 0.9;
 }
-
 
 /* RESPONSIVE */
 
@@ -204,17 +193,17 @@ button:active {
         flex-direction: column;
     }
 
-    .login_form {
+    .loginForm {
         width: 100%;
         min-height: 100vh;
         padding: 30px;
     }
 
-    .login_image {
+    .loginImage {
         display: none;
     }
 
-    .form_content {
+    .formContent {
         max-width: 500px;
     }
 }
