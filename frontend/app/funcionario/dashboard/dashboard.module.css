@@ -1,0 +1,441 @@
+.dashboard {
+    width: min(1400px, 94%);
+    margin: 0 auto;
+    padding: 36px 0 60px;
+}
+body {
+    background: var(--background-e);
+}
+/* =========================
+   HEADER
+========================= */
+
+.dashboardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+}
+
+.dashboardHeader h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.dashboardHeader p {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+
+/* =========================
+   STATISTICS
+========================= */
+
+.statisticsGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.statCard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
+}
+
+.statCardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.statTitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.statusDot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+}
+
+.valid .statusDot {
+    background: var(--valid);
+}
+
+.invalid .statusDot {
+    background: var(--invalid);
+}
+
+.inconsistent .statusDot {
+    background: var(--inconsistent);
+}
+
+.review .statusDot {
+    background: var(--review);
+}
+
+.statValue {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.statValue span {
+    font-size: 30px;
+    font-weight: 600;
+}
+
+.statValue small {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.statCard p {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+
+/* =========================
+   STAT CARDS INTERACTIVAS
+========================= */
+
+.clickableStat {
+    cursor: pointer;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.clickableStat:hover {
+    transform: translateY(-2px);
+    border-color: #d5d9df;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.clickableStat:active {
+    transform: translateY(0);
+}
+
+
+/* =========================
+   PANELS
+========================= */
+
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.panelHeader {
+    padding: 22px 24px;
+}
+
+.panelHeader h2 {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.panelHeader p {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+
+/* =========================
+   CHARTS
+========================= */
+
+.chartsGrid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.chartPanel {
+    min-height: 350px;
+    overflow: hidden;
+}
+
+.barChartContainer {
+    position: relative;
+    height: 270px;
+    padding: 0 24px 24px;
+}
+
+.pieChartContainer {
+    position: relative;
+    height: 270px;
+    padding: 0 20px 20px;
+
+    overflow: hidden;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.pieChartContainer canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+}
+
+
+/* =========================
+   FILTER NOTICE
+========================= */
+
+.filterNotice {
+    margin: 0 24px 12px;
+    padding: 9px 12px;
+
+    background: #f4f5f7;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+
+/* =========================
+   FILTERS
+========================= */
+
+.filters {
+    display: flex;
+    gap: 8px;
+
+    padding: 0 24px 20px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.filterButton {
+    border: 1px solid var(--border);
+    background: white;
+
+    border-radius: 7px;
+
+    padding: 8px 14px;
+
+    font-size: 13px;
+    color: var(--text-secondary);
+
+    cursor: pointer;
+
+    transition: 0.15s ease;
+}
+
+.filterButton:hover {
+    background: #f7f8fa;
+}
+
+.filterButtonActive {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+
+/* =========================
+   TABLE
+========================= */
+
+.tableContainer {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table thead {
+    background: #fafbfc;
+}
+
+.table th {
+    padding: 13px 24px;
+
+    text-align: left;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    color: var(--text-secondary);
+
+    border-bottom: 1px solid var(--border);
+}
+
+.table td {
+    padding: 17px 24px;
+
+    font-size: 13px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.table tbody tr:hover {
+    background: #fafbfc;
+}
+
+
+/* =========================
+   STATUS
+========================= */
+
+.status {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 5px 9px;
+
+    border-radius: 6px;
+
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.valida {
+    background: var(--valid-bg);
+    color: var(--valid);
+}
+
+.noValida {
+    background: var(--invalid-bg);
+    color: var(--invalid);
+}
+
+.inconsistente {
+    background: var(--inconsistent-bg);
+    color: #a47b0c;
+}
+
+.porRevisar {
+    background: var(--review-bg);
+    color: var(--review);
+}
+
+
+/* =========================
+   BUTTON
+========================= */
+
+.viewButton {
+    display: inline-block;
+
+    border: 1px solid var(--border);
+    background: white;
+
+    color: var(--text);
+
+    border-radius: 6px;
+
+    padding: 7px 12px;
+
+    font-size: 12px;
+
+    text-decoration: none;
+
+    cursor: pointer;
+
+    transition: 0.15s ease;
+}
+
+.viewButton:hover {
+    background: #f4f5f7;
+}
+
+
+/* =========================
+   RESULTS COUNT
+========================= */
+
+.resultsCount {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+
+/* =========================
+   EMPTY STATE
+========================= */
+
+.emptyState {
+    text-align: center;
+    padding: 50px 20px;
+}
+
+.emptyState h3 {
+    font-size: 15px;
+    margin-bottom: 6px;
+}
+
+.emptyState p {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 1000px) {
+
+    .statisticsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .chartsGrid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+@media (max-width: 650px) {
+
+    .dashboard {
+        width: 92%;
+        padding-top: 24px;
+    }
+
+    .dashboardHeader {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .statisticsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .filters {
+        flex-wrap: wrap;
+    }
+
+    .table th,
+    .table td {
+        padding: 13px 15px;
+    }
+
+}
