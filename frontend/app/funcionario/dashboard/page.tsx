@@ -14,7 +14,7 @@ import {
     Legend
 } from "chart.js";
 
-import Navbar from "../../components/nabvar/Nabvar";
+import Navbar from "../../components/navbar/Navbar";
 import styles from "./dashboard.module.css";
 
 Chart.register(
@@ -306,8 +306,8 @@ export default function Dashboard() {
     return (
         <>
             <Navbar
-                tipoUsuario="funcionario"
-                nombreUsuario="Rosana Marriaga Gonzalez"
+                tipoUsuario="estudiante"
+                nombreUsuario="Lisandro Zapata"
             />
 
             <main className={styles.dashboard}>
