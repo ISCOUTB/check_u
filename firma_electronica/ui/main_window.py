@@ -1,8 +1,11 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk, simpledialog
+from datetime import datetime
 from io import BytesIO
-from PIL import Image, ImageTk
+from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont, ImageTk
 from app.document_service import DocumentService
+from config.paths import asset_path
 from infra.pdf_handler import PDFHandler
 from app.signature_service import SignatureService
 
@@ -12,7 +15,7 @@ from app.signature_service import SignatureService
 # ==========================================================
 
 COLORS = {
-    "bg": "#F4F6F9",            # fondo general de la ventana
+    "bg": "#FFFFFF",            # fondo general de la ventana
     "surface": "#FFFFFF",       # fondo de tarjetas / marcos
     "border": "#E1E5EA",        # bordes suaves
     "primary": "#2F6FED",       # azul principal (acciones)
@@ -29,12 +32,92 @@ COLORS = {
 FONT_FAMILY = "Segoe UI"
 
 
+# ==========================================================
+# UTILIDADES
+# ==========================================================
+
+def format_size(num_bytes: int) -> str:
+    """Convierte bytes a la unidad más legible (B, KB, MB, GB, TB, PB)."""
+    units = ["B", "KB", "MB", "GB", "TB", "PB"]
+    size = float(num_bytes)
+
+    for unit in units:
+        if size < 1024 or unit == units[-1]:
+            if unit == "B":
+                return f"{int(size)} B"
+            return f"{size:.1f} {unit}"
+        size /= 1024
+
+
+def get_file_info(path) -> tuple[datetime, int]:
+    """Devuelve (fecha de creación, tamaño en bytes)."""
+    stat = Path(path).stat()
+    created = getattr(stat, "st_birthtime", stat.st_ctime)
+    return datetime.fromtimestamp(created), stat.st_size
+
+
+def create_pdf_icon(size: int = 24) -> Image.Image:
+    """Dibuja un icono de documento PDF (se dibuja grande y se reduce
+    para que quede suave)."""
+    scale = 8
+    s = size * scale
+    image = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+
+    red = (220, 53, 69, 255)
+    left, top = int(s * 0.16), int(s * 0.04)
+    right, bottom = int(s * 0.84), int(s * 0.96)
+    fold = int(s * 0.24)
+
+    # Hoja con esquina doblada
+    draw.polygon(
+        [(left, top), (right - fold, top), (right, top + fold),
+         (right, bottom), (left, bottom)],
+        fill=(255, 255, 255, 255), outline=red, width=scale
+    )
+    draw.polygon(
+        [(right - fold, top), (right - fold, top + fold), (right, top + fold)],
+        fill=(250, 215, 218, 255), outline=red
+    )
+
+    # Franja roja con el texto PDF
+    band_top, band_bottom = int(s * 0.52), int(s * 0.80)
+    draw.rectangle([left, band_top, right, band_bottom], fill=red)
+
+    for font_name in ("arialbd.ttf", "segoeuib.ttf"):
+        try:
+            font = ImageFont.truetype(font_name, int(s * 0.2))
+        except OSError:
+            continue
+        draw.text(
+            ((left + right) / 2, (band_top + band_bottom) / 2),
+            "PDF", fill="white", font=font, anchor="mm"
+        )
+        break
+
+    return image.resize((size, size), Image.LANCZOS)
+
+
+def load_logo(filename: str, height: int):
+    """Carga un logo escalado a una altura fija. None si no existe."""
+    path = asset_path(filename)
+    if not path.exists():
+        return None
+
+    image = Image.open(path).convert("RGBA")
+    ratio = height / image.height
+    image = image.resize(
+        (max(1, int(image.width * ratio)), height), Image.LANCZOS
+    )
+    return ImageTk.PhotoImage(image)
+
+
 class SignatureApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Firma electrónica - Biblioteca")
-        self.root.geometry("1150x720")
-        self.root.minsize(950, 620)
+        self.root.geometry("1280x760")
+        self.root.minsize(1050, 640)
         self.root.configure(background=COLORS["bg"])
 
         self.document_service = DocumentService()
@@ -51,6 +134,19 @@ class SignatureApp:
 
         # Evita renderizados repetidos innecesarios
         self.last_render_width = None
+
+        # Icono de PDF y logos (hay que guardar la referencia o Tk los borra).
+        # Deben crearse ANTES de create_interface().
+        self.pdf_icon = ImageTk.PhotoImage(create_pdf_icon(24))
+        self.university_logo = load_logo("logo_utb.png", 56)
+        self.checku_logo = load_logo("checku_logo.png", 56)
+
+        # Datos de cada fila de la lista y estado del ordenamiento
+        self.document_meta = {}
+        self.sort_state = {}
+
+        # Para no re-renderizar en cada píxel al mover el divisor
+        self._resize_job = None
 
         self.configure_styles()
         self.create_interface()
@@ -223,6 +319,43 @@ class SignatureApp:
             arrowcolor=COLORS["text_muted"]
         )
 
+        # ---------------- Lista de documentos ----------------
+
+        style.configure(
+            "Documents.Treeview",
+            background=COLORS["surface"],
+            fieldbackground=COLORS["surface"],
+            foreground=COLORS["text"],
+            font=(FONT_FAMILY, 10),
+            rowheight=36,
+            borderwidth=0
+        )
+
+        style.layout(
+            "Documents.Treeview",
+            [("Treeview.treearea", {"sticky": "nswe"})]
+        )
+
+        style.map(
+            "Documents.Treeview",
+            background=[("selected", COLORS["selection"])],
+            foreground=[("selected", COLORS["text"])]
+        )
+
+        style.configure(
+            "Documents.Treeview.Heading",
+            background=COLORS["bg"],
+            foreground=COLORS["text_muted"],
+            font=(FONT_FAMILY, 10, "bold"),
+            relief="flat",
+            padding=(8, 6)
+        )
+
+        style.map(
+            "Documents.Treeview.Heading",
+            background=[("active", COLORS["selection"])]
+        )
+
     def create_interface(self):
         # ==================================================
         # CONFIGURACIÓN PRINCIPAL
@@ -237,29 +370,36 @@ class SignatureApp:
 
         header_frame = ttk.Frame(self.root)
         header_frame.grid(
-            row=0,
-            column=0,
-            sticky="ew",
-            padx=28,
-            pady=(24, 12)
+            row=0, column=0, sticky="ew", padx=28, pady=(24, 12)
         )
+        header_frame.columnconfigure(0, weight=1)
+
+        text_frame = ttk.Frame(header_frame)
+        text_frame.grid(row=0, column=0, sticky="w")
 
         title = ttk.Label(
-            header_frame,
+            text_frame,
             text="Firma electrónica de documentos",
             style="Title.TLabel"
         )
         title.pack(anchor="w")
 
         subtitle = ttk.Label(
-            header_frame,
+            text_frame,
             text="Seleccione un directorio y el documento que desea firmar.",
             style="Subtitle.TLabel"
         )
-        subtitle.pack(
-            anchor="w",
-            pady=(4, 0)
-        )
+        subtitle.pack(anchor="w", pady=(4, 0))
+
+        # Logos en la esquina derecha
+        logos_frame = ttk.Frame(header_frame)
+        logos_frame.grid(row=0, column=1, sticky="e")
+
+        for logo in (self.university_logo, self.checku_logo):
+            if logo is not None:
+                ttk.Label(logos_frame, image=logo).pack(
+                    side="left", padx=(18, 0)
+                )
 
         # ==================================================
         # DIRECTORIO
@@ -309,109 +449,105 @@ class SignatureApp:
         # ==================================================
 
         content_frame = ttk.Frame(self.root)
-        content_frame.grid(
-            row=2,
-            column=0,
-            sticky="nsew",
-            padx=28,
-            pady=8
-        )
+        content_frame.grid(row=2, column=0, sticky="nsew", padx=28, pady=8)
 
         content_frame.columnconfigure(0, weight=1)
-        content_frame.columnconfigure(1, weight=2)
         content_frame.rowconfigure(0, weight=1)
+
+        # Divisor arrastrable entre lista y previsualización
+        self.paned = tk.PanedWindow(
+            content_frame,
+            orient="horizontal",
+            sashwidth=6,
+            sashrelief="flat",
+            sashpad=0,
+            borderwidth=0,
+            background=COLORS["border"],
+            sashcursor="sb_h_double_arrow",
+            opaqueresize=True
+        )
+        self.paned.grid(row=0, column=0, sticky="nsew")
 
         # ==================================================
         # DOCUMENTOS
         # ==================================================
 
         documents_frame = ttk.Labelframe(
-            content_frame,
+            self.paned,
             text="Documentos disponibles",
-            style="Section.TLabelframe"
+            style="Section.TLabelframe",
+            cursor="arrow"
         )
-        documents_frame.grid(
-            row=0,
-            column=0,
-            sticky="nsew",
-            padx=(0, 8)
-        )
-
         documents_frame.columnconfigure(0, weight=1)
         documents_frame.rowconfigure(0, weight=1)
 
         list_frame = ttk.Frame(documents_frame, style="Surface.TFrame")
-        list_frame.grid(
-            row=0,
-            column=0,
-            sticky="nsew"
-        )
-
+        list_frame.grid(row=0, column=0, sticky="nsew")
         list_frame.columnconfigure(0, weight=1)
         list_frame.rowconfigure(0, weight=1)
 
-        self.document_list = tk.Listbox(
+        self.document_tree = ttk.Treeview(
             list_frame,
-            font=(FONT_FAMILY, 10),
-            activestyle="none",
-            selectmode=tk.SINGLE,
-            borderwidth=0,
-            relief="flat",
-            highlightthickness=1,
-            highlightbackground=COLORS["border"],
-            highlightcolor=COLORS["primary"],
-            background=COLORS["surface"],
-            foreground=COLORS["text"],
-            selectbackground=COLORS["selection"],
-            selectforeground=COLORS["text"],
-            selectborderwidth=0
+            columns=("created", "size"),
+            style="Documents.Treeview",
+            selectmode="browse"
         )
 
-        self.document_list.grid(
-            row=0,
-            column=0,
-            sticky="nsew"
+        self.document_tree.heading(
+            "#0", text="Nombre", anchor="w",
+            command=lambda: self.sort_documents("name")
         )
+        self.document_tree.heading(
+            "created", text="Fecha de creación", anchor="w",
+            command=lambda: self.sort_documents("created")
+        )
+        self.document_tree.heading(
+            "size", text="Tamaño", anchor="e",
+            command=lambda: self.sort_documents("size")
+        )
+
+        self.document_tree.column(
+            "#0", width=280, minwidth=160, stretch=True
+        )
+        self.document_tree.column(
+            "created", width=150, minwidth=130, stretch=False, anchor="w"
+        )
+        self.document_tree.column(
+            "size", width=90, minwidth=70, stretch=False, anchor="e"
+        )
+
+        self.document_tree.grid(row=0, column=0, sticky="nsew")
 
         list_scrollbar = ttk.Scrollbar(
             list_frame,
             orient="vertical",
-            command=self.document_list.yview
+            command=self.document_tree.yview
         )
+        list_scrollbar.grid(row=0, column=1, sticky="ns")
 
-        list_scrollbar.grid(
-            row=0,
-            column=1,
-            sticky="ns"
-        )
-
-        self.document_list.configure(
-            yscrollcommand=list_scrollbar.set
-        )
-
-        self.document_list.bind(
-            "<<ListboxSelect>>",
-            self.select_document
-        )
-
+        self.document_tree.configure(yscrollcommand=list_scrollbar.set)
+        self.document_tree.bind("<<TreeviewSelect>>", self.select_document)
+        # Evita redimensionar las columnas arrastrando el encabezado
+        for sequence in ("<Button-1>", "<B1-Motion>", "<Motion>"):
+            self.document_tree.bind(sequence, self.block_column_resize)
         # ==================================================
         # PREVISUALIZACIÓN
         # ==================================================
 
         preview_frame = ttk.Labelframe(
-            content_frame,
+            self.paned,
             text="Previsualización del documento",
-            style="Section.TLabelframe"
+            style="Section.TLabelframe",
+            cursor="arrow"
         )
-        preview_frame.grid(
-            row=0,
-            column=1,
-            sticky="nsew",
-            padx=(8, 0)
-        )
-
         preview_frame.columnconfigure(0, weight=1)
         preview_frame.rowconfigure(1, weight=1)
+
+        self.paned.add(documents_frame, minsize=420, stretch="always")
+        self.paned.add(preview_frame, minsize=300, stretch="always")
+
+        # La lista ocupa ~62 % y la previsualización el resto
+        self.root.after(150, self.set_initial_sash)
 
         # ==================================================
         # CONTROLES DE ZOOM
@@ -591,6 +727,66 @@ class SignatureApp:
         )
 
     # ======================================================
+    # DIVISOR Y LISTA DE DOCUMENTOS
+    # ======================================================
+
+    def set_initial_sash(self):
+        width = self.paned.winfo_width()
+
+        if width <= 1:
+            self.root.after(100, self.set_initial_sash)
+            return
+
+        self.paned.sash_place(0, int(width * 0.62), 0)
+
+    def populate_documents(self):
+        self.document_tree.delete(*self.document_tree.get_children())
+        self.document_meta = {}
+        self.sort_state = {}
+
+        for index, document in enumerate(self.documents):
+            iid = str(index)
+
+            try:
+                created, size = get_file_info(document.path)
+                created_text = created.strftime("%d/%m/%Y %H:%M")
+            except OSError:
+                created, size, created_text = datetime.min, 0, "—"
+
+            self.document_meta[iid] = {
+                "name": document.name.lower(),
+                "created": created,
+                "size": size
+            }
+
+            self.document_tree.insert(
+                "",
+                "end",
+                iid=iid,
+                text=f"  {document.name}",
+                image=self.pdf_icon,
+                values=(created_text, format_size(size))
+            )
+
+    def sort_documents(self, column):
+        """Ordena al hacer clic en el encabezado (clic repetido invierte)."""
+        reverse = self.sort_state.get(column, False)
+
+        items = sorted(
+            self.document_tree.get_children(""),
+            key=lambda iid: self.document_meta[iid][column],
+            reverse=reverse
+        )
+
+        for position, iid in enumerate(items):
+            self.document_tree.move(iid, "", position)
+
+        self.sort_state = {column: not reverse}
+    def block_column_resize(self, event):
+        """Ignora el arrastre sobre los separadores de columna."""
+        if self.document_tree.identify_region(event.x, event.y) == "separator":
+            return "break"
+    # ======================================================
     # DIRECTORIO
     # ======================================================
 
@@ -613,16 +809,7 @@ class SignatureApp:
                 text=directory
             )
 
-            self.document_list.delete(
-                0,
-                tk.END
-            )
-
-            for document in self.documents:
-                self.document_list.insert(
-                    tk.END,
-                    document.name
-                )
+            self.populate_documents()
 
             self.selected_label.config(
                 text="Ningún documento seleccionado"
@@ -655,14 +842,14 @@ class SignatureApp:
     # ======================================================
 
     def select_document(self, event):
-        selection = self.document_list.curselection()
+        selection = self.document_tree.selection()
 
         if not selection:
             return
 
-        index = selection[0]
-
-        self.selected_document = self.documents[index]
+        # El iid es el índice original en self.documents,
+        # así que sigue funcionando aunque se ordene la lista.
+        self.selected_document = self.documents[int(selection[0])]
 
         self.selected_label.config(
             text=self.selected_document.name
@@ -942,16 +1129,22 @@ class SignatureApp:
 
     def on_canvas_resize(self, event=None):
         if self.selected_document is None:
+            self.center_placeholder()
             return
 
         # Si estamos en 100 %, el documento debe seguir
-        # ajustándose al ancho del visor.
+        # ajustándose al ancho del visor. Se espera a que
+        # termine el arrastre del divisor antes de renderizar.
         if self.zoom == 1.0:
-            self.last_render_width = None
+            if self._resize_job is not None:
+                self.root.after_cancel(self._resize_job)
 
-            self.root.after_idle(
-                self.show_preview
-            )
+            self._resize_job = self.root.after(150, self._apply_resize)
+
+    def _apply_resize(self):
+        self._resize_job = None
+        self.last_render_width = None
+        self.show_preview()
 
     # ======================================================
     # CENTRAR
@@ -1017,10 +1210,20 @@ class SignatureApp:
             )
             return
 
-        try:
+        passphrase = simpledialog.askstring(
+            "Contraseña de firma",
+            "Ingrese la contraseña de la clave de la biblioteca:",
+            show="*",
+            parent=self.root
+        )
 
+        if passphrase is None:  # el usuario canceló
+            return
+
+        try:
             signed_path = self.signature_service.sign_document(
-                self.selected_document.path
+                self.selected_document.path,
+                passphrase
             )
 
             messagebox.showinfo(
@@ -1040,11 +1243,3 @@ class SignatureApp:
                     f"{error}"
                 )
             )
-
-
-if __name__ == "__main__":
-    root = tk.Tk()
-
-    app = SignatureApp(root)
-
-    root.mainloop()
