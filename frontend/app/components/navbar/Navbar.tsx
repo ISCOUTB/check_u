@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./Navbar.module.css";
 
 interface NavbarProps {
@@ -14,6 +15,7 @@ export default function Navbar({
     nombreUsuario,
     nivel
 }: NavbarProps) {
+    const router = useRouter();
 
     const [menuAbierto, setMenuAbierto] = useState(false);
 
@@ -79,14 +81,29 @@ export default function Navbar({
 
     };
 
-    const handleCerrarSesion = () => {
+    const handleCerrarSesion = async () => {
 
         setMenuAbierto(false);
+        try {
+                const response = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/auth/logout`,
+                    {
+                        method: "POST",
+                        credentials: "include",
+                        cache: "no-store",
+                    }
+                );
 
-        /*
-         * Actualmente no existe endpoint de cierre de sesión.
-         * Se deja preparado para conectarlo posteriormente.
-         */
+                if (!response.ok) {
+                    throw new Error("No se pudo cerrar la sesión");
+                }
+
+                router.replace("/");
+                router.refresh();
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
+                alert("No fue posible cerrar la sesión. Intenta nuevamente.");
+            }
         console.log("Cerrar sesión pendiente de endpoint");
 
     };
