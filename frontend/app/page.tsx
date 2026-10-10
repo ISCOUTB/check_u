@@ -1,14 +1,95 @@
-import styles from "./page.module.css";
+
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import styles from './page.module.css';
+
+interface User {
+    id: number;
+    username: string;
+    name: string;
+    role: 'estudiante' | 'funcionario';
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function Login() {
+    const router = useRouter();
+
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    async function handleSubmit(
+        event: React.FormEvent<HTMLFormElement>
+    ) {
+        event.preventDefault();
+
+        setMessage('');
+        setLoading(true);
+
+        try {
+            if (!API_URL) {
+                throw new Error(
+                    'No está configurada la URL del backend.'
+                );
+            }
+
+            const response = await fetch(
+                `${API_URL}/auth/login`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        username: email.trim(),
+                        password,
+                    }),
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    Array.isArray(data.message)
+                        ? data.message.join(', ')
+                        : data.message ||
+                          'No se pudo iniciar sesión.'
+                );
+            }
+
+            const user: User = data.user;
+
+            setMessage(`Bienvenido, ${user.name}.`);
+
+            if (user.role === 'funcionario') {
+                router.push('/funcionario/dashboard');
+            } else {
+                router.push('/estudiante/home');
+            }
+        } catch (error) {
+            setMessage(
+                error instanceof Error
+                    ? error.message
+                    : 'No fue posible conectar con el servidor.'
+            );
+        } finally {
+            setLoading(false);
+        }
+    }
+
     return (
         <main className={styles.login}>
-
             <section className={styles.loginForm}>
-
                 <div className={styles.formContent}>
-
-                    <div className={`${styles.flex} ${styles.spaceBetween}`}>
+                    <div
+                        className={`${styles.flex} ${styles.spaceBetween}`}
+                    >
                         <img
                             className={styles.logo}
                             src="/icons/checku_logo.png"
@@ -28,18 +109,22 @@ export default function Login() {
                         Accede a CheckU para validar tus documentos de grado.
                     </p>
 
-                    <form>
-
+                    <form onSubmit={handleSubmit}>
                         <div className={styles.inputGroup}>
                             <label htmlFor="email">
-                                Correo institucional
+                                Correo institucional o usuario de prueba
                             </label>
 
                             <input
-                                type="email"
+                                type="text"
                                 id="email"
                                 name="email"
-                                placeholder="tucorreo@utb.edu.co"
+                                placeholder="correo@utb.edu.co"
+                                value={email}
+                                onChange={(event) =>
+                                    setEmail(event.target.value)
+                                }
+                                autoComplete="username"
                                 required
                             />
                         </div>
@@ -54,20 +139,35 @@ export default function Login() {
                                 id="password"
                                 name="password"
                                 placeholder="Ingresa tu contraseña"
+                                value={password}
+                                onChange={(event) =>
+                                    setPassword(event.target.value)
+                                }
+                                autoComplete="current-password"
                                 required
                             />
                         </div>
 
                         <div className={styles.forgot}>
-                            <a href="#">
+                            <a
+                                href="#"
+                                onClick={(event) => event.preventDefault()}
+                            >
                                 ¿Olvidaste tu contraseña?
                             </a>
                         </div>
 
-                        <button type="submit">
-                            Iniciar sesión
+                        <button type="submit" disabled={loading}>
+                            {loading
+                                ? 'Validando credenciales...'
+                                : 'Iniciar sesión'}
                         </button>
 
+                        {message && (
+                            <p role="status" aria-live="polite">
+                                {message}
+                            </p>
+                        )}
                     </form>
 
                     <p className={styles.description}>
@@ -75,17 +175,12 @@ export default function Login() {
                         y te indicará qué debes corregir antes de enviar
                         tu solicitud de grado.
                     </p>
-
                 </div>
-
             </section>
 
             <section className={styles.loginImage}>
-
                 <div className={styles.imageContent}>
-
                     <div className={styles.imageOverlay}>
-
                         <span>CHECKU</span>
 
                         <h2>
@@ -97,13 +192,9 @@ export default function Login() {
                             Verifica tus documentos antes de iniciar
                             formalmente tu proceso de grado.
                         </p>
-
                     </div>
-
                 </div>
-
             </section>
-
         </main>
     );
 }
