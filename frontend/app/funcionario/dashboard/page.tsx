@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+
+interface Usuario {
+    id: number;
+    username: string;
+    name: string;
+    role: "estudiante" | "funcionario";
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 import {
     Chart,
@@ -87,7 +97,43 @@ const nombresFiltro: Record<string, string> = {
 };
 
 export default function Dashboard() {
+    const router = useRouter();
 
+    const [usuario, setUsuario] = useState<Usuario | null>(null);
+    const [cargandoSesion, setCargandoSesion] = useState(true);
+
+    useEffect(() => {
+        async function verificarSesion() {
+            try {
+                const response = await fetch(`${API_URL}/auth/me`, {
+                    method: "GET",
+                    credentials: "include",
+                });
+
+                if (!response.ok) {
+                    router.replace("/");
+                    return;
+                }
+
+                const data = await response.json();
+                const usuarioActual: Usuario = data.user;
+
+                // Este dashboard es exclusivo para funcionarios.
+                if (usuarioActual.role !== "funcionario") {
+                    router.replace("/estudiante");
+                    return;
+                }
+
+                setUsuario(usuarioActual);
+            } catch {
+                router.replace("/");
+            } finally {
+                setCargandoSesion(false);
+            }
+        }
+
+        verificarSesion();
+    }, [router]);
     const [filtro, setFiltro] = useState("todos");
 
     const barChartRef = useRef<HTMLCanvasElement | null>(null);
@@ -220,7 +266,7 @@ export default function Dashboard() {
             pieChart.destroy();
         };
 
-    }, []);
+    }, [usuario]);
 
 
     /*
@@ -303,11 +349,15 @@ export default function Dashboard() {
     };
 
 
+    if (cargandoSesion || !usuario) {
+        return <p>Verificando sesión...</p>;
+    }
+
     return (
         <>
             <Navbar
-                tipoUsuario="estudiante"
-                nombreUsuario="Lisandro Zapata"
+                tipoUsuario={usuario.role}
+                nombreUsuario={usuario.name}
             />
 
             <main className={styles.dashboard}>
