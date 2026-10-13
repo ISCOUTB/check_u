@@ -15,6 +15,7 @@ Personal de Biblioteca: firma criptográficamente los Paz y Salvo para que Check
 
 # Elementos o partes del proyecto
 
+
 ## Motor OCR y de validación
 
 ## Frontend
