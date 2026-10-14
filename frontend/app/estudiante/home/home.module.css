@@ -1,56 +1,73 @@
 .home {
-    min-height: calc(100vh - 70px);
-    padding: 40px 6%;
+    min-height: calc(100vh - 72px);
+    padding: 36px 6%;
     background-color: #f7f9fc;
     color: #1e293b;
 }
 
-/* Encabezado */
+/* ========================================================= */
+/* ENCABEZADO                                                */
+/* ========================================================= */
 
 .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
+    margin-bottom: 28px;
 }
 
 .eyebrow {
     display: inline-block;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     color: #2563eb;
     font-size: 12px;
     font-weight: 700;
-    letter-spacing: 1.4px;
+    letter-spacing: 1.2px;
 }
 
 .header h1 {
     margin: 0;
     color: #172554;
-    font-size: clamp(26px, 3vw, 34px);
+    font-size: clamp(26px, 3vw, 32px);
     font-weight: 700;
-    letter-spacing: -0.8px;
+    letter-spacing: -0.6px;
 }
 
 .header p {
     max-width: 650px;
-    margin: 12px 0 0;
+    margin: 8px 0 0;
     color: #64748b;
     font-size: 15px;
-    line-height: 1.7;
+    line-height: 1.6;
 }
 
-/* Tarjeta de bienvenida */
+/* ========================================================= */
+/* TARJETA DE BIENVENIDA                                     */
+/* ========================================================= */
 
 .welcomeCard {
-    display: flex;
-    align-items: flex-start;
-    gap: 20px;
-    padding: 26px;
-    margin-bottom: 28px;
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 14px;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.025);
+    padding: 26px;
+    margin-bottom: 28px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+}
+
+.welcomeCardSinSolicitud {
+    display: flex;
+    flex-direction: column;
+}
+
+.welcomeCardConSolicitud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.welcomeMain {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    flex: 1;
 }
 
 .welcomeIcon {
@@ -58,211 +75,517 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 50px;
-    height: 50px;
+    width: 48px;
+    height: 48px;
     color: #2563eb;
     background-color: #eff6ff;
     border-radius: 12px;
 }
 
 .welcomeIcon svg {
-    width: 25px;
-    height: 25px;
+    width: 26px;
+    height: 26px;
 }
 
-.welcomeCard h2 {
-    margin: 2px 0 10px;
-    color: #1e293b;
-    font-size: 19px;
-    font-weight: 650;
+.welcomeTexto {
+    flex: 1;
 }
 
-.welcomeCard p {
-    max-width: 850px;
-    margin: 0;
-    color: #64748b;
-    font-size: 14px;
-    line-height: 1.8;
-}
-
-/* Sección en desarrollo */
-
-.development {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 48px 30px 38px;
-    text-align: center;
-    background-color: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-}
-
-.developmentIcon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 64px;
-    height: 64px;
-    margin-bottom: 20px;
-    color: #2563eb;
-    background-color: #eff6ff;
-    border-radius: 18px;
-}
-
-.developmentIcon svg {
-    width: 30px;
-    height: 30px;
-}
-
-.badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 6px 12px;
-    margin-bottom: 16px;
-    color: #1d4ed8;
-    background-color: #eff6ff;
-    border: 1px solid #dbeafe;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.development h2 {
-    margin: 0 0 12px;
+.welcomeTexto h2 {
+    margin: 2px 0 8px;
     color: #172554;
-    font-size: clamp(21px, 2.5vw, 27px);
+    font-size: 19px;
     font-weight: 700;
-    letter-spacing: -0.4px;
 }
 
-.development>p {
-    max-width: 670px;
+.welcomeTexto p {
+    max-width: 780px;
     margin: 0;
     color: #64748b;
     font-size: 14px;
-    line-height: 1.8;
-}
-
-/* Funcionalidades próximas */
-
-.features {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-    width: 100%;
-    max-width: 900px;
-    margin-top: 36px;
-    text-align: left;
-}
-
-.feature {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    min-height: 75px;
-    padding: 18px;
-    background-color: #f8fafc;
-    border: 1px solid #e8edf4;
-    border-radius: 10px;
-    transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.feature:hover {
-    border-color: #bfdbfe;
-    transform: translateY(-2px);
-}
-
-.feature span {
-    color: #2563eb;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.feature p {
-    margin: 0;
-    color: #475569;
-    font-size: 13px;
-    font-weight: 500;
     line-height: 1.6;
 }
 
-/* Pie de página */
-
-.footer {
-    padding: 26px 0 8px;
-    color: #94a3b8;
-    font-size: 12px;
-    text-align: center;
+.welcomeBotonContainer {
+    margin-top: 20px;
 }
 
-/* Adaptación a dispositivos */
+.welcomeAccionDerecha {
+    flex-shrink: 0;
+}
+
+/* Botón principal (mínimo 44px de accesibilidad táctil) */
+.btnPrincipal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 22px;
+    background-color: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.btnPrincipal:hover {
+    background-color: #1d4ed8;
+}
+
+.btnPrincipal:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* ========================================================= */
+/* GRID DE TARJETAS                                          */
+/* ========================================================= */
+
+/* Escenario sin solicitud: 3 columnas iguales */
+.gridSinSolicitud {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+    align-items: stretch;
+}
+
+/* Escenario con solicitud: 2 columnas asimétricas */
+.gridConSolicitud {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.colLeft,
+.colRight {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* ========================================================= */
+/* TARJETA GENÉRICA                                          */
+/* ========================================================= */
+
+.card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
+}
+
+.cardTitle {
+    margin: 0 0 16px;
+    color: #172554;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+}
+
+/* ========================================================= */
+/* TARJETA 1: DOCUMENTOS REQUERIDOS                          */
+/* ========================================================= */
+
+.docList {
+    list-style: disc;
+    padding-left: 20px;
+    margin: 0;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 2;
+}
+
+.docList li {
+    padding-left: 4px;
+}
+
+/* ========================================================= */
+/* TARJETA 2: AVISO (ANTES DE ENVIAR)                        */
+/* ========================================================= */
+
+.cardAviso {
+    background-color: #fffdf5;
+    border: 1px solid #fef08a;
+}
+
+.cardAviso .cardTitle {
+    color: #1e293b;
+}
+
+.avisoTexto {
+    color: #854d0e;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 0 16px;
+}
+
+.reenviosTexto {
+    color: #713f12;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.reenviosLabel {
+    font-weight: 700;
+}
+
+/* ========================================================= */
+/* TARJETA 3: NOTIFICACIONES                                 */
+/* ========================================================= */
+
+.notifList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.notifItem {
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.notifItem:first-child {
+    padding-top: 0;
+}
+
+.notifItem:last-child {
+    border-bottom: none;
+}
+
+.notifCabecera {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.notifTitulo {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.notifFecha {
+    font-size: 12px;
+    color: #94a3b8;
+    white-space: nowrap;
+}
+
+.notifDesc {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.verTodas {
+    display: inline-block;
+    margin-top: 14px;
+    padding: 4px 0;
+    background: transparent;
+    border: none;
+    color: #2563eb;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: color 0.15s ease;
+}
+
+.verTodas:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.verTodas:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* ========================================================= */
+/* TARJETA 4: MI SOLICITUD DE GRADO                          */
+/* ========================================================= */
+
+.progresoTexto {
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
+    margin: 0 0 10px;
+}
+
+.progressBar {
+    width: 100%;
+    height: 6px;
+    background-color: #e2e8f0;
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.progressFill {
+    height: 100%;
+    background-color: #2563eb;
+    border-radius: 9999px;
+    transition: width 0.3s ease;
+}
+
+.solicitudDocList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.docRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.docRow:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.docInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.docNombreChip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.docNombre {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.docSubtexto {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+}
+
+.motivoRechazo {
+    font-size: 13px;
+    color: var(--invalid, #d95353);
+    margin: 0;
+    font-weight: 500;
+}
+
+.docAccion {
+    flex-shrink: 0;
+}
+
+.btnAccionDocumento {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 16px;
+    background-color: #2563eb;
+    color: #ffffff;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+}
+
+.btnAccionDocumento:hover {
+    background-color: #1d4ed8;
+}
+
+.btnAccionDocumento:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* ========================================================= */
+/* CHIPS DE ESTADO DE DOCUMENTOS                             */
+/* ========================================================= */
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+
+.chipValido {
+    background-color: var(--valid-bg, #edf8f2);
+    color: var(--valid, #2e9d67);
+}
+
+.chipNoValido {
+    background-color: var(--invalid-bg, #fff0f0);
+    color: var(--invalid, #d95353);
+}
+
+.chipInconsistente {
+    background-color: var(--inconsistent-bg, #fff9e7);
+    color: var(--inconsistent, #d9a928);
+}
+
+.chipPorRevisar {
+    background-color: var(--review-bg, #edf4fc);
+    color: var(--review, #638fc7);
+}
+
+.chipProcesando {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+.chipFaltaCargar {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+/* ========================================================= */
+/* ESTADOS AUXILIARES (CARGA, ERROR, VACÍO)                  */
+/* ========================================================= */
+
+.cargandoSesion {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background-color: #f7f9fc;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: rotar 0.7s linear infinite;
+}
+
+@keyframes rotar {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.textoSecundario {
+    color: #64748b;
+    font-size: 14px;
+    margin: 0;
+}
+
+.textoVacio {
+    color: #64748b;
+    font-size: 14px;
+    margin: 0;
+}
+
+.textoError {
+    color: var(--invalid, #d95353);
+    font-size: 13px;
+    margin: 0;
+}
+
+.cardSkeleton {
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ========================================================= */
+/* RESPONSIVE DESIGN (PATRÓN 768px Y 480px)                 */
+/* ========================================================= */
+
+@media (max-width: 900px) {
+    .gridSinSolicitud {
+        grid-template-columns: 1fr;
+    }
+
+    .gridConSolicitud {
+        grid-template-columns: 1fr;
+    }
+}
 
 @media (max-width: 768px) {
     .home {
-        padding: 28px 5%;
+        padding: 24px 4%;
     }
 
-
-    .header {
-        margin-bottom: 24px;
+    .welcomeCardConSolicitud {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 18px;
     }
 
-    .welcomeCard {
-        gap: 14px;
-        padding: 20px;
+    .welcomeAccionDerecha {
+        width: 100%;
     }
 
-    .welcomeIcon {
-        width: 42px;
-        height: 42px;
+    .welcomeAccionDerecha .btnPrincipal {
+        width: 100%;
     }
 
-    .welcomeCard h2 {
-        font-size: 17px;
+    .docRow {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
     }
 
-    .development {
-        padding: 36px 20px 28px;
+    .docAccion {
+        width: 100%;
     }
 
-    .features {
-        grid-template-columns: 1fr;
-        gap: 10px;
-        margin-top: 28px;
+    .btnAccionDocumento {
+        width: 100%;
     }
-
-    .feature {
-        min-height: auto;
-    }
-
 }
 
 @media (max-width: 480px) {
     .home {
-        padding: 24px 16px;
-    }
-
-    .header h1 {
-        font-size: 25px;
-    }
-
-    .header p,
-    .welcomeCard p,
-    .development>p {
-        font-size: 13px;
+        padding: 20px 16px;
     }
 
     .welcomeCard {
+        padding: 20px 16px;
+    }
+
+    .card {
+        padding: 20px 16px;
+    }
+
+    .welcomeMain {
         flex-direction: column;
-        padding: 18px;
+        gap: 12px;
     }
 
-    .development {
-        padding: 30px 16px 24px;
-    }
-
-    .development h2 {
-        font-size: 21px;
+    .welcomeBotonContainer .btnPrincipal {
+        width: 100%;
     }
 }
