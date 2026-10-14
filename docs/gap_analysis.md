@@ -168,6 +168,8 @@ Positivo: el backend **compila** (`npm run build`), todo el Python **compila** (
 
 ## 10. Decisiones que debes tomar
 
+> **Decidida el 14/10/2026: D1 = A.** NestJS es la aplicación y el motor de Python (`modules/`) corre como proceso trabajador del mismo despliegue, no como servicio aparte. Las demás siguen abiertas.
+
 | # | Decisión | Opciones | Recomendación |
 |---|---|---|---|
 | D1 | **Cómo se cumple "una sola aplicación"**: el backend está en TypeScript y el motor en Python. | **A.** NestJS como aplicación principal; el motor de Python como **librería** que el mismo despliegue ejecuta como proceso trabajador o proceso hijo (no como servicio HTTP aparte). **B.** Rehacer el backend en Python (FastAPI) para importar `modules/` directamente y dejar NestJS. **C.** NestJS más un servicio HTTP de Python, que contradice la regla. | **A**: conserva el trabajo de NestJS y de `modules/`, y la regla se cumple si el motor no se despliega como servicio independiente. Conviene confirmarlo con Lisandro, que escribió la regla. |
