@@ -83,6 +83,18 @@ npm run build
 ```
 Compila a `dist/`.
 
+## Contratos
+
+`src/contratos/` es la fuente única (Zod) de los enums y esquemas que comparten la API, el trabajador de Python y el frontend. Ver [`docs/contratos.md`](../docs/contratos.md).
+
+Si cambias un contrato, regenera los JSON Schema de `contratos/esquemas/`:
+
+```bash
+npm run contratos:exportar
+```
+
+`npm test` falla si los `.json` no coinciden con lo que genera Zod.
+
 ## Estructura
 
 ```
@@ -92,6 +104,7 @@ src/
 ├── app.module.ts      # módulo raíz
 ├── app.controller.ts  # GET /api/health
 ├── observabilidad.ts  # Observe, solo si hay claves
+├── contratos/         # enums y esquemas (Zod) y su exportación a JSON Schema
 └── auth/              # login, me, logout (en memoria)
-test/                  # pruebas e2e
+test/                  # pruebas e2e y soporte de pruebas
 ```
