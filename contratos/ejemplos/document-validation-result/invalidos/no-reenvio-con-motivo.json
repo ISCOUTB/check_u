@@ -1,0 +1,41 @@
+{
+  "id_student": "9900112233",
+  "type_document": "identification",
+  "document_version": 1,
+  "extracted_data": {
+    "first_name": {
+      "value": "Ana",
+      "confidence": 0.93
+    },
+    "last_name": {
+      "value": "Prueba",
+      "confidence": 0.93
+    },
+    "code_student": {
+      "value": "T00012345",
+      "confidence": 0.93
+    },
+    "identification_number": {
+      "value": "9900112233",
+      "confidence": 0.93
+    }
+  },
+  "rules": [
+    {
+      "rule": "identification_number_present",
+      "result": "cumple",
+      "mandatory": true,
+      "message": "Número de identificación leído",
+      "timestamp": "2026-10-14T09:30:00-05:00",
+      "errors": []
+    }
+  ],
+  "errors": [],
+  "document_classification": "valid",
+  "validation_status": "completed",
+  "resubmission_allowed": false,
+  "resubmission_reason": "Algo que corregir",
+  "required_action": "none",
+  "validation_version": "reglas-2026.10",
+  "timestamp": "2026-10-14T09:30:00-05:00"
+}

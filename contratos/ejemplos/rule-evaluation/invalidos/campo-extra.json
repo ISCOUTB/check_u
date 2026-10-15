@@ -1,0 +1,9 @@
+{
+  "rule": "identification_number_present",
+  "result": "cumple",
+  "mandatory": true,
+  "message": "Número de identificación leído",
+  "timestamp": "2026-10-14T09:30:00-05:00",
+  "errors": [],
+  "severity": "alta"
+}

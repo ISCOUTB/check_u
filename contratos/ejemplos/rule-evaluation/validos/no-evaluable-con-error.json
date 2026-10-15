@@ -1,0 +1,10 @@
+{
+  "rule": "ocr_text_sufficient",
+  "result": "no_evaluable",
+  "mandatory": false,
+  "message": "No se pudo leer el texto",
+  "timestamp": "2026-10-14T09:30:00-05:00",
+  "errors": [
+    "La imagen está borrosa"
+  ]
+}
