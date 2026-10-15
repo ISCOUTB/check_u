@@ -1,0 +1,32 @@
+{
+  "rule": "identification_number_match",
+  "rule_version": "reglas-2026.10",
+  "sources": [
+    "identification",
+    "banner"
+  ],
+  "fields": [
+    "identification_number"
+  ],
+  "outcome": "source_pending",
+  "evidence": [
+    {
+      "source": "identification",
+      "field": "identification_number",
+      "value": "9900112233",
+      "normalized_value": "9900112233",
+      "document_version": 1
+    },
+    {
+      "source": "banner",
+      "field": "identification_number",
+      "value": null,
+      "normalized_value": null,
+      "document_version": null
+    }
+  ],
+  "similarity": null,
+  "threshold": null,
+  "reason": "Banner no está integrado todavía: la comparación queda pendiente",
+  "evaluated_at": "2026-10-14T09:31:00-05:00"
+}
