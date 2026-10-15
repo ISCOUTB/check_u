@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CheckU · frontend
 
-## Getting Started
+Interfaz web de CheckU en **Next.js 16** (React 19). Tiene las pantallas del estudiante y del personal de grados, y consume la API del [backend](../backend/README.md).
 
-First, run the development server:
+> Esta versión de Next.js tiene cambios importantes frente a versiones anteriores: antes de programar, lee [`AGENTS.md`](AGENTS.md) y la documentación en `node_modules/next/dist/docs/`.
+
+## Requisitos
+
+- **Node.js 22 LTS** (como mínimo 20.9, que es lo que exige Next.js).
+- El **backend** corriendo en http://localhost:3000. Sin él no funciona el inicio de sesión.
+
+## Instalación
+
+Desde `frontend/`:
+
+```bash
+npm ci
+```
+
+## Configuración
+
+Copia `.env.example` como `.env.local`, que no se sube a git:
+
+| Variable | Valor en desarrollo | Para qué |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | `http://localhost:3000/api` | URL de la API del backend, con el prefijo `/api`. Sin ella, el login muestra "No está configurada la URL del backend." |
+
+## Ejecutar
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre **http://localhost:3001**. El frontend usa el puerto 3001 porque el backend ocupa el 3000, y el CORS del backend solo acepta `localhost:3001`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Usuarios de prueba:** los del [README del backend](../backend/README.md#endpoints).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Para producción: `npm run build` y luego `npm run start`. `start` no fija puerto: usa el 3000, o el que indique `PORT`.
 
-## Learn More
+## Pruebas y calidad
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run lint
+```
+ESLint (configuración de Next.js).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+```
+Compila y comprueba los tipos.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Páginas
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Ruta | Qué es | Estado |
+|---|---|---|
+| `/` | Inicio de sesión | Conectado al backend |
+| `/connect` | Prueba de conexión con el backend | Conectado |
+| `/estudiante/home` | Inicio del estudiante | La sesión es real (`/auth/me`); la solicitud activa, las notificaciones y la política de reenvíos son datos simulados (ver `app/estudiante/home/api.ts`) |
+| `/estudiante/preinscripcion` | Carga de documentos | Página provisional; la real es otra tarea |
+| `/funcionario/dashboard` | Solicitudes del personal de grados | Datos de ejemplo escritos en el código |
+| `/funcionario/detalle_preinscripcion/[id]` | Detalle de una solicitud | Datos de ejemplo escritos en el código |

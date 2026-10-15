@@ -1,22 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
 
 describe('AppController', () => {
-  let appController: AppController;
+  let controller: AppController;
 
   beforeEach(async () => {
-    const app: TestingModule = await Test.createTestingModule({
+    const modulo: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService],
     }).compile();
 
-    appController = app.get<AppController>(AppController);
+    controller = modulo.get(AppController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+  it('health responde que el servicio está arriba', () => {
+    expect(controller.getHealth()).toEqual({
+      status: 'ok',
+      service: 'CheckU API',
+      message: 'Backend conectado correctamente',
     });
   });
 });
