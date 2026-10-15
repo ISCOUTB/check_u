@@ -1,0 +1,76 @@
+{
+  "AcademicLevel": [
+    "pregrado",
+    "posgrado"
+  ],
+  "CrossValidationOutcome": [
+    "confirmed_match",
+    "confirmed_mismatch",
+    "insufficient_information",
+    "source_pending",
+    "source_unavailable",
+    "manual_review_required"
+  ],
+  "CrossValidationSource": [
+    "identification",
+    "academic_evaluation",
+    "paz_y_salvo_bib",
+    "estampilla_pro_cultura",
+    "saber_pro",
+    "application_data",
+    "banner",
+    "rui"
+  ],
+  "DocumentClassification": [
+    "valid",
+    "invalid",
+    "inconsistent",
+    "to_check"
+  ],
+  "JobStatus": [
+    "queued",
+    "processing",
+    "completed",
+    "failed",
+    "retry_pending"
+  ],
+  "RequestStatus": [
+    "queued",
+    "processing",
+    "awaiting_review",
+    "correction_required",
+    "ready_for_formal_submission",
+    "closed"
+  ],
+  "RequiredAction": [
+    "none",
+    "upload_new_version",
+    "wait_for_review",
+    "wait_for_external_validation",
+    "wait_for_processing",
+    "correct_data",
+    "contact_administration"
+  ],
+  "RuleResult": [
+    "cumple",
+    "no_cumple",
+    "no_evaluable"
+  ],
+  "SubmissionType": [
+    "initial",
+    "resubmission"
+  ],
+  "TypeDocument": [
+    "identification",
+    "academic_evaluation",
+    "paz_y_salvo_bib",
+    "estampilla_pro_cultura",
+    "saber_pro"
+  ],
+  "ValidationStatus": [
+    "pending",
+    "processing",
+    "completed",
+    "failed"
+  ]
+}
