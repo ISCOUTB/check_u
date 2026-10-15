@@ -197,7 +197,7 @@ Las pruebas que ya existen en el backend no se tocan. Tres de ellas fallan desde
 
 ## 9. Entrega
 
-- Rama `tarea_02_contratos`, creada desde `main`.
+- Rama `tarea_02_contratos`, apilada sobre `tarea_00_saneamiento` (PR #31).
 - PR contra `main` con `Closes #6` y el resumen "verificado / simulado / pendiente".
 - `docs/contratos.md` con los enums, los esquemas, un ejemplo válido de cada uno y las dos tablas de transiciones.
 
@@ -212,5 +212,5 @@ Las pruebas que ya existen en el backend no se tocan. Tres de ellas fallan desde
 ## 11. Riesgos
 
 - **`z.toJSONSchema` y las variantes:** las uniones discriminadas se exportan como `oneOf` o `anyOf`. La prueba de paridad con ajv comprueba que la regla de reenvío sobrevive a la exportación.
-- **Instalación:** el lockfile del backend está desincronizado (P1), así que `npm ci` falla. Agregar dependencias con `npm install` regenera `package-lock.json`, y ese cambio va en este PR, explicado. Eso también corrige P1 como efecto colateral.
+- **Ramas:** esta rama sale de `tarea_00_saneamiento` (PR #31), que deja funcionando `npm ci` y las pruebas del backend. El PR de esta tarea depende del #31 y muestra sus commits hasta que se fusione.
 - **ESM:** el backend es `"type": "module"`. Los imports llevan la extensión `.js`, como en el código de Lisandro.
