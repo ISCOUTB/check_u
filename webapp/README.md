@@ -14,9 +14,11 @@ Desde la raíz del proyecto (fuera de `webapp/`):
 ```
 
 Ese script hace todo (instalar dependencias, Tesseract, etc. si hace
-falta) y al final abre `http://localhost:5000` en el navegador solo.
-Ver el `README.md` de la raíz para el detalle. Si preferís correrlo a
-mano dentro de un venv ya armado:
+falta) y levanta todo CheckU: este panel en `http://localhost:5000`,
+el backend y el frontend. El navegador se abre en la aplicación
+(`http://localhost:3001`); el panel queda en su dirección de siempre.
+Ver el `README.md` de la raíz para el detalle. Si preferís correr solo
+el panel, a mano y dentro de un venv ya armado:
 
 ```
 .\venv\Scripts\python.exe webapp\app.py

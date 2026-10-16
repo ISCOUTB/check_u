@@ -1,13 +1,19 @@
-# Check_U - Instalar (si hace falta) y abrir el panel web
+# Check_U - Instalar (si hace falta) y abrir todo el programa
 # ---------------------------------------------------------
 # Uso: clic derecho sobre este archivo > "Ejecutar con PowerShell",
 # o desde una terminal, parado en la carpeta del proyecto:
 #
 #     .\iniciar.ps1
 #
+# Levanta las tres partes de CheckU en esta misma ventana:
+#   - backend (NestJS)      http://localhost:3000/api
+#   - frontend (Next.js)    http://localhost:3001   <- se abre en el navegador
+#   - panel Python (Flask)  http://localhost:5000   (lector de cedulas)
+# Ctrl+C (o cerrar la ventana) apaga las tres.
+#
 # Se puede correr las veces que haga falta: la primera vez instala
 # todo lo necesario; las siguientes veces esos pasos se saltan solos
-# (ya estan hechos) y va directo a abrir el panel.
+# (ya estan hechos) y va directo a arrancar.
 
 $ErrorActionPreference = "Stop"
 
@@ -24,7 +30,38 @@ if (-not $py) {
 }
 python --version
 
-Write-Host "`n== 2. Entorno virtual (venv) ==" -ForegroundColor Cyan
+Write-Host "`n== 2. Verificando Node.js ==" -ForegroundColor Cyan
+# El backend y el frontend necesitan Node 20.19 o mas nuevo (se recomienda
+# Node 22 LTS). Se revisa antes de instalar nada de Python, para no esperar
+# la instalacion completa y fallar al final.
+$node = Get-Command node -ErrorAction SilentlyContinue
+if (-not $node) {
+    Write-Host "No se encontro 'node' en el PATH." -ForegroundColor Red
+    Write-Host "Instala Node.js 22 LTS desde https://nodejs.org/ y vuelve a correr este script." -ForegroundColor Yellow
+    exit 1
+}
+$versionNode = [version]((node --version).TrimStart("v"))
+if ($versionNode -lt [version]"20.19.0") {
+    Write-Host "Tienes Node $versionNode; CheckU necesita 20.19 o mas nuevo." -ForegroundColor Red
+    Write-Host "Instala Node.js 22 LTS desde https://nodejs.org/ y vuelve a correr este script." -ForegroundColor Yellow
+    exit 1
+}
+Write-Host "Node $versionNode" -ForegroundColor Green
+
+Write-Host "`n== 3. Puertos 3000, 3001 y 5000 ==" -ForegroundColor Cyan
+# Si otro programa (o una copia anterior de CheckU) ya usa uno de los
+# puertos, se avisa ahora, antes de instalar o arrancar nada a medias.
+$ocupados = @(foreach ($puerto in 3000, 3001, 5000) {
+    if (Get-NetTCPConnection -LocalPort $puerto -State Listen -ErrorAction SilentlyContinue) { $puerto }
+})
+if ($ocupados.Count -gt 0) {
+    Write-Host "Ya hay algo usando el puerto $($ocupados -join ', ')." -ForegroundColor Red
+    Write-Host "Cierra la otra copia de CheckU (Ctrl+C en su ventana) o el programa que lo use, y vuelve a correr '.\iniciar.ps1'." -ForegroundColor Yellow
+    exit 1
+}
+Write-Host "Libres." -ForegroundColor Green
+
+Write-Host "`n== 4. Entorno virtual (venv) ==" -ForegroundColor Cyan
 if (-not (Test-Path ".\venv\Scripts\python.exe")) {
     python -m venv venv
     Write-Host "Creado." -ForegroundColor Green
@@ -38,13 +75,14 @@ if (-not (Test-Path ".\venv\Scripts\python.exe")) {
 $pythonVenv = ".\venv\Scripts\python.exe"
 $pipVenv = ".\venv\Scripts\pip.exe"
 
-Write-Host "`n== 3. Dependencias de Python ==" -ForegroundColor Cyan
-& $pipVenv install --upgrade pip | Out-Null
+Write-Host "`n== 5. Dependencias de Python ==" -ForegroundColor Cyan
+# pip no se puede actualizar a si mismo con pip.exe en Windows; se hace con python -m pip.
+& $pythonVenv -m pip install --upgrade pip | Out-Null
 # zxing-cpp lee el codigo de barras PDF417 del reverso de la cedula
 # amarilla con hologramas; rapidfuzz compara nombres contra el RUI.
 & $pipVenv install pdf2image pytesseract pillow opencv-python flask requests pymupdf zxing-cpp rapidfuzz
 
-Write-Host "`n== 4. Tesseract OCR ==" -ForegroundColor Cyan
+Write-Host "`n== 6. Tesseract OCR ==" -ForegroundColor Cyan
 $tesseract = Get-Command tesseract -ErrorAction SilentlyContinue
 
 if (-not $tesseract) {
@@ -115,10 +153,10 @@ if ($tesseract) {
     }
 }
 
-Write-Host "`n== 5. Lectura de PDF (PyMuPDF) ==" -ForegroundColor Cyan
-Write-Host "Ya quedo instalado en el paso 3 (pip); no necesita nada mas en Windows (poppler es opcional, solo como respaldo)." -ForegroundColor Green
+Write-Host "`n== 7. Lectura de PDF (PyMuPDF) ==" -ForegroundColor Cyan
+Write-Host "Ya quedo instalado en el paso 5 (pip); no necesita nada mas en Windows (poppler es opcional, solo como respaldo)." -ForegroundColor Green
 
-Write-Host "`n== 6. Verificacion final del entorno ==" -ForegroundColor Cyan
+Write-Host "`n== 8. Verificacion del entorno de Python ==" -ForegroundColor Cyan
 & $pythonVenv webapp\entorno.py
 $entornoOk = ($LASTEXITCODE -eq 0)
 
@@ -129,17 +167,77 @@ if (-not $entornoOk) {
     exit 1
 }
 
-Write-Host "`n== Todo listo: abriendo Check_U ==" -ForegroundColor Cyan
-Write-Host "http://localhost:5000" -ForegroundColor White
-Write-Host "(para cerrar el panel: Ctrl+C en esta ventana)" -ForegroundColor DarkGray
+Write-Host "`n== 9. Dependencias del backend y el frontend ==" -ForegroundColor Cyan
+# npm ci solo cuando hace falta: si no hay node_modules o si el
+# package-lock.json cambio (por ejemplo, despues de un git pull) desde la
+# ultima instalacion. npm deja su propia copia en node_modules\.package-lock.json.
+foreach ($carpeta in "backend", "frontend") {
+    $lock = Join-Path $carpeta "package-lock.json"
+    $instalado = Join-Path $carpeta "node_modules\.package-lock.json"
+    if ((Test-Path $instalado) -and ((Get-Item $instalado).LastWriteTime -ge (Get-Item $lock).LastWriteTime)) {
+        Write-Host "${carpeta}: ya instalado, se reutiliza." -ForegroundColor Yellow
+        continue
+    }
+    Write-Host "${carpeta}: instalando paquetes (npm ci)..." -ForegroundColor Yellow
+    Push-Location $carpeta
+    try {
+        npm.cmd ci --no-audit --no-fund
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "npm ci fallo en $carpeta. Revisa el error de arriba y vuelve a correr '.\iniciar.ps1'." -ForegroundColor Red
+            exit 1
+        }
+    } finally {
+        Pop-Location
+    }
+    Write-Host "${carpeta}: listo." -ForegroundColor Green
+}
 
-# El servidor tarda un par de segundos en arrancar; se abre el
-# navegador desde un job aparte para no bloquear el arranque de abajo,
-# que corre en primer plano (asi Ctrl+C lo cierra normal y se ve el
-# log del servidor en esta misma ventana).
+Write-Host "`n== 10. Configuracion del frontend ==" -ForegroundColor Cyan
+# frontend/.env.local le dice al frontend donde esta el backend. No se sube
+# a git; se crea a partir del ejemplo si no existe.
+if (Test-Path "frontend\.env.local") {
+    Write-Host "frontend\.env.local ya existe, se reutiliza." -ForegroundColor Yellow
+} else {
+    Copy-Item "frontend\.env.example" "frontend\.env.local"
+    Write-Host "Creado frontend\.env.local a partir de frontend\.env.example." -ForegroundColor Green
+}
+
+Write-Host "`n== Todo listo: arrancando CheckU ==" -ForegroundColor Cyan
+Write-Host "Aplicacion:   http://localhost:3001   (se abre sola en el navegador)" -ForegroundColor White
+Write-Host "API:          http://localhost:3000/api" -ForegroundColor White
+Write-Host "Panel Python: http://localhost:5000" -ForegroundColor White
+Write-Host "(para cerrar todo: Ctrl+C en esta ventana, o cerrarla)" -ForegroundColor DarkGray
+
+# El backend y el frontend corren en segundo plano en esta misma ventana. Se
+# lanzan con node directamente (no con npm) para que Ctrl+C no pregunte
+# "Desea terminar el trabajo por lotes (S/N)?".
+$backend = Start-Process -FilePath "node" -ArgumentList "node_modules\@nestjs\cli\bin\nest.js", "start", "--watch" -WorkingDirectory "backend" -NoNewWindow -PassThru
+$frontend = Start-Process -FilePath "node" -ArgumentList "node_modules\next\dist\bin\next", "dev", "-p", "3001" -WorkingDirectory "frontend" -NoNewWindow -PassThru
+
+# El navegador se abre cuando el frontend ya responde, no tras una espera
+# fija: la primera vez Next.js tarda en compilar. Va en un job aparte para
+# no bloquear el panel, que corre en primer plano.
 Start-Job -ScriptBlock {
-    Start-Sleep -Seconds 2
-    Start-Process "http://localhost:5000"
+    for ($intento = 0; $intento -lt 120; $intento++) {
+        try {
+            Invoke-WebRequest -Uri "http://localhost:3001" -UseBasicParsing -TimeoutSec 5 | Out-Null
+            Start-Process "http://localhost:3001"
+            return
+        } catch {
+            Start-Sleep -Seconds 1
+        }
+    }
 } | Out-Null
 
-& $pythonVenv webapp\app.py
+try {
+    & $pythonVenv webapp\app.py
+} finally {
+    # Al cerrar el panel (Ctrl+C o un error) se apagan tambien el backend y
+    # el frontend, con sus procesos hijos, para no dejar puertos ocupados.
+    foreach ($proceso in $backend, $frontend) {
+        if ($proceso -and -not $proceso.HasExited) {
+            cmd /c "taskkill /T /F /PID $($proceso.Id) >nul 2>&1"
+        }
+    }
+    Write-Host "`nCheckU detenido." -ForegroundColor Cyan
+}

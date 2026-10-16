@@ -13,6 +13,30 @@ Estudiantes: ven los resultados del análisis y reenvían los documentos que req
 Personal de grados: filtra las solicitudes por estado (válida, no válida, inconsistente o por revisar), deja comentarios y consulta estadísticas en gráficos.
 Personal de Biblioteca: firma criptográficamente los Paz y Salvo para que CheckU pueda verificar después su autenticidad.
 
+# Cómo correr CheckU
+
+En Windows, con **Python 3.11+** y **Node.js 22 LTS** (mínimo 20.19) instalados, desde la carpeta del proyecto:
+
+```powershell
+.\iniciar.ps1
+```
+
+También funciona con clic derecho sobre `iniciar.ps1` → "Ejecutar con PowerShell".
+
+La primera vez instala lo que falte: el entorno de Python, Tesseract con español, los paquetes del backend y del frontend y `frontend/.env.local`. Las siguientes veces se salta lo que ya está instalado y va directo a arrancar. Si cambia un `package-lock.json` (por ejemplo, después de un `git pull`), reinstala solo esa parte.
+
+Levanta las tres partes en la misma ventana y abre el navegador en la aplicación:
+
+| Parte | Dirección |
+|---|---|
+| Aplicación (frontend) | http://localhost:3001 |
+| API (backend) | http://localhost:3000/api |
+| Panel de prueba del lector de cédulas (`webapp/`) | http://localhost:5000 |
+
+**Ctrl+C** en esa ventana, o cerrarla, apaga las tres. Si alguno de los puertos ya está ocupado, por ejemplo por otra copia de CheckU, el script lo dice y no arranca nada.
+
+Los usuarios de prueba están en [`backend/README.md`](backend/README.md#endpoints).
+
 # Elementos o partes del proyecto
 
 
