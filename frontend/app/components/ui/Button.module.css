@@ -1,0 +1,68 @@
+.boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 44px;
+    padding: 0 var(--space-5);
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background-color var(--duracion-rapida) ease,
+        border-color var(--duracion-rapida) ease,
+        color var(--duracion-rapida) ease,
+        transform var(--duracion-rapida) var(--ease-out);
+}
+
+.boton:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.boton:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.primario {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+}
+
+.secundario {
+    background: var(--color-surface);
+    border-color: var(--color-border-control);
+    color: var(--color-accent-text);
+}
+
+.sutil {
+    min-height: 44px;
+    padding: 0 var(--space-1);
+    background: transparent;
+    color: var(--color-accent-text);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .primario:hover:not(:disabled) {
+        background: var(--color-accent-hover);
+    }
+
+    .secundario:hover:not(:disabled) {
+        background: var(--color-accent-soft);
+    }
+
+    .sutil:hover {
+        text-decoration-color: currentColor;
+    }
+}

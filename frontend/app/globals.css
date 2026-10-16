@@ -23,6 +23,11 @@
     --color-focus: #2563eb;
     --color-on-accent: #ffffff;
 
+    /* Texto sobre fotos: blanco sobre un degradado azul noche, igual en los dos temas. */
+    --color-on-photo: #ffffff;
+    --overlay-photo-strong: rgba(12, 25, 55, 0.88);
+    --overlay-photo-weak: rgba(12, 25, 55, 0.1);
+
     --status-valid-text: #15803d;
     --status-valid-bg: #edf8f2;
     --status-valid-mark: #2e9d67;
