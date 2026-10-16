@@ -67,25 +67,6 @@
 
     /* Alto de la barra superior: el foco nunca queda tapado por ella (WCAG 2.4.11). */
     --altura-barra: 72px;
-
-    /*
-     * Alias temporales de los nombres viejos, mientras las páginas que aún no se rehacen los
-     * usan. Se quitan en las tareas 3 y 5 del plan.
-     */
-    --background-e: var(--color-bg);
-    --surface: var(--color-surface);
-    --border: var(--color-border);
-    --text: var(--color-text);
-    --text-secondary: var(--color-text-secondary);
-    --primary: var(--color-text);
-    --valid: var(--status-valid-text);
-    --valid-bg: var(--status-valid-bg);
-    --invalid: var(--status-invalid-text);
-    --invalid-bg: var(--status-invalid-bg);
-    --inconsistent: var(--status-inconsistent-text);
-    --inconsistent-bg: var(--status-inconsistent-bg);
-    --review: var(--status-review-text);
-    --review-bg: var(--status-review-bg);
 }
 
 @media (prefers-color-scheme: dark) {

@@ -1,800 +1,203 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-
-interface Usuario {
-    id: number;
-    username: string;
-    name: string;
-    role: "estudiante" | "funcionario";
-}
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
+import { useState } from "react";
+import Navbar from "@/app/components/navbar/Navbar";
+import Button from "@/app/components/ui/Button";
+import Card from "@/app/components/ui/Card";
+import PageHeader from "@/app/components/ui/PageHeader";
+import StatusBadge from "@/app/components/ui/StatusBadge";
+import { useSesion } from "@/app/lib/useSesion";
 import {
-    Chart,
-    BarController,
-    BarElement,
-    CategoryScale,
-    LinearScale,
-    DoughnutController,
-    ArcElement,
-    Tooltip,
-    Legend
-} from "chart.js";
-
-import Navbar from "../../components/navbar/Navbar";
+    DESCRIPCION_CONTADOR,
+    ESTADOS_SOLICITUD,
+    ETIQUETA_PLURAL,
+    ETIQUETA_SOLICITUD,
+    type EstadoSolicitud,
+    SOLICITUDES,
+} from "./datos";
+import GraficoEstados from "./GraficoEstados";
 import styles from "./dashboard.module.css";
 
-Chart.register(
-    BarController,
-    BarElement,
-    CategoryScale,
-    LinearScale,
-    DoughnutController,
-    ArcElement,
-    Tooltip,
-    Legend
-);
+type Filtro = "todos" | EstadoSolicitud;
 
-interface Solicitud {
-    numero: string;
-    fecha: string;
-    estudiante: string;
-    estado:
-    | "valida"
-    | "no-valida"
-    | "inconsistente"
-    | "por-revisar";
-}
+const TOTAL = SOLICITUDES.length;
+const CONTEO = ESTADOS_SOLICITUD.map((estado) => ({
+    estado,
+    cantidad: SOLICITUDES.filter((s) => s.estado === estado).length,
+}));
 
-const solicitudes: Solicitud[] = [
-    {
-        numero: "GR-2026-001",
-        fecha: "04/10/2026 08:30",
-        estudiante: "Juan David Pérez",
-        estado: "valida"
-    },
-    {
-        numero: "GR-2026-002",
-        fecha: "04/10/2026 09:10",
-        estudiante: "María Fernanda López",
-        estado: "no-valida"
-    },
-    {
-        numero: "GR-2026-003",
-        fecha: "04/10/2026 09:45",
-        estudiante: "Carlos Andrés Martínez",
-        estado: "inconsistente"
-    },
-    {
-        numero: "GR-2026-004",
-        fecha: "04/10/2026 10:05",
-        estudiante: "Laura Sofía Rodríguez",
-        estado: "por-revisar"
-    },
-    {
-        numero: "GR-2026-005",
-        fecha: "04/10/2026 10:20",
-        estudiante: "Daniel José Gómez",
-        estado: "valida"
-    }
-];
-
-const nombresEstado: Record<Solicitud["estado"], string> = {
-    valida: "Válida",
-    "no-valida": "No válida",
-    inconsistente: "Inconsistente",
-    "por-revisar": "Por revisar"
-};
-
-const nombresFiltro: Record<string, string> = {
-    valida: "Válidas",
-    "no-valida": "No válidas",
-    inconsistente: "Inconsistentes",
-    "por-revisar": "Por revisar"
-};
+const porcentaje = (cantidad: number) => (TOTAL ? Math.round((cantidad / TOTAL) * 100) : 0);
 
 export default function Dashboard() {
-    const router = useRouter();
+    const { usuario, cargando } = useSesion("funcionario");
+    const [filtro, setFiltro] = useState<Filtro>("todos");
 
-    const [usuario, setUsuario] = useState<Usuario | null>(null);
-    const [cargandoSesion, setCargandoSesion] = useState(true);
-
-    useEffect(() => {
-        async function verificarSesion() {
-            try {
-                const response = await fetch(`${API_URL}/auth/me`, {
-                    method: "GET",
-                    credentials: "include",
-                });
-
-                if (!response.ok) {
-                    router.replace("/");
-                    return;
-                }
-
-                const data = await response.json();
-                const usuarioActual: Usuario = data.user;
-
-                // Este dashboard es exclusivo para funcionarios.
-                if (usuarioActual.role !== "funcionario") {
-                    router.replace("/estudiante");
-                    return;
-                }
-
-                setUsuario(usuarioActual);
-            } catch {
-                router.replace("/");
-            } finally {
-                setCargandoSesion(false);
-            }
-        }
-
-        verificarSesion();
-    }, [router]);
-    const [filtro, setFiltro] = useState("todos");
-
-    const barChartRef = useRef<HTMLCanvasElement | null>(null);
-    const pieChartRef = useRef<HTMLCanvasElement | null>(null);
-
-    /*
-     * =========================
-     * GRÁFICOS
-     * =========================
-     */
-
-    useEffect(() => {
-
-        if (!barChartRef.current || !pieChartRef.current) {
-            return;
-        }
-
-        const cantidades = {
-            valida: solicitudes.filter(
-                solicitud => solicitud.estado === "valida"
-            ).length,
-
-            noValida: solicitudes.filter(
-                solicitud => solicitud.estado === "no-valida"
-            ).length,
-
-            inconsistente: solicitudes.filter(
-                solicitud => solicitud.estado === "inconsistente"
-            ).length,
-
-            porRevisar: solicitudes.filter(
-                solicitud => solicitud.estado === "por-revisar"
-            ).length
-        };
-
-        const barChart = new Chart(
-            barChartRef.current,
-            {
-                type: "bar",
-
-                data: {
-                    labels: [
-                        "Válidas",
-                        "No válidas",
-                        "Inconsistentes",
-                        "Por revisar"
-                    ],
-
-                    datasets: [
-                        {
-                            label: "Solicitudes",
-                            data: [
-                                cantidades.valida,
-                                cantidades.noValida,
-                                cantidades.inconsistente,
-                                cantidades.porRevisar
-                            ],
-                            backgroundColor: [
-                                "#35A875",
-                                "#E06464",
-                                "#D6A62C",
-                                "#5F8FCB"
-                            ],
-                            borderColor: [
-                                "#35A875",
-                                "#E06464",
-                                "#D6A62C",
-                                "#5F8FCB"
-                            ],
-                            borderWidth: 1
-                        }
-                    ]
-                },
-
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            }
+    if (cargando || !usuario) {
+        return (
+            <main id="contenido" tabIndex={-1} className={styles.cargando} aria-busy="true">
+                <p>Verificando sesión...</p>
+            </main>
         );
-
-        const pieChart = new Chart(
-            pieChartRef.current,
-            {
-                type: "doughnut",
-
-                data: {
-                    labels: [
-                        "Válidas",
-                        "No válidas",
-                        "Inconsistentes",
-                        "Por revisar"
-                    ],
-
-                    datasets: [
-                        {
-                            data: [
-                                cantidades.valida,
-                                cantidades.noValida,
-                                cantidades.inconsistente,
-                                cantidades.porRevisar
-                            ],
-                            backgroundColor: [
-                                "#35A875",
-                                "#E06464",
-                                "#D6A62C",
-                                "#5F8FCB"
-                            ],
-                            borderColor: "#ffffff",
-                            borderWidth: 2
-                        }
-                    ]
-                },
-
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
-            }
-        );
-
-        return () => {
-            barChart.destroy();
-            pieChart.destroy();
-        };
-
-    }, [usuario]);
-
-
-    /*
-     * =========================
-     * ESTADÍSTICAS
-     * =========================
-     */
-
-    const total = solicitudes.length;
-
-    const obtenerCantidad = (
-        estado: Solicitud["estado"]
-    ) => {
-
-        return solicitudes.filter(
-            solicitud => solicitud.estado === estado
-        ).length;
-
-    };
-
-    const obtenerPorcentaje = (
-        estado: Solicitud["estado"]
-    ) => {
-
-        if (total === 0) {
-            return 0;
-        }
-
-        return Math.round(
-            (obtenerCantidad(estado) / total) * 100
-        );
-
-    };
-
-
-    /*
-     * =========================
-     * FILTRO
-     * =========================
-     */
-
-    const solicitudesFiltradas =
-        filtro === "todos"
-            ? solicitudes
-            : solicitudes.filter(
-                solicitud => solicitud.estado === filtro
-            );
-
-    const aplicarFiltro = (nuevoFiltro: string) => {
-
-        setFiltro(nuevoFiltro);
-
-        setTimeout(() => {
-
-            document
-                .getElementById("solicitudes")
-                ?.scrollIntoView({
-                    behavior: "smooth"
-                });
-
-        }, 50);
-
-    };
-
-
-    /*
-     * =========================
-     * CLASES DE ESTADO
-     * =========================
-     */
-
-    const clasesEstado: Record<
-        Solicitud["estado"],
-        string
-    > = {
-        valida: styles.valida,
-        "no-valida": styles.noValida,
-        inconsistente: styles.inconsistente,
-        "por-revisar": styles.porRevisar
-    };
-
-
-    if (cargandoSesion || !usuario) {
-        return <p>Verificando sesión...</p>;
     }
+
+    const filtradas = filtro === "todos" ? SOLICITUDES : SOLICITUDES.filter((s) => s.estado === filtro);
+
+    /** Desde un contador: filtra la lista y la trae a la vista. */
+    const verEstado = (estado: EstadoSolicitud) => {
+        setFiltro(estado);
+        const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        requestAnimationFrame(() =>
+            document.getElementById("solicitudes")?.scrollIntoView({ behavior: reducido ? "auto" : "smooth" }),
+        );
+    };
 
     return (
         <>
-            <Navbar
-                tipoUsuario={usuario.role}
-                nombreUsuario={usuario.name}
-            />
+            <Navbar tipoUsuario={usuario.role} nombreUsuario={usuario.name} />
+            <main id="contenido" tabIndex={-1} className={styles.pagina}>
+                <PageHeader
+                    titulo="Dashboard de preinscripciones"
+                    descripcion="Resumen y seguimiento de las solicitudes de grado."
+                />
 
-            <main className={styles.dashboard}>
-
-                {/* =========================
-                    HEADER
-                ========================= */}
-
-                <header className={styles.dashboardHeader}>
-
-                    <div>
-
-                        <h1>
-                            Dashboard de preinscripciones
-                        </h1>
-
-                        <p>
-                            Resumen y seguimiento de las solicitudes de grado.
-                        </p>
-
-                    </div>
-
-                </header>
-
-
-                {/* =========================
-                    ESTADÍSTICAS
-                ========================= */}
-
-                <section className={styles.statisticsGrid}>
-
-                    {/* VÁLIDAS */}
-
-                    <article
-                        className={`${styles.statCard} ${styles.valid} ${styles.clickableStat}`}
-                        onClick={() => aplicarFiltro("valida")}
-                    >
-
-                        <div className={styles.statCardHeader}>
-
-                            <span className={styles.statTitle}>
-                                Válidas
-                            </span>
-
-                            <span className={styles.statusDot} />
-
-                        </div>
-
-                        <div className={styles.statValue}>
-
-                            <span>
-                                {obtenerCantidad("valida")}
-                            </span>
-
-                            <small>
-                                {obtenerPorcentaje("valida")}%
-                            </small>
-
-                        </div>
-
-                        <p>
-                            Preinscripciones válidas
-                        </p>
-
-                    </article>
-
-
-                    {/* NO VÁLIDAS */}
-
-                    <article
-                        className={`${styles.statCard} ${styles.invalid} ${styles.clickableStat}`}
-                        onClick={() => aplicarFiltro("no-valida")}
-                    >
-
-                        <div className={styles.statCardHeader}>
-
-                            <span className={styles.statTitle}>
-                                No válidas
-                            </span>
-
-                            <span className={styles.statusDot} />
-
-                        </div>
-
-                        <div className={styles.statValue}>
-
-                            <span>
-                                {obtenerCantidad("no-valida")}
-                            </span>
-
-                            <small>
-                                {obtenerPorcentaje("no-valida")}%
-                            </small>
-
-                        </div>
-
-                        <p>
-                            Preinscripciones no válidas
-                        </p>
-
-                    </article>
-
-
-                    {/* INCONSISTENTES */}
-
-                    <article
-                        className={`${styles.statCard} ${styles.inconsistent} ${styles.clickableStat}`}
-                        onClick={() => aplicarFiltro("inconsistente")}
-                    >
-
-                        <div className={styles.statCardHeader}>
-
-                            <span className={styles.statTitle}>
-                                Inconsistentes
-                            </span>
-
-                            <span className={styles.statusDot} />
-
-                        </div>
-
-                        <div className={styles.statValue}>
-
-                            <span>
-                                {obtenerCantidad("inconsistente")}
-                            </span>
-
-                            <small>
-                                {obtenerPorcentaje("inconsistente")}%
-                            </small>
-
-                        </div>
-
-                        <p>
-                            Preinscripciones inconsistentes
-                        </p>
-
-                    </article>
-
-
-                    {/* POR REVISAR */}
-
-                    <article
-                        className={`${styles.statCard} ${styles.review} ${styles.clickableStat}`}
-                        onClick={() => aplicarFiltro("por-revisar")}
-                    >
-
-                        <div className={styles.statCardHeader}>
-
-                            <span className={styles.statTitle}>
-                                Por revisar
-                            </span>
-
-                            <span className={styles.statusDot} />
-
-                        </div>
-
-                        <div className={styles.statValue}>
-
-                            <span>
-                                {obtenerCantidad("por-revisar")}
-                            </span>
-
-                            <small>
-                                {obtenerPorcentaje("por-revisar")}%
-                            </small>
-
-                        </div>
-
-                        <p>
-                            Preinscripciones pendientes
-                        </p>
-
-                    </article>
-
+                <section aria-labelledby="titulo-resumen" className={styles.seccion}>
+                    <h2 id="titulo-resumen" className="solo-lector">
+                        Resumen por estado
+                    </h2>
+                    <ul className={styles.contadores}>
+                        {CONTEO.map(({ estado, cantidad }) => (
+                            <li key={estado}>
+                                <button
+                                    type="button"
+                                    className={styles.contador}
+                                    data-estado={estado}
+                                    onClick={() => verEstado(estado)}
+                                >
+                                    <span className={styles.contadorCabecera}>
+                                        <span className={styles.contadorTitulo}>{ETIQUETA_PLURAL[estado]}</span>
+                                        <span className={styles.marca} aria-hidden="true" />
+                                    </span>
+                                    <span className={styles.contadorValor}>
+                                        <span className={styles.cifra}>{cantidad}</span>
+                                        <span className={styles.porcentaje}>{porcentaje(cantidad)} %</span>
+                                    </span>
+                                    <span className={styles.contadorDescripcion}>{DESCRIPCION_CONTADOR[estado]}</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
                 </section>
 
+                <div className={styles.graficos}>
+                    <GraficoEstados
+                        tipo="barras"
+                        titulo="Distribución de solicitudes"
+                        descripcion="Cantidad de preinscripciones por estado."
+                        datos={CONTEO}
+                    />
+                    <GraficoEstados
+                        tipo="dona"
+                        titulo="Distribución porcentual"
+                        descripcion="Porcentaje de solicitudes según su estado."
+                        datos={CONTEO}
+                    />
+                </div>
 
-                {/* =========================
-                    GRÁFICOS
-                ========================= */}
-
-                <section className={styles.chartsGrid}>
-
-                    {/* GRÁFICO DE BARRAS */}
-
-                    <article
-                        className={`${styles.panel} ${styles.chartPanel}`}
-                    >
-
-                        <div className={styles.panelHeader}>
-
-                            <h2>
-                                Distribución de solicitudes
-                            </h2>
-
-                            <p>
-                                Cantidad de preinscripciones por estado.
-                            </p>
-
-                        </div>
-
-                        <div className={styles.barChartContainer}>
-
-                            <canvas ref={barChartRef} />
-
-                        </div>
-
-                    </article>
-
-
-                    {/* GRÁFICO DOUGHNUT */}
-
-                    <article
-                        className={`${styles.panel} ${styles.chartPanel}`}
-                    >
-
-                        <div className={styles.panelHeader}>
-
-                            <h2>
-                                Distribución porcentual
-                            </h2>
-
-                            <p>
-                                Porcentaje de solicitudes según su estado.
-                            </p>
-
-                        </div>
-
-                        <div className={styles.pieChartContainer}>
-
-                            <canvas ref={pieChartRef} />
-
-                        </div>
-
-                    </article>
-
-                </section>
-
-
-                {/* =========================
-                    LISTADO
-                ========================= */}
-
-                <section
+                <Card
                     id="solicitudes"
-                    className={styles.panel}
+                    titulo="Preinscripciones"
+                    className={styles.listado}
+                    acciones={
+                        <p aria-live="polite" className={styles.conteo}>
+                            {filtradas.length} solicitudes
+                        </p>
+                    }
                 >
+                    <p className={styles.textoSecundario}>Consulte las solicitudes registradas en el sistema.</p>
 
-                    {/* CABECERA */}
-
-                    <div className={styles.panelHeader}>
-
-                        <div>
-
-                            <h2>
-                                Preinscripciones
-                            </h2>
-
-                            <p>
-                                Consulte las solicitudes registradas
-                                en el sistema.
-                            </p>
-
-                        </div>
-
-                        <span className={styles.resultsCount}>
-                            {solicitudesFiltradas.length} solicitudes
-                        </span>
-
-                    </div>
-
-
-                    {/* AVISO DEL FILTRO */}
-
-                    {filtro !== "todos" && (
-
-                        <div className={styles.filterNotice}>
-
-                            Filtro aplicado:{" "}
-
-                            {nombresFiltro[filtro]}
-
-                        </div>
-
-                    )}
-
-
-                    {/* FILTROS */}
-
-                    <div className={styles.filters}>
-
-                        {[
-                            ["todos", "Todas"],
-                            ["valida", "Válidas"],
-                            ["no-valida", "No válidas"],
-                            ["inconsistente", "Inconsistentes"],
-                            ["por-revisar", "Por revisar"]
-                        ].map(([valor, nombre]) => (
-
+                    <div role="group" aria-label="Filtrar por estado" className={styles.filtros}>
+                        {(["todos", ...ESTADOS_SOLICITUD] as Filtro[]).map((valor) => (
                             <button
                                 key={valor}
-
-                                className={`${styles.filterButton} ${filtro === valor
-                                    ? styles.filterButtonActive
-                                    : ""
-                                    }`}
-
-                                onClick={() =>
-                                    aplicarFiltro(valor)
-                                }
+                                type="button"
+                                className={styles.filtro}
+                                aria-pressed={filtro === valor}
+                                onClick={() => setFiltro(valor)}
                             >
-
-                                {nombre}
-
+                                {valor === "todos" ? "Todas" : ETIQUETA_PLURAL[valor]}
                             </button>
-
                         ))}
-
                     </div>
 
-
-                    {/* TABLA */}
-
-                    <div className={styles.tableContainer}>
-
-                        {solicitudesFiltradas.length > 0 ? (
-
-                            <table className={styles.table}>
-
+                    {filtradas.length === 0 ? (
+                        <div className={styles.vacio}>
+                            <h3>No hay solicitudes</h3>
+                            <p>No existen preinscripciones para el filtro seleccionado.</p>
+                        </div>
+                    ) : (
+                        <>
+                            <table className={styles.tabla}>
+                                <caption className="solo-lector">
+                                    Preinscripciones
+                                    {filtro !== "todos" && ` (filtro: ${ETIQUETA_PLURAL[filtro]})`}
+                                </caption>
                                 <thead>
-
                                     <tr>
-
-                                        <th>
-                                            No. solicitud
+                                        <th scope="col">No. solicitud</th>
+                                        <th scope="col">Fecha y hora</th>
+                                        <th scope="col">Estudiante</th>
+                                        <th scope="col">Estado</th>
+                                        <th scope="col">
+                                            <span className="solo-lector">Acción</span>
                                         </th>
-
-                                        <th>
-                                            Fecha y hora
-                                        </th>
-
-                                        <th>
-                                            Estudiante
-                                        </th>
-
-                                        <th>
-                                            Estado
-                                        </th>
-
-                                        <th>
-                                            Acción
-                                        </th>
-
                                     </tr>
-
                                 </thead>
-
                                 <tbody>
-
-                                    {solicitudesFiltradas.map(
-                                        solicitud => (
-
-                                            <tr
-                                                key={solicitud.numero}
-                                            >
-
-                                                <td>
-                                                    {solicitud.numero}
-                                                </td>
-
-                                                <td>
-                                                    {solicitud.fecha}
-                                                </td>
-
-                                                <td>
-                                                    {solicitud.estudiante}
-                                                </td>
-
-                                                <td>
-
-                                                    <span
-                                                        className={`${styles.status} ${clasesEstado[solicitud.estado]}`}
-                                                    >
-                                                        {
-                                                            nombresEstado[
-                                                            solicitud.estado
-                                                            ]
-                                                        }
-                                                    </span>
-
-                                                </td>
-
-                                                <td>
-
-                                                    <a
-                                                        href={`/funcionario/detalle-preinscripcion?id=${encodeURIComponent(
-                                                            solicitud.numero
-                                                        )}`}
-                                                        className={
-                                                            styles.viewButton
-                                                        }
-                                                    >
-                                                        Visualizar
-                                                    </a>
-
-                                                </td>
-
-                                            </tr>
-
-                                        )
-                                    )}
-
+                                    {filtradas.map((s) => (
+                                        <tr key={s.numero}>
+                                            <td className={styles.numero}>{s.numero}</td>
+                                            <td className={styles.fecha}>{s.fecha}</td>
+                                            <td>{s.estudiante}</td>
+                                            <td>
+                                                <StatusBadge estado={s.estado} etiqueta={ETIQUETA_SOLICITUD[s.estado]} />
+                                            </td>
+                                            <td className={styles.accion}>
+                                                <Button
+                                                    href={`/funcionario/detalle_preinscripcion/${s.numero}`}
+                                                    variante="secundario"
+                                                    aria-label={`Ver solicitud ${s.numero}`}
+                                                >
+                                                    Ver solicitud
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
-
                             </table>
 
-                        ) : (
-
-                            <div className={styles.emptyState}>
-
-                                <h3>
-                                    No hay solicitudes
-                                </h3>
-
-                                <p>
-                                    No existen preinscripciones para
-                                    el filtro seleccionado.
-                                </p>
-
-                            </div>
-
-                        )}
-
-                    </div>
-
-                </section>
-
+                            <ul aria-label="Preinscripciones" className={styles.tarjetas}>
+                                {filtradas.map((s) => (
+                                    <li key={s.numero} className={styles.tarjeta}>
+                                        <div className={styles.tarjetaCabecera}>
+                                            <span className={styles.numero}>{s.numero}</span>
+                                            <StatusBadge estado={s.estado} etiqueta={ETIQUETA_SOLICITUD[s.estado]} />
+                                        </div>
+                                        <p className={styles.tarjetaEstudiante}>{s.estudiante}</p>
+                                        <p className={styles.fecha}>{s.fecha}</p>
+                                        <Button
+                                            href={`/funcionario/detalle_preinscripcion/${s.numero}`}
+                                            variante="secundario"
+                                            aria-label={`Ver solicitud ${s.numero}`}
+                                            className={styles.tarjetaAccion}
+                                        >
+                                            Ver solicitud
+                                        </Button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </>
+                    )}
+                </Card>
             </main>
         </>
     );

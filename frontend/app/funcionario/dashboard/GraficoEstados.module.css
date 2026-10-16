@@ -1,0 +1,17 @@
+.figura {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.descripcion {
+    order: -1;
+    margin-top: calc(var(--space-3) * -1);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+.lienzo {
+    position: relative;
+    height: 260px;
+}
