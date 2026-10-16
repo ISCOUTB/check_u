@@ -33,7 +33,9 @@ Escribir en código los contratos que van a compartir la API (NestJS), el trabaj
 | 6 | Cierre de solicitudes | `closed` se alcanza desde `ready_for_formal_submission` y, como **cierre administrativo**, desde cualquier estado no final. |
 | 7 | Regla de reenvío | `resubmission_allowed = true` ⇒ `required_action = upload_new_version`, con `resubmission_reason` obligatorio. `false` ⇒ cualquier acción **menos** `upload_new_version`, con `resubmission_reason = null`. |
 | 8 | Identidad del estudiante | Los nombres y `code_student` van **dentro de `extracted_data`**, con su confianza, como cualquier dato leído. |
-| 9 | Identificadores | **Texto** (opacos): `id_student`, `request_id`, `idempotency_key`. La Tarea 03 decide cómo se guardan. |
+| 9 | Identificadores | **Texto** (opacos): `id_student`, `request_id`, `idempotency_key`. La Tarea 03 decide cómo se guardan. Sin espacios al inicio ni al final (revisión final: `"   "` es vacío y `" 123"` sería otro estudiante). |
+| 10 | Motivo de `no_evaluable` | `RuleEvaluation.no_evaluable_reason` (`NoEvaluableReason`): obligatorio cuando `result` es `no_evaluable`, `null` en los demás. Separa "no se pudo leer" de "la fuente externa no respondió", que `webapp/` mezcla en `por_revisar`. Ajuste de la issue, agregado el 15/10/2026. |
+| 11 | Mapeo a lo que existe hoy | Constantes en `mapeo.ts`, exportadas a `mapeo.json` y en una tabla de `docs/contratos.md`: clasificaciones viejas → nuevas → etiqueta en español, y tipos documentales viejos → nuevos. `acta_grado` e `icfes` (experimentales) no se incluyen. Ajuste de la issue, agregado el 15/10/2026. |
 
 ## 3. Archivos
 
@@ -47,6 +49,7 @@ backend/src/contratos/
 ├── validacion-cruzada.ts     # CrossValidationResult
 ├── entrega.ts                # Submission, ResubmissionPolicy
 ├── respuesta-frontend.ts     # RequestResultResponse
+├── mapeo.ts                  # nombres viejos → nuevos y etiquetas en español (decisión 11)
 ├── exportar.ts               # escribe contratos/esquemas/*.json
 └── index.ts                  # lo que importan los demás módulos
 backend/src/contratos/*.spec.ts            # pruebas unitarias (Vitest)
@@ -69,6 +72,7 @@ docs/contratos.md             # documentación de enums, esquemas y transiciones
 | `JobStatus` | `queued`, `processing`, `completed`, `failed`, `retry_pending` |
 | `RequestStatus` | `queued`, `processing`, `awaiting_review`, `correction_required`, `ready_for_formal_submission`, `closed` |
 | `RuleResult` | `cumple`, `no_cumple`, `no_evaluable` |
+| `NoEvaluableReason` | `low_confidence`, `source_unavailable`, `source_pending`, `missing_dependency` |
 | `DocumentClassification` | `valid`, `invalid`, `inconsistent`, `to_check` |
 | `ValidationStatus` | `pending`, `processing`, `completed`, `failed` |
 | `RequiredAction` | `none`, `upload_new_version`, `wait_for_review`, `wait_for_external_validation`, `wait_for_processing`, `correct_data`, `contact_administration` |
@@ -119,7 +123,8 @@ Las dos tablas también se exportan como JSON (`contratos/esquemas/transiciones.
 - **Identificadores:** texto no vacío.
 - **Todos los objetos son estrictos:** un campo desconocido es un error.
 
-**`RuleEvaluation`:** `rule` · `result` (`RuleResult`) · `mandatory` (booleano) · `message` · `timestamp` · `errors[]` (texto).
+**`RuleEvaluation`:** `rule` · `result` (`RuleResult`) · `no_evaluable_reason` · `mandatory` (booleano) · `message` · `timestamp` · `errors[]` (texto).
+- Dos variantes según `result` (decisión 10): con `no_evaluable`, `no_evaluable_reason` es un `NoEvaluableReason`; con `cumple` o `no_cumple`, es `null`.
 
 **`ExtractedValue`:** `{ value: texto | número | booleano | null, confidence: confianza | null }`.
 - Si el dato no se pudo extraer, `value` y `confidence` son `null`; nunca se inventa un valor (PROMPT_BASE).
@@ -146,7 +151,7 @@ Las dos tablas también se exportan como JSON (`contratos/esquemas/transiciones.
 - `submission_number` (entero ≥ 1);
 - `resubmission_number`: 0 si es `initial`, ≥ 1 si es `resubmission` (dos variantes, igual que la regla de reenvío);
 - `local_submission_date`, `submitted_at`;
-- `documents[]`: `{type_document, document_version}`, al menos 1 y sin tipos repetidos.
+- `documents[]`: `{type_document, document_version}`, al menos 1 y sin tipos repetidos. En el JSON Schema, como `type_document` tiene 5 valores, se expresa con una cláusula `contains` + `maxContains: 1` por tipo, así que Python también lo exige.
 
 El tope diario (3 reenvíos) es política de la Tarea 11 y no va en el esquema.
 
@@ -189,15 +194,19 @@ El tope diario (3 reenvíos) es política de la Tarea 11 y no va en el esquema.
    - una fecha sin zona horaria;
    - un campo desconocido;
    - `resubmission_number` contra `submission_type`;
-   - fuentes repetidas en la validación cruzada.
-5. **Paridad con JSON Schema:** los mismos ejemplos validados con **ajv** (`Ajv2020` + `ajv-formats`) contra los `.json` exportados dan **el mismo resultado** que Zod.
-6. **Desalineación:** lo exportado coincide con `contratos/esquemas/`.
+   - fuentes repetidas en la validación cruzada;
+   - `no_evaluable_reason` en sus dos variantes;
+   - un identificador en blanco o con espacios al borde;
+   - un tipo de documento repetido en una entrega.
+5. **Paridad con JSON Schema:** los mismos ejemplos validados con **ajv** (`Ajv2020` + `ajv-formats`) contra los `.json` exportados dan **el mismo resultado** que Zod, sin excepciones.
+6. **Mapeo:** cada clasificación tiene su etiqueta, y cada nombre viejo apunta a un valor que existe en el enum.
+7. **Desalineación:** lo exportado coincide con `contratos/esquemas/`.
 
 Las pruebas que ya existen en el backend no se tocan. Tres de ellas fallan desde antes (P2 del análisis); se reporta, no se arregla aquí.
 
 ## 9. Entrega
 
-- Rama `tarea_02_contratos`, apilada sobre `tarea_00_saneamiento` (PR #31).
+- Rama `tarea_02_contratos`, apilada sobre `tarea_00_saneamiento` (PR #31). Tras fusionarse el #31, se rebasó sobre `main` (15/10/2026).
 - PR contra `main` con `Closes #6` y el resumen "verificado / simulado / pendiente".
 - `docs/contratos.md` con los enums, los esquemas, un ejemplo válido de cada uno y las dos tablas de transiciones.
 
