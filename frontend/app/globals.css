@@ -1,39 +1,196 @@
-* {
+/*
+ * Tokens de diseño de CheckU (issue #36). Los componentes usan colores por su papel, nunca por
+ * su valor: si un color no está aquí, no se usa. Claro = la estética de estudiante/home; oscuro =
+ * la misma identidad en azul noche. Contrastes medidos en el spec
+ * (docs/superpowers/specs/2026-10-16-frontend-accesible-design.md, sección 4).
+ */
+
+:root {
+    color-scheme: light dark;
+
+    --color-bg: #f7f9fc;
+    --color-surface: #ffffff;
+    --color-surface-muted: #f1f5f9;
+    --color-title: #172554;
+    --color-text: #1e293b;
+    --color-text-secondary: #64748b;
+    --color-accent: #2563eb;
+    --color-accent-hover: #1d4ed8;
+    --color-accent-text: #2563eb;
+    --color-accent-soft: #eff6ff;
+    --color-border: #e2e8f0;
+    --color-border-control: #8090a6;
+    --color-focus: #2563eb;
+    --color-on-accent: #ffffff;
+
+    --status-valid-text: #15803d;
+    --status-valid-bg: #edf8f2;
+    --status-valid-mark: #2e9d67;
+    --status-invalid-text: #b91c1c;
+    --status-invalid-bg: #fff0f0;
+    --status-invalid-mark: #d95353;
+    --status-inconsistent-text: #854d0e;
+    --status-inconsistent-bg: #fff9e7;
+    --status-inconsistent-mark: #b7791f;
+    --status-review-text: #1d4ed8;
+    --status-review-bg: #edf4fc;
+    --status-review-mark: #638fc7;
+    --status-neutral-text: #475569;
+    --status-neutral-bg: #f1f5f9;
+    --status-neutral-mark: #64748b;
+
+    --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+
+    --radius-control: 8px;
+    --radius-icon: 12px;
+    --radius-card: 14px;
+    --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.03);
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 28px;
+    --space-8: 32px;
+
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --duracion-rapida: 160ms;
+    --duracion: 200ms;
+
+    /* Alto de la barra superior: el foco nunca queda tapado por ella (WCAG 2.4.11). */
+    --altura-barra: 72px;
+
+    /*
+     * Alias temporales de los nombres viejos, mientras las páginas que aún no se rehacen los
+     * usan. Se quitan en las tareas 3 y 5 del plan.
+     */
+    --background-e: var(--color-bg);
+    --surface: var(--color-surface);
+    --border: var(--color-border);
+    --text: var(--color-text);
+    --text-secondary: var(--color-text-secondary);
+    --primary: var(--color-text);
+    --valid: var(--status-valid-text);
+    --valid-bg: var(--status-valid-bg);
+    --invalid: var(--status-invalid-text);
+    --invalid-bg: var(--status-invalid-bg);
+    --inconsistent: var(--status-inconsistent-text);
+    --inconsistent-bg: var(--status-inconsistent-bg);
+    --review: var(--status-review-text);
+    --review-bg: var(--status-review-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-bg: #0b1324;
+        --color-surface: #111c33;
+        --color-surface-muted: #18243f;
+        --color-title: #f1f5ff;
+        --color-text: #e2e8f0;
+        --color-text-secondary: #a5b4cb;
+        --color-accent: #2563eb;
+        --color-accent-hover: #1d4ed8;
+        --color-accent-text: #7cb0ff;
+        --color-accent-soft: #142445;
+        --color-border: #26324d;
+        --color-border-control: #5b6b86;
+        --color-focus: #7cb0ff;
+
+        --status-valid-text: #6ee7a0;
+        --status-valid-bg: #10291f;
+        --status-invalid-text: #fca5a5;
+        --status-invalid-bg: #33151a;
+        --status-inconsistent-text: #fcd34d;
+        --status-inconsistent-bg: #2e2410;
+        --status-review-text: #93c5fd;
+        --status-review-bg: #142445;
+        --status-neutral-text: #cbd5e1;
+        --status-neutral-bg: #18243f;
+
+        --shadow-card: none;
+    }
+}
+
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-:root {
-    --background-e: rgb(246, 246, 248);
-    --surface: #ffffff;
-    --border: #e7e9ed;
-    --text: #20242a;
-    --text-secondary: #707781;
-
-    --valid: #2e9d67;
-    --valid-bg: #edf8f2;
-
-    --invalid: #d95353;
-    --invalid-bg: #fff0f0;
-
-    --inconsistent: #d9a928;
-    --inconsistent-bg: #fff9e7;
-
-    --review: #638fc7;
-    --review-bg: #edf4fc;
-
-    --primary: #1f2937;
+html {
+    scroll-padding-top: calc(var(--altura-barra) + var(--space-4));
+    -webkit-text-size-adjust: 100%;
 }
 
-html,
 body {
-    margin: 0;
+    min-height: 100dvh;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    caret-color: var(--color-accent-text);
+    accent-color: var(--color-accent);
+}
+
+::selection {
+    background: var(--color-accent-soft);
+    color: var(--color-title);
+}
+
+:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+/* El contenedor principal recibe el foco al saltar al contenido, sin dibujar un marco. */
+main:focus {
+    outline: none;
+}
+
+/* Oculta a la vista, pero no al lector de pantalla. */
+.solo-lector {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
     padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
 }
 
-body {
-    font-family: Arial, Helvetica, sans-serif;
-    background: var(--background);
-    color: var(--text);
+.saltar-al-contenido {
+    position: absolute;
+    top: var(--space-2);
+    left: var(--space-2);
+    z-index: 2000;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    border-radius: var(--radius-control);
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-200%);
+}
+
+.saltar-al-contenido:focus {
+    transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

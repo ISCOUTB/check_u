@@ -84,7 +84,7 @@ export default function Login() {
     }
 
     return (
-        <main className={styles.login}>
+        <main id="contenido" tabIndex={-1} className={styles.login}>
             <section className={styles.loginForm}>
                 <div className={styles.formContent}>
                     <div
