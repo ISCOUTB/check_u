@@ -50,6 +50,7 @@
     --radius-icon: 12px;
     --radius-card: 14px;
     --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.03);
+    --shadow-popover: 0 12px 32px rgba(15, 23, 42, 0.12);
 
     --space-1: 4px;
     --space-2: 8px;
@@ -115,6 +116,7 @@
         --status-neutral-bg: #18243f;
 
         --shadow-card: none;
+        --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.45);
     }
 }
 

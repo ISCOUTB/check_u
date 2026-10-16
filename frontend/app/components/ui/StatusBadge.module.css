@@ -1,0 +1,42 @@
+.estado {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 3px 10px 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.estado svg {
+    flex-shrink: 0;
+}
+
+.estado[data-estado="valido"] {
+    background: var(--status-valid-bg);
+    color: var(--status-valid-text);
+}
+
+.estado[data-estado="no_valido"] {
+    background: var(--status-invalid-bg);
+    color: var(--status-invalid-text);
+}
+
+.estado[data-estado="inconsistente"] {
+    background: var(--status-inconsistent-bg);
+    color: var(--status-inconsistent-text);
+}
+
+.estado[data-estado="por_revisar"] {
+    background: var(--status-review-bg);
+    color: var(--status-review-text);
+}
+
+.estado[data-estado="procesando"],
+.estado[data-estado="falta_cargar"] {
+    background: var(--status-neutral-bg);
+    color: var(--status-neutral-text);
+}

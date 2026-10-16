@@ -1,0 +1,61 @@
+.encabezado {
+    margin-bottom: var(--space-7);
+}
+
+.ruta ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    margin-bottom: var(--space-3);
+    list-style: none;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+.ruta li:not(:last-child)::after {
+    content: "/";
+    margin-left: var(--space-2);
+    color: var(--color-text-secondary);
+}
+
+.ruta a {
+    color: var(--color-accent-text);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 3px;
+}
+
+.ruta a:hover {
+    text-decoration-color: currentColor;
+}
+
+.ruta [aria-current="page"] {
+    color: var(--color-text);
+    font-weight: 500;
+}
+
+.etiqueta {
+    margin-bottom: var(--space-2);
+    color: var(--color-accent-text);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+}
+
+.titulo {
+    color: var(--color-title);
+    font-size: clamp(26px, 3vw, 32px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+}
+
+.descripcion {
+    max-width: 65ch;
+    margin-top: var(--space-2);
+    color: var(--color-text-secondary);
+    font-size: 15px;
+    line-height: 1.6;
+}

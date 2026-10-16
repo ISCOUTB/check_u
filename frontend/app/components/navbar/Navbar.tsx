@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
+import Icono, { type NombreIcono } from "@/app/components/ui/Icono";
 import styles from "./Navbar.module.css";
 
 interface NavbarProps {
@@ -10,291 +13,131 @@ interface NavbarProps {
     nivel?: "PREGRADO" | "POSGRADO";
 }
 
-export default function Navbar({
-    tipoUsuario,
-    nombreUsuario,
-    nivel
-}: NavbarProps) {
+const ENLACES: Record<NavbarProps["tipoUsuario"], { texto: string; href: string; icono: NombreIcono }[]> = {
+    estudiante: [
+        { texto: "Mis solicitudes", href: "/estudiante/home#mi-solicitud", icono: "lista" },
+        { texto: "Notificaciones", href: "/estudiante/home#notificaciones", icono: "campana" },
+    ],
+    funcionario: [{ texto: "Solicitudes de preinscripción", href: "/funcionario/dashboard", icono: "lista" }],
+};
+
+/** Barra superior: marca y menú de usuario (patrón de divulgación: botón + lista de enlaces). */
+export default function Navbar({ tipoUsuario, nombreUsuario, nivel }: NavbarProps) {
     const router = useRouter();
-
-    const [menuAbierto, setMenuAbierto] = useState(false);
-
-    const menuRef = useRef<HTMLDivElement>(null);
+    const idMenu = useId();
+    const [abierto, setAbierto] = useState(false);
+    const contenedorRef = useRef<HTMLDivElement>(null);
+    const botonRef = useRef<HTMLButtonElement>(null);
 
     const esEstudiante = tipoUsuario === "estudiante";
+    const inicio = esEstudiante ? "/estudiante/home" : "/funcionario/dashboard";
 
-    /*
-     * Cerrar el menú al hacer clic fuera.
-     */
     useEffect(() => {
+        if (!abierto) return;
 
-        const handleClickOutside = (event: MouseEvent) => {
-
-            if (
-                menuRef.current &&
-                !menuRef.current.contains(event.target as Node)
-            ) {
-                setMenuAbierto(false);
+        const alPresionar = (evento: MouseEvent) => {
+            if (contenedorRef.current && !contenedorRef.current.contains(evento.target as Node)) {
+                setAbierto(false);
             }
-
+        };
+        const alTeclear = (evento: KeyboardEvent) => {
+            if (evento.key === "Escape") {
+                setAbierto(false);
+                botonRef.current?.focus();
+            }
         };
 
-        document.addEventListener("mousedown", handleClickOutside);
-
+        document.addEventListener("mousedown", alPresionar);
+        document.addEventListener("keydown", alTeclear);
         return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("mousedown", alPresionar);
+            document.removeEventListener("keydown", alTeclear);
         };
+    }, [abierto]);
 
-    }, []);
-
-    /*
-     * Acciones del menú
-     */
-
-    const handleMisSolicitudes = () => {
-
-        setMenuAbierto(false);
-
-        // TODO:
-        // Conectar con la ruta real de solicitudes.
-        console.log("Mis solicitudes");
-
+    /** Si el foco sale del menú con Tab, se cierra. */
+    const alPerderFoco = (evento: FocusEvent<HTMLDivElement>) => {
+        if (!contenedorRef.current?.contains(evento.relatedTarget as Node | null)) {
+            setAbierto(false);
+        }
     };
 
-    const handleNotificaciones = () => {
-
-        setMenuAbierto(false);
-
-        // TODO:
-        // Conectar con el sistema de notificaciones.
-        console.log("Notificaciones");
-
-    };
-
-    const handleDashboard = () => {
-
-        setMenuAbierto(false);
-
-        // TODO:
-        // Conectar con la ruta real del dashboard.
-        console.log("Dashboard");
-
-    };
-
-    const handleCerrarSesion = async () => {
-
-        setMenuAbierto(false);
+    const cerrarSesion = async () => {
+        setAbierto(false);
         try {
-                const response = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/auth/logout`,
-                    {
-                        method: "POST",
-                        credentials: "include",
-                        cache: "no-store",
-                    }
-                );
-
-                if (!response.ok) {
-                    throw new Error("No se pudo cerrar la sesión");
-                }
-
-                router.replace("/");
-                router.refresh();
-            } catch (error) {
-                console.error("Error al cerrar sesión:", error);
-                alert("No fue posible cerrar la sesión. Intenta nuevamente.");
-            }
-        console.log("Cerrar sesión pendiente de endpoint");
-
+            const respuesta = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+                method: "POST",
+                credentials: "include",
+                cache: "no-store",
+            });
+            if (!respuesta.ok) throw new Error("No se pudo cerrar la sesión");
+            router.replace("/");
+            router.refresh();
+        } catch {
+            alert("No fue posible cerrar la sesión. Intenta nuevamente.");
+        }
     };
 
     return (
-        <nav className={styles.navbar}>
-
-            {/* ================================================= */}
-            {/* BRAND */}
-            {/* ================================================= */}
-
-            <div className={styles.navbarBrand}>
-
-                <img
-                    src="/icons/checku_logo.png"
-                    alt="CheckU"
-                    className={styles.navbarLogo}
-                />
-
-                <div className={styles.navbarTitle}>
-
-                    <span className={styles.navbarName}>
-                        CheckU
-                    </span>
-
-                    <span className={styles.navbarSubtitle}>
-                        {esEstudiante
-                            ? "Seguimiento de preinscripción"
-                            : "Preinscripciones"
-                        }
-                    </span>
-
-                </div>
-
-            </div>
-
-            {/* ================================================= */}
-            {/* USUARIO */}
-            {/* ================================================= */}
-
-            <div
-                className={styles.navbarUserContainer}
-                ref={menuRef}
-            >
-
-                <button
-                    type="button"
-                    className={`${styles.navbarUser} ${
-                        menuAbierto
-                            ? styles.navbarUserActive
-                            : ""
-                    }`}
-                    onClick={() => setMenuAbierto(!menuAbierto)}
-                    aria-expanded={menuAbierto}
-                    aria-haspopup="menu"
-                >
-
-                    <div className={styles.navbarUserInfo}>
-
-                        <span className={styles.navbarUserName}>
-                            {nombreUsuario}
+        <header className={styles.barra}>
+            <div className={styles.interior}>
+                <Link href={inicio} className={styles.marca}>
+                    <Image src="/icons/checku_logo.png" alt="" width={40} height={40} className={styles.logo} />
+                    <span className={styles.marcaTexto}>
+                        <span className={styles.nombreMarca}>CheckU</span>
+                        <span className={styles.subtitulo}>
+                            {esEstudiante ? "Seguimiento de preinscripción" : "Preinscripciones"}
                         </span>
-
-                        <span className={styles.navbarUserRole}>
-                            {esEstudiante
-                                ? "Candidato a grado"
-                                : "Funcionaria de grados"
-                            }
-                        </span>
-
-                    </div>
-
-                    {esEstudiante && nivel && (
-                        <span className={styles.navbarLevel}>
-                            {nivel}
-                        </span>
-                    )}
-
-                    <span
-                        className={`${styles.navbarChevron} ${
-                            menuAbierto
-                                ? styles.navbarChevronOpen
-                                : ""
-                        }`}
-                    >
-                        <img src="/icons/arrow_down.png" alt="" />
                     </span>
+                </Link>
 
-                </button>
-
-                {/* ================================================= */}
-                {/* MENU */}
-                {/* ================================================= */}
-
-                {menuAbierto && (
-
-                    <div
-                        className={styles.userMenu}
-                        role="menu"
-                    >
-
-                        {/* =============================== */}
-                        {/* ESTUDIANTE */}
-                        {/* =============================== */}
-
-                        {esEstudiante && (
-                            <>
-                                <button
-                                    type="button"
-                                    className={styles.userMenuItem}
-                                    onClick={handleMisSolicitudes}
-                                    role="menuitem"
-                                >
-                                    <span className={styles.menuIcon}>
-                                        <img src="/icons/fact_check.png" alt="Fact Check" />
-                                    </span>
-
-                                    <span>
-                                        Mis solicitudes
-                                    </span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className={styles.userMenuItem}
-                                    onClick={handleNotificaciones}
-                                    role="menuitem"
-                                >
-                                    <span className={styles.menuIcon}>
-                                        <img src="/icons/notification.png" alt="Notificaciones" />
-                                    </span>
-
-                                    <span>
-                                        Notificaciones
-                                    </span>
-                                </button>
-                            </>
-                        )}
-
-                        {/* =============================== */}
-                        {/* FUNCIONARIO */}
-                        {/* =============================== */}
-
-                        {!esEstudiante && (
-                            <button
-                                type="button"
-                                className={styles.userMenuItem}
-                                onClick={handleDashboard}
-                                role="menuitem"
-                            >
-                                <span className={styles.menuIcon}>
-                                    <img src="/icons/fact_check.png" alt="Dashboard" />
-                                </span>
-
-                                <span>
-                                    Solicitudes de preinscripción
-                                </span>
-                            </button>
-                        )}
-
-                        {/* =============================== */}
-                        {/* SEPARADOR */}
-                        {/* =============================== */}
-
-                        <div className={styles.menuDivider} />
-
-                        {/* =============================== */}
-                        {/* CERRAR SESIÓN */}
-                        {/* =============================== */}
-
+                <nav aria-label="Principal" className={styles.navegacion}>
+                    <div className={styles.usuario} ref={contenedorRef} onBlur={alPerderFoco}>
                         <button
+                            ref={botonRef}
                             type="button"
-                            className={`${styles.userMenuItem} ${styles.logoutItem}`}
-                            onClick={handleCerrarSesion}
-                            role="menuitem"
+                            className={styles.botonUsuario}
+                            aria-expanded={abierto}
+                            aria-controls={idMenu}
+                            onClick={() => setAbierto((valor) => !valor)}
                         >
-                            <span className={styles.menuIcon}>
-                                ↪
+                            <span className={styles.datosUsuario}>
+                                <span className={styles.nombreUsuario}>{nombreUsuario}</span>
+                                <span className={styles.rolUsuario}>
+                                    {esEstudiante ? "Candidato a grado" : "Funcionaria de grados"}
+                                </span>
                             </span>
-
-                            <span>
-                                Cerrar sesión
+                            {esEstudiante && nivel && <span className={styles.nivel}>{nivel}</span>}
+                            <span className={styles.flecha} data-abierto={abierto}>
+                                <Icono nombre="flecha_abajo" tamano={16} />
                             </span>
                         </button>
 
+                        {abierto && (
+                            <ul id={idMenu} className={styles.menu}>
+                                {ENLACES[tipoUsuario].map((enlace) => (
+                                    <li key={enlace.href}>
+                                        <Link
+                                            href={enlace.href}
+                                            className={styles.opcion}
+                                            onClick={() => setAbierto(false)}
+                                        >
+                                            <Icono nombre={enlace.icono} />
+                                            {enlace.texto}
+                                        </Link>
+                                    </li>
+                                ))}
+                                <li className={styles.separado}>
+                                    <button type="button" className={styles.opcion} onClick={cerrarSesion}>
+                                        <Icono nombre="salir" />
+                                        Cerrar sesión
+                                    </button>
+                                </li>
+                            </ul>
+                        )}
                     </div>
-
-                )}
-
+                </nav>
             </div>
-
-        </nav>
+        </header>
     );
 }
