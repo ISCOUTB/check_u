@@ -24,7 +24,7 @@ No cambian las pantallas, las rutas, el flujo ni los datos que se muestran. Camb
 
 Revisado en el navegador el 16/10/2026:
 
-1. **Login:** en escritorio ocupa solo la esquina superior izquierda. `layout.tsx` usa clases de Tailwind (`h-full`, `flex`, `min-h-full`, `antialiased`), pero `globals.css` no importa Tailwind, así que no hacen nada.
+1. **Clases muertas:** `layout.tsx` usa clases de Tailwind (`h-full`, `flex`, `min-h-full`, `antialiased`), pero `globals.css` no importa Tailwind, así que no hacen nada. *(Corrección del 16/10: este punto decía que por eso el login de escritorio ocupaba solo la esquina superior izquierda. Era una lectura equivocada del panel del navegador, que achica la ventana emulada; las capturas de `docs/capturas/issue-36/antes/` muestran que el login de antes se veía bien.)*
 2. **Fondo:** `body` usa `var(--background)`, que no está definida, y queda transparente. Con el navegador en modo oscuro se ve negro debajo del contenido.
 3. **Tipografía:** `layout.tsx` carga Geist, pero `body` usa Arial.
 4. **Paletas:**
