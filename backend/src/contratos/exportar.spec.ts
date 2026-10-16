@@ -1,10 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import modulosFormatos from 'ajv-formats';
 import { cargarEjemplos } from '../../test/soporte/ejemplos.js';
-import { ESQUEMAS_CONTRATO, generarEsquemas } from './exportar.js';
+import { carpetaEsquemas, ESQUEMAS_CONTRATO, generarEsquemas } from './exportar.js';
 import { CLASIFICACION_LEGADA, ETIQUETAS_CLASIFICACION, TIPO_DOCUMENTO_LEGADO } from './mapeo.js';
 
 const CARPETA_ESQUEMAS = fileURLToPath(new URL('../../../contratos/esquemas/', import.meta.url));
@@ -23,6 +24,16 @@ describe('JSON Schema exportados', () => {
 
   it.each(Object.keys(generados))('%s coincide con lo que genera Zod (corre npm run contratos:exportar)', (archivo) => {
     expect(leerExportado(archivo)).toEqual(generados[archivo]);
+  });
+
+  it('la carpeta de salida no depende de desde dónde se corre (exportar-cli borra lo que no reconoce)', () => {
+    const original = process.cwd();
+    try {
+      process.chdir(tmpdir());
+      expect(resolve(carpetaEsquemas())).toBe(resolve(CARPETA_ESQUEMAS));
+    } finally {
+      process.chdir(original);
+    }
   });
 
   it('la regla de reenvío viaja en el JSON Schema como dos variantes', () => {

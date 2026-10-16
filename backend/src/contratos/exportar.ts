@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { ESQUEMAS_SIN_REPETIDOS } from './comunes.js';
 import { DOCUMENTOS_POR_NIVEL } from './documentos.js';
@@ -29,6 +30,15 @@ const TITULOS: Readonly<Record<string, string>> = {
 };
 
 const URL_BASE = 'https://checku.iscoutb.dev/contratos/';
+
+/**
+ * contratos/esquemas/ en la raíz del repo, donde exportar-cli.ts escribe lo que genera Zod. Se
+ * resuelve desde este archivo (src/contratos o dist/contratos), no desde la carpeta actual: el
+ * script borra los archivos que no reconoce.
+ */
+export function carpetaEsquemas(): string {
+  return fileURLToPath(new URL('../../../contratos/esquemas/', import.meta.url));
+}
 
 /**
  * Todo lo que va en contratos/esquemas/, por nombre de archivo: un JSON Schema por esquema (draft

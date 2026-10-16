@@ -1,10 +1,10 @@
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { generarEsquemas } from './exportar.js';
+import { join } from 'node:path';
+import { carpetaEsquemas, generarEsquemas } from './exportar.js';
 
 // Escribe contratos/esquemas/ en la raíz del repo. Se corre con `npm run contratos:exportar`
-// desde backend/, cada vez que cambia un contrato de Zod.
-const carpeta = resolve(process.cwd(), '..', 'contratos', 'esquemas');
+// cada vez que cambia un contrato de Zod.
+const carpeta = carpetaEsquemas();
 const archivos = generarEsquemas();
 
 mkdirSync(carpeta, { recursive: true });
