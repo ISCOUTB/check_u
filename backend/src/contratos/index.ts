@@ -9,3 +9,4 @@ export * from './resultado-documento.js';
 export * from './validacion-cruzada.js';
 export * from './entrega.js';
 export * from './respuesta-frontend.js';
+export * from './mapeo.js';

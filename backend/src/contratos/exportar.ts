@@ -3,6 +3,7 @@ import { ESQUEMAS_SIN_REPETIDOS } from './comunes.js';
 import { DOCUMENTOS_POR_NIVEL } from './documentos.js';
 import { ResubmissionPolicy, Submission } from './entrega.js';
 import * as enums from './enums.js';
+import { CLASIFICACION_LEGADA, ETIQUETAS_CLASIFICACION, TIPO_DOCUMENTO_LEGADO } from './mapeo.js';
 import { RequestResultResponse } from './respuesta-frontend.js';
 import { DocumentValidationResult, RuleEvaluation } from './resultado-documento.js';
 import { TRANSICIONES_SOLICITUD, TRANSICIONES_TRABAJO } from './transiciones.js';
@@ -31,7 +32,8 @@ const URL_BASE = 'https://checku.iscoutb.dev/contratos/';
 
 /**
  * Todo lo que va en contratos/esquemas/, por nombre de archivo: un JSON Schema por esquema (draft
- * 2020-12) más los enums, los documentos requeridos y las tablas de transiciones en JSON.
+ * 2020-12) más los enums, los documentos requeridos, las tablas de transiciones y el mapeo a los
+ * nombres viejos, en JSON.
  */
 export function generarEsquemas(): Record<string, unknown> {
   const archivos: Record<string, unknown> = {};
@@ -57,6 +59,11 @@ export function generarEsquemas(): Record<string, unknown> {
   );
   archivos['documentos-requeridos.json'] = DOCUMENTOS_POR_NIVEL;
   archivos['transiciones.json'] = { solicitud: TRANSICIONES_SOLICITUD, trabajo: TRANSICIONES_TRABAJO };
+  archivos['mapeo.json'] = {
+    etiquetas_clasificacion: ETIQUETAS_CLASIFICACION,
+    clasificacion_legada: CLASIFICACION_LEGADA,
+    tipo_documento_legado: TIPO_DOCUMENTO_LEGADO,
+  };
 
   return archivos;
 }

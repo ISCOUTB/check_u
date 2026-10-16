@@ -11,6 +11,7 @@ Enums, esquemas y tablas que comparten la API (NestJS), el trabajador de Python 
 | Fuente única (Zod 4) | `backend/src/contratos/` (se importa desde `index.ts`) | La API de NestJS |
 | JSON Schema exportados (draft 2020-12) | `contratos/esquemas/*.schema.json` | El trabajador de Python (Tarea 06), con cualquier validador de JSON Schema |
 | Enums, documentos requeridos y transiciones en JSON | `contratos/esquemas/enums.json`, `documentos-requeridos.json`, `transiciones.json` | El trabajador de Python |
+| Etiquetas en español y nombres viejos → nuevos | `backend/src/contratos/mapeo.ts` y `contratos/esquemas/mapeo.json` | El frontend (Tarea 12) y quien pase datos de `frontend/` o `webapp/` |
 | Ejemplos válidos e inválidos | `contratos/ejemplos/<esquema>/{validos,invalidos}/` | Las pruebas de los dos lados |
 
 ## Cómo se cambia un contrato
@@ -53,6 +54,33 @@ Nunca edites los `.json` de `contratos/esquemas/` a mano.
 | `CrossValidationOutcome` | `confirmed_match`, `confirmed_mismatch`, `insufficient_information`, `source_pending`, `source_unavailable`, `manual_review_required` |
 | `CrossValidationSource` | los 5 tipos de documento, `application_data`, `banner`, `rui` |
 | `SubmissionType` | `initial`, `resubmission` |
+
+## Mapeo a lo que existe hoy
+
+En `mapeo.ts` (exportado a `mapeo.json`). Las etiquetas son las que ve el usuario; los nombres en inglés no se muestran.
+
+**Clasificación:**
+
+| Hoy en `frontend/` | Hoy en `webapp/` | Contrato | Etiqueta |
+|---|---|---|---|
+| `valida` | `valida` | `valid` | Válido |
+| `no-valida` | — | `invalid` | No válido |
+| `inconsistente` | `inconsistente` | `inconsistent` | Inconsistente |
+| `por-revisar`, `por_revisar` | `por_revisar` | `to_check` | Por revisar |
+
+El `por_revisar` de `webapp/` se usaba tanto para "no se pudo leer" como para "el RUI no respondió". En los contratos, esos casos son reglas `no_evaluable` con su motivo (`low_confidence` o `source_unavailable`).
+
+**Tipo documental:**
+
+| Hoy | Contrato |
+|---|---|
+| `cedula` | `identification` |
+| `banner` | `academic_evaluation` |
+| `estampilla` | `estampilla_pro_cultura` |
+| `biblioteca` | `paz_y_salvo_bib` |
+| `saber-pro` | `saber_pro` |
+
+`acta_grado` e `icfes` (de `structure.py`) son experimentales y no tienen equivalente.
 
 ## Documentos requeridos
 

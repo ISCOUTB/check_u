@@ -5,6 +5,7 @@ import { Ajv2020 } from 'ajv/dist/2020.js';
 import modulosFormatos from 'ajv-formats';
 import { cargarEjemplos } from '../../test/soporte/ejemplos.js';
 import { ESQUEMAS_CONTRATO, generarEsquemas } from './exportar.js';
+import { CLASIFICACION_LEGADA, ETIQUETAS_CLASIFICACION, TIPO_DOCUMENTO_LEGADO } from './mapeo.js';
 
 const CARPETA_ESQUEMAS = fileURLToPath(new URL('../../../contratos/esquemas/', import.meta.url));
 const addFormats = modulosFormatos.default;
@@ -31,6 +32,14 @@ describe('JSON Schema exportados', () => {
   it('la regla de reenvío viaja en el JSON Schema como dos variantes', () => {
     const esquema = leerExportado('document-validation-result.schema.json') as { oneOf?: unknown[] };
     expect(esquema.oneOf).toHaveLength(2);
+  });
+
+  it('mapeo.json lleva las etiquetas y las equivalencias con los nombres viejos', () => {
+    expect(leerExportado('mapeo.json')).toEqual({
+      etiquetas_clasificacion: ETIQUETAS_CLASIFICACION,
+      clasificacion_legada: CLASIFICACION_LEGADA,
+      tipo_documento_legado: TIPO_DOCUMENTO_LEGADO,
+    });
   });
 
   it('documentos-requeridos.json tiene 5 para pregrado y 3 para posgrado', () => {

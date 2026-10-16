@@ -1,0 +1,22 @@
+{
+  "etiquetas_clasificacion": {
+    "valid": "Válido",
+    "invalid": "No válido",
+    "inconsistent": "Inconsistente",
+    "to_check": "Por revisar"
+  },
+  "clasificacion_legada": {
+    "valida": "valid",
+    "no-valida": "invalid",
+    "inconsistente": "inconsistent",
+    "por-revisar": "to_check",
+    "por_revisar": "to_check"
+  },
+  "tipo_documento_legado": {
+    "cedula": "identification",
+    "banner": "academic_evaluation",
+    "estampilla": "estampilla_pro_cultura",
+    "biblioteca": "paz_y_salvo_bib",
+    "saber-pro": "saber_pro"
+  }
+}
