@@ -1,0 +1,16 @@
+{
+  "idempotency_key": "entrega-sintetica-0003",
+  "id_student": "9900112233",
+  "request_id": "solicitud-sintetica-0001",
+  "submission_type": "resubmission",
+  "submission_number": 3,
+  "resubmission_number": 2,
+  "local_submission_date": "2026-10-14",
+  "submitted_at": "2026-10-14T09:00:00-05:00",
+  "documents": [
+    {
+      "type_document": "identification",
+      "document_version": 2
+    }
+  ]
+}

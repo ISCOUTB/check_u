@@ -1,0 +1,11 @@
+{
+  "rule": "rui_identity_match",
+  "result": "no_evaluable",
+  "no_evaluable_reason": "source_unavailable",
+  "mandatory": true,
+  "message": "El RUI no respondió",
+  "timestamp": "2026-10-14T09:30:00-05:00",
+  "errors": [
+    "Tiempo de espera agotado"
+  ]
+}

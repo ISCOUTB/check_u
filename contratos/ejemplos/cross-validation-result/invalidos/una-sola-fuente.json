@@ -1,0 +1,31 @@
+{
+  "rule": "identification_number_match",
+  "rule_version": "reglas-2026.10",
+  "sources": [
+    "identification"
+  ],
+  "fields": [
+    "identification_number"
+  ],
+  "outcome": "confirmed_match",
+  "evidence": [
+    {
+      "source": "identification",
+      "field": "identification_number",
+      "value": "9900112233",
+      "normalized_value": "9900112233",
+      "document_version": 1
+    },
+    {
+      "source": "saber_pro",
+      "field": "identification_number",
+      "value": "99.001.122.33",
+      "normalized_value": "9900112233",
+      "document_version": 1
+    }
+  ],
+  "similarity": 1,
+  "threshold": 0.85,
+  "reason": "El número coincide después de normalizar el formato",
+  "evaluated_at": "2026-10-14T09:31:00-05:00"
+}

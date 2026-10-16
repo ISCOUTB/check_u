@@ -1,0 +1,171 @@
+{
+  "request_id": "solicitud-sintetica-0001",
+  "id_student": "9900112233",
+  "level": "pregrado",
+  "status": "correction_required",
+  "status_reason": "Un documento necesita una nueva versión",
+  "processing": {
+    "status": "completed",
+    "updated_at": "2026-10-14T09:10:00-05:00"
+  },
+  "documents": [
+    {
+      "type_document": "identification",
+      "required": true,
+      "current_version": 1,
+      "classification": "invalid",
+      "validation_status": "completed",
+      "required_action": "upload_new_version",
+      "resubmission_allowed": true,
+      "resubmission_reason": "Falta la cara posterior de la cédula",
+      "rules": [
+        {
+          "rule": "required_pages_present",
+          "result": "no_cumple",
+          "no_evaluable_reason": null,
+          "mandatory": true,
+          "message": "Solo hay una cara",
+          "timestamp": "2026-10-14T09:03:00-05:00",
+          "errors": [
+            "Falta la página 2"
+          ]
+        }
+      ],
+      "errors": [],
+      "versions": [
+        {
+          "version": 1,
+          "submitted_at": "2026-10-14T09:00:00-05:00"
+        }
+      ]
+    },
+    {
+      "type_document": "academic_evaluation",
+      "required": true,
+      "current_version": 1,
+      "classification": "valid",
+      "validation_status": "completed",
+      "required_action": "none",
+      "resubmission_allowed": false,
+      "resubmission_reason": null,
+      "rules": [
+        {
+          "rule": "student_name_present",
+          "result": "cumple",
+          "no_evaluable_reason": null,
+          "mandatory": true,
+          "message": "Nombre leído",
+          "timestamp": "2026-10-14T09:03:00-05:00",
+          "errors": []
+        }
+      ],
+      "errors": [],
+      "versions": [
+        {
+          "version": 1,
+          "submitted_at": "2026-10-14T09:00:00-05:00"
+        }
+      ]
+    },
+    {
+      "type_document": "paz_y_salvo_bib",
+      "required": true,
+      "current_version": 1,
+      "classification": "valid",
+      "validation_status": "completed",
+      "required_action": "none",
+      "resubmission_allowed": false,
+      "resubmission_reason": null,
+      "rules": [
+        {
+          "rule": "student_name_present",
+          "result": "cumple",
+          "no_evaluable_reason": null,
+          "mandatory": true,
+          "message": "Nombre leído",
+          "timestamp": "2026-10-14T09:03:00-05:00",
+          "errors": []
+        }
+      ],
+      "errors": [],
+      "versions": [
+        {
+          "version": 1,
+          "submitted_at": "2026-10-14T09:00:00-05:00"
+        }
+      ]
+    },
+    {
+      "type_document": "estampilla_pro_cultura",
+      "required": true,
+      "current_version": 1,
+      "classification": "valid",
+      "validation_status": "completed",
+      "required_action": "none",
+      "resubmission_allowed": false,
+      "resubmission_reason": null,
+      "rules": [
+        {
+          "rule": "student_name_present",
+          "result": "cumple",
+          "no_evaluable_reason": null,
+          "mandatory": true,
+          "message": "Nombre leído",
+          "timestamp": "2026-10-14T09:03:00-05:00",
+          "errors": []
+        }
+      ],
+      "errors": [],
+      "versions": [
+        {
+          "version": 1,
+          "submitted_at": "2026-10-14T09:00:00-05:00"
+        }
+      ]
+    },
+    {
+      "type_document": "saber_pro",
+      "required": true,
+      "current_version": 1,
+      "classification": "valid",
+      "validation_status": "completed",
+      "required_action": "none",
+      "resubmission_allowed": false,
+      "resubmission_reason": null,
+      "rules": [
+        {
+          "rule": "student_name_present",
+          "result": "cumple",
+          "no_evaluable_reason": null,
+          "mandatory": true,
+          "message": "Nombre leído",
+          "timestamp": "2026-10-14T09:03:00-05:00",
+          "errors": []
+        }
+      ],
+      "errors": [],
+      "versions": [
+        {
+          "version": 1,
+          "submitted_at": "2026-10-14T09:00:00-05:00"
+        }
+      ]
+    }
+  ],
+  "comments": [
+    {
+      "author_role": "estudiante",
+      "text": "Por favor sube la cédula por ambas caras.",
+      "created_at": "2026-10-14T10:00:00-05:00"
+    }
+  ],
+  "resubmission_policy": {
+    "daily_limit": 3,
+    "used_today": 0,
+    "remaining_today": 3,
+    "timezone": "America/Bogota",
+    "local_date": "2026-10-14",
+    "next_available_date": null
+  },
+  "generated_at": "2026-10-14T10:01:00-05:00"
+}

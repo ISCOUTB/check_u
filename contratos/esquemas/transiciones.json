@@ -1,0 +1,43 @@
+{
+  "solicitud": {
+    "queued": [
+      "processing",
+      "closed"
+    ],
+    "processing": [
+      "awaiting_review",
+      "correction_required",
+      "ready_for_formal_submission",
+      "closed"
+    ],
+    "awaiting_review": [
+      "processing",
+      "correction_required",
+      "ready_for_formal_submission",
+      "closed"
+    ],
+    "correction_required": [
+      "queued",
+      "closed"
+    ],
+    "ready_for_formal_submission": [
+      "closed"
+    ],
+    "closed": []
+  },
+  "trabajo": {
+    "queued": [
+      "processing"
+    ],
+    "processing": [
+      "completed",
+      "failed",
+      "retry_pending"
+    ],
+    "retry_pending": [
+      "queued"
+    ],
+    "completed": [],
+    "failed": []
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "request_id": "solicitud-sintetica-0001",
+  "id_student": "9900112233",
+  "level": "pregrado",
+  "status": "processing",
+  "status_reason": null,
+  "processing": {
+    "status": "processing",
+    "updated_at": "2026-10-14T09:05:00-05:00"
+  },
+  "documents": [
+    {
+      "type_document": "identification",
+      "required": true,
+      "current_version": 1,
+      "classification": "valid",
+      "validation_status": "completed",
+      "required_action": "none",
+      "resubmission_allowed": false,
+      "resubmission_reason": null,
+      "rules": [
+        {
+          "rule": "student_name_present",
+          "result": "cumple",
+          "no_evaluable_reason": null,
+          "mandatory": true,
+          "message": "Nombre leído",
+          "timestamp": "2026-10-14T09:03:00-05:00",
+          "errors": []
+        }
+      ],
+      "errors": [],
+      "versions": [
+        {
+          "version": 1,
+          "submitted_at": "2026-10-14T09:00:00-05:00"
+        }
+      ]
+    },
+    {
+      "type_document": "academic_evaluation",
+      "required": true,
+      "current_version": 1,
+      "classification": "valid",
+      "validation_status": "completed",
+      "required_action": "none",
+      "resubmission_allowed": false,
+      "resubmission_reason": null,
+      "rules": [
+        {
+          "rule": "student_name_present",
+          "result": "cumple",
+          "no_evaluable_reason": null,
+          "mandatory": true,
+          "message": "Nombre leído",
+          "timestamp": "2026-10-14T09:03:00-05:00",
+          "errors": []
+        }
+      ],
+      "errors": [],
+      "versions": [
+        {
+          "version": 1,
+          "submitted_at": "2026-10-14T09:00:00-05:00"
+        }
+      ]
+    },
+    {
+      "type_document": "paz_y_salvo_bib",
+      "required": true,
+      "current_version": 1,
+      "classification": "valid",
+      "validation_status": "completed",
+      "required_action": "none",
+      "resubmission_allowed": false,
+      "resubmission_reason": null,
+      "rules": [
+        {
+          "rule": "student_name_present",
+          "result": "cumple",
+          "no_evaluable_reason": null,
+          "mandatory": true,
+          "message": "Nombre leído",
+          "timestamp": "2026-10-14T09:03:00-05:00",
+          "errors": []
+        }
+      ],
+      "errors": [],
+      "versions": [
+        {
+          "version": 1,
+          "submitted_at": "2026-10-14T09:00:00-05:00"
+        }
+      ]
+    },
+    {
+      "type_document": "estampilla_pro_cultura",
+      "required": true,
+      "current_version": 1,
+      "classification": "valid",
+      "validation_status": "completed",
+      "required_action": "none",
+      "resubmission_allowed": false,
+      "resubmission_reason": null,
+      "rules": [
+        {
+          "rule": "student_name_present",
+          "result": "cumple",
+          "no_evaluable_reason": null,
+          "mandatory": true,
+          "message": "Nombre leído",
+          "timestamp": "2026-10-14T09:03:00-05:00",
+          "errors": []
+        }
+      ],
+      "errors": [],
+      "versions": [
+        {
+          "version": 1,
+          "submitted_at": "2026-10-14T09:00:00-05:00"
+        }
+      ]
+    },
+    {
+      "type_document": "saber_pro",
+      "required": true,
+      "current_version": 1,
+      "classification": null,
+      "validation_status": "processing",
+      "required_action": "wait_for_processing",
+      "resubmission_allowed": false,
+      "resubmission_reason": null,
+      "rules": [],
+      "errors": [],
+      "versions": [
+        {
+          "version": 1,
+          "submitted_at": "2026-10-14T09:00:00-05:00"
+        }
+      ]
+    }
+  ],
+  "comments": [],
+  "generated_at": "2026-10-14T09:06:00-05:00"
+}
