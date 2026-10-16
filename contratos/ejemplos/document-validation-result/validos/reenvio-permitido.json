@@ -24,6 +24,7 @@
     {
       "rule": "identification_number_present",
       "result": "no_cumple",
+      "no_evaluable_reason": null,
       "mandatory": true,
       "message": "No se encontró el número",
       "timestamp": "2026-10-14T09:30:00-05:00",

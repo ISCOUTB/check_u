@@ -46,6 +46,7 @@ Nunca edites los `.json` de `contratos/esquemas/` a mano.
 | `JobStatus` | `queued`, `processing`, `completed`, `failed`, `retry_pending` |
 | `RequestStatus` | `queued`, `processing`, `awaiting_review`, `correction_required`, `ready_for_formal_submission`, `closed` |
 | `RuleResult` | `cumple`, `no_cumple`, `no_evaluable` (los dos últimos nunca se mezclan) |
+| `NoEvaluableReason` | `low_confidence`, `source_unavailable`, `source_pending`, `missing_dependency` (por qué una regla quedó `no_evaluable`) |
 | `DocumentClassification` | `valid`, `invalid`, `inconsistent`, `to_check` |
 | `ValidationStatus` | `pending`, `processing`, `completed`, `failed` (procesamiento del documento; no es su clasificación) |
 | `RequiredAction` | `none`, `upload_new_version`, `wait_for_review`, `wait_for_external_validation`, `wait_for_processing`, `correct_data`, `contact_administration` |
@@ -92,7 +93,7 @@ Nunca edites los `.json` de `contratos/esquemas/` a mano.
 
 | Esquema | Archivo exportado | Para qué |
 |---|---|---|
-| `RuleEvaluation` | `rule-evaluation.schema.json` | Una regla aplicada: `rule`, `result`, `mandatory`, `message`, `timestamp`, `errors`. |
+| `RuleEvaluation` | `rule-evaluation.schema.json` | Una regla aplicada: `rule`, `result`, `no_evaluable_reason`, `mandatory`, `message`, `timestamp`, `errors`. |
 | `DocumentValidationResult` | `document-validation-result.schema.json` | Resultado de validar una versión de un documento. |
 | `CrossValidationResult` | `cross-validation-result.schema.json` | Comparación de un dato entre al menos 2 fuentes distintas, con su evidencia, similitud, umbral y motivo. |
 | `Submission` | `submission.schema.json` | Entrega inicial o de corrección, con su clave de idempotencia y fecha local. |
@@ -109,6 +110,15 @@ Aplica a `DocumentValidationResult` y a cada documento de `RequestResultResponse
 |---|---|---|
 | `true` | solo `upload_new_version` | texto obligatorio |
 | `false` | cualquiera **menos** `upload_new_version` | `null` |
+
+### Motivo de `no_evaluable`
+
+Una regla `no_evaluable` dice **por qué** no se pudo evaluar. Así "no se pudo leer" y "la fuente no respondió" nunca se mezclan, como pasaba con `por_revisar` en `webapp/`. También va en dos variantes:
+
+| `result` | `no_evaluable_reason` |
+|---|---|
+| `no_evaluable` | obligatorio: `low_confidence` (no se pudo leer con confianza suficiente), `source_unavailable` (la fuente externa no respondió), `source_pending` (la fuente aún no está integrada, como Banner) o `missing_dependency` (falta otro documento o dato) |
+| `cumple`, `no_cumple` | `null` |
 
 ### Datos extraídos
 
@@ -133,6 +143,7 @@ Ejemplo (`contratos/ejemplos/document-validation-result/validos/reenvio-permitid
     {
       "rule": "identification_number_present",
       "result": "no_cumple",
+      "no_evaluable_reason": null,
       "mandatory": true,
       "message": "No se encontró el número",
       "timestamp": "2026-10-14T09:30:00-05:00",

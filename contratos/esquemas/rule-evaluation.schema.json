@@ -2,45 +2,101 @@
   "$id": "https://checku.iscoutb.dev/contratos/rule-evaluation.schema.json",
   "title": "RuleEvaluation",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "properties": {
-    "rule": {
-      "type": "string",
-      "minLength": 1
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "cumple",
+            "no_cumple"
+          ]
+        },
+        "no_evaluable_reason": {
+          "type": "null"
+        },
+        "mandatory": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "rule",
+        "result",
+        "no_evaluable_reason",
+        "mandatory",
+        "message",
+        "timestamp",
+        "errors"
+      ],
+      "additionalProperties": false
     },
-    "result": {
-      "type": "string",
-      "enum": [
-        "cumple",
-        "no_cumple",
-        "no_evaluable"
-      ]
-    },
-    "mandatory": {
-      "type": "boolean"
-    },
-    "message": {
-      "type": "string"
-    },
-    "timestamp": {
-      "type": "string",
-      "format": "date-time",
-      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-    },
-    "errors": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
+    {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "result": {
+          "type": "string",
+          "const": "no_evaluable"
+        },
+        "no_evaluable_reason": {
+          "type": "string",
+          "enum": [
+            "low_confidence",
+            "source_unavailable",
+            "source_pending",
+            "missing_dependency"
+          ]
+        },
+        "mandatory": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "rule",
+        "result",
+        "no_evaluable_reason",
+        "mandatory",
+        "message",
+        "timestamp",
+        "errors"
+      ],
+      "additionalProperties": false
     }
-  },
-  "required": [
-    "rule",
-    "result",
-    "mandatory",
-    "message",
-    "timestamp",
-    "errors"
-  ],
-  "additionalProperties": false
+  ]
 }

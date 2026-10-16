@@ -35,6 +35,18 @@ export type RequestStatus = z.infer<typeof RequestStatus>;
 export const RuleResult = z.enum(['cumple', 'no_cumple', 'no_evaluable']);
 export type RuleResult = z.infer<typeof RuleResult>;
 
+/**
+ * Por qué una regla quedó no_evaluable. Separa "no se pudo leer" (low_confidence) de "la fuente
+ * externa no respondió" (source_unavailable), que webapp/ mezclaba en por_revisar.
+ */
+export const NoEvaluableReason = z.enum([
+  'low_confidence',
+  'source_unavailable',
+  'source_pending',
+  'missing_dependency',
+]);
+export type NoEvaluableReason = z.infer<typeof NoEvaluableReason>;
+
 /** Clasificación de un documento según sus reglas. */
 export const DocumentClassification = z.enum(['valid', 'invalid', 'inconsistent', 'to_check']);
 export type DocumentClassification = z.infer<typeof DocumentClassification>;

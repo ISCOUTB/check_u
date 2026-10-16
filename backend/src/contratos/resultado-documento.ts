@@ -1,17 +1,34 @@
 import { z } from 'zod';
 import { Confianza, conReglaDeReenvio, FechaHora, Identificador } from './comunes.js';
-import { DocumentClassification, RuleResult, TypeDocument, ValidationStatus } from './enums.js';
+import {
+  DocumentClassification,
+  NoEvaluableReason,
+  RuleResult,
+  TypeDocument,
+  ValidationStatus,
+} from './enums.js';
 
-/** Una regla aplicada a un documento (estructura de document_strc.py más mandatory). */
-export const RuleEvaluation = z.strictObject({
-  rule: Identificador,
-  result: RuleResult,
-  /** Obligatoria: el consolidador exige que las obligatorias evaluables se cumplan. */
-  mandatory: z.boolean(),
-  message: z.string(),
-  timestamp: FechaHora,
-  errors: z.array(z.string()),
-});
+function evaluacion<R extends z.ZodType, M extends z.ZodType>(result: R, motivo: M) {
+  return z.strictObject({
+    rule: Identificador,
+    result,
+    no_evaluable_reason: motivo,
+    /** Obligatoria: el consolidador exige que las obligatorias evaluables se cumplan. */
+    mandatory: z.boolean(),
+    message: z.string(),
+    timestamp: FechaHora,
+    errors: z.array(z.string()),
+  });
+}
+
+/**
+ * Una regla aplicada a un documento (estructura de document_strc.py más mandatory). Dos variantes,
+ * para que viaje al JSON Schema: no_evaluable lleva su motivo; cumple y no_cumple, null.
+ */
+export const RuleEvaluation = z.discriminatedUnion('result', [
+  evaluacion(RuleResult.exclude(['no_evaluable']), z.null()),
+  evaluacion(z.literal('no_evaluable'), NoEvaluableReason),
+]);
 export type RuleEvaluation = z.infer<typeof RuleEvaluation>;
 
 /**

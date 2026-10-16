@@ -4,6 +4,7 @@ import {
   CrossValidationSource,
   DocumentClassification,
   JobStatus,
+  NoEvaluableReason,
   RequestStatus,
   RequiredAction,
   RuleResult,
@@ -93,5 +94,14 @@ describe('enums de los contratos', () => {
 
   it('SubmissionType', () => {
     expect(SubmissionType.options).toEqual(['initial', 'resubmission']);
+  });
+
+  it('NoEvaluableReason', () => {
+    expect(NoEvaluableReason.options).toEqual([
+      'low_confidence',
+      'source_unavailable',
+      'source_pending',
+      'missing_dependency',
+    ]);
   });
 });

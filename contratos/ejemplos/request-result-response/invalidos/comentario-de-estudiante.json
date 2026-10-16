@@ -22,6 +22,7 @@
         {
           "rule": "required_pages_present",
           "result": "no_cumple",
+          "no_evaluable_reason": null,
           "mandatory": true,
           "message": "Solo hay una cara",
           "timestamp": "2026-10-14T09:03:00-05:00",
@@ -51,6 +52,7 @@
         {
           "rule": "student_name_present",
           "result": "cumple",
+          "no_evaluable_reason": null,
           "mandatory": true,
           "message": "Nombre leído",
           "timestamp": "2026-10-14T09:03:00-05:00",
@@ -78,6 +80,7 @@
         {
           "rule": "student_name_present",
           "result": "cumple",
+          "no_evaluable_reason": null,
           "mandatory": true,
           "message": "Nombre leído",
           "timestamp": "2026-10-14T09:03:00-05:00",
@@ -105,6 +108,7 @@
         {
           "rule": "student_name_present",
           "result": "cumple",
+          "no_evaluable_reason": null,
           "mandatory": true,
           "message": "Nombre leído",
           "timestamp": "2026-10-14T09:03:00-05:00",
@@ -132,6 +136,7 @@
         {
           "rule": "student_name_present",
           "result": "cumple",
+          "no_evaluable_reason": null,
           "mandatory": true,
           "message": "Nombre leído",
           "timestamp": "2026-10-14T09:03:00-05:00",

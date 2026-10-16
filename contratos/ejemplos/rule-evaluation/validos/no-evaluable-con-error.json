@@ -1,6 +1,7 @@
 {
   "rule": "ocr_text_sufficient",
   "result": "no_evaluable",
+  "no_evaluable_reason": "low_confidence",
   "mandatory": false,
   "message": "No se pudo leer el texto",
   "timestamp": "2026-10-14T09:30:00-05:00",
