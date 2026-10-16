@@ -29,6 +29,12 @@
     margin-bottom: var(--space-7);
 }
 
+.logosDerecha {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
 .logos img {
     width: auto;
     height: 48px;

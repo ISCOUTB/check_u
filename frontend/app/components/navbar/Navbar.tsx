@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
+import BotonTema from "@/app/components/ui/BotonTema";
 import Icono, { type NombreIcono } from "@/app/components/ui/Icono";
 import styles from "./Navbar.module.css";
 
@@ -91,52 +92,55 @@ export default function Navbar({ tipoUsuario, nombreUsuario, nivel }: NavbarProp
                     </span>
                 </Link>
 
-                <nav aria-label="Principal" className={styles.navegacion}>
-                    <div className={styles.usuario} ref={contenedorRef} onBlur={alPerderFoco}>
-                        <button
-                            ref={botonRef}
-                            type="button"
-                            className={styles.botonUsuario}
-                            aria-expanded={abierto}
-                            aria-controls={idMenu}
-                            onClick={() => setAbierto((valor) => !valor)}
-                        >
-                            <span className={styles.datosUsuario}>
-                                <span className={styles.nombreUsuario}>{nombreUsuario}</span>
-                                <span className={styles.rolUsuario}>
-                                    {esEstudiante ? "Candidato a grado" : "Funcionaria de grados"}
+                <div className={styles.derecha}>
+                    <BotonTema />
+                    <nav aria-label="Principal" className={styles.navegacion}>
+                        <div className={styles.usuario} ref={contenedorRef} onBlur={alPerderFoco}>
+                            <button
+                                ref={botonRef}
+                                type="button"
+                                className={styles.botonUsuario}
+                                aria-expanded={abierto}
+                                aria-controls={idMenu}
+                                onClick={() => setAbierto((valor) => !valor)}
+                            >
+                                <span className={styles.datosUsuario}>
+                                    <span className={styles.nombreUsuario}>{nombreUsuario}</span>
+                                    <span className={styles.rolUsuario}>
+                                        {esEstudiante ? "Candidato a grado" : "Funcionaria de grados"}
+                                    </span>
                                 </span>
-                            </span>
-                            {esEstudiante && nivel && <span className={styles.nivel}>{nivel}</span>}
-                            <span className={styles.flecha} data-abierto={abierto}>
-                                <Icono nombre="flecha_abajo" tamano={16} />
-                            </span>
-                        </button>
+                                {esEstudiante && nivel && <span className={styles.nivel}>{nivel}</span>}
+                                <span className={styles.flecha} data-abierto={abierto}>
+                                    <Icono nombre="flecha_abajo" tamano={16} />
+                                </span>
+                            </button>
 
-                        {abierto && (
-                            <ul id={idMenu} className={styles.menu}>
-                                {ENLACES[tipoUsuario].map((enlace) => (
-                                    <li key={enlace.href}>
-                                        <Link
-                                            href={enlace.href}
-                                            className={styles.opcion}
-                                            onClick={() => setAbierto(false)}
-                                        >
-                                            <Icono nombre={enlace.icono} />
-                                            {enlace.texto}
-                                        </Link>
+                            {abierto && (
+                                <ul id={idMenu} className={styles.menu}>
+                                    {ENLACES[tipoUsuario].map((enlace) => (
+                                        <li key={enlace.href}>
+                                            <Link
+                                                href={enlace.href}
+                                                className={styles.opcion}
+                                                onClick={() => setAbierto(false)}
+                                            >
+                                                <Icono nombre={enlace.icono} />
+                                                {enlace.texto}
+                                            </Link>
+                                        </li>
+                                    ))}
+                                    <li className={styles.separado}>
+                                        <button type="button" className={styles.opcion} onClick={cerrarSesion}>
+                                            <Icono nombre="salir" />
+                                            Cerrar sesión
+                                        </button>
                                     </li>
-                                ))}
-                                <li className={styles.separado}>
-                                    <button type="button" className={styles.opcion} onClick={cerrarSesion}>
-                                        <Icono nombre="salir" />
-                                        Cerrar sesión
-                                    </button>
-                                </li>
-                            </ul>
-                        )}
-                    </div>
-                </nav>
+                                </ul>
+                            )}
+                        </div>
+                    </nav>
+                </div>
             </div>
         </header>
     );

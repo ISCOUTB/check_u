@@ -69,8 +69,9 @@
     --altura-barra: 72px;
 }
 
+/* Oscuro del sistema, salvo que se haya elegido el claro con el botón de tema. */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-tema="claro"]) {
         --color-bg: #0b1324;
         --color-surface: #111c33;
         --color-surface-muted: #18243f;
@@ -99,6 +100,43 @@
         --shadow-card: none;
         --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.45);
     }
+}
+
+/* Oscuro elegido con el botón: los mismos valores (lo comprueba e2e/tema.spec.ts). */
+:root[data-tema="oscuro"] {
+    color-scheme: dark;
+
+    --color-bg: #0b1324;
+    --color-surface: #111c33;
+    --color-surface-muted: #18243f;
+    --color-title: #f1f5ff;
+    --color-text: #e2e8f0;
+    --color-text-secondary: #a5b4cb;
+    --color-accent: #2563eb;
+    --color-accent-hover: #1d4ed8;
+    --color-accent-text: #7cb0ff;
+    --color-accent-soft: #142445;
+    --color-border: #26324d;
+    --color-border-control: #5b6b86;
+    --color-focus: #7cb0ff;
+
+    --status-valid-text: #6ee7a0;
+    --status-valid-bg: #10291f;
+    --status-invalid-text: #fca5a5;
+    --status-invalid-bg: #33151a;
+    --status-inconsistent-text: #fcd34d;
+    --status-inconsistent-bg: #2e2410;
+    --status-review-text: #93c5fd;
+    --status-review-bg: #142445;
+    --status-neutral-text: #cbd5e1;
+    --status-neutral-bg: #18243f;
+
+    --shadow-card: none;
+    --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-tema="claro"] {
+    color-scheme: light;
 }
 
 *,

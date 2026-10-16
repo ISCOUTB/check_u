@@ -11,8 +11,9 @@ import {
     LinearScale,
     Tooltip,
 } from "chart.js";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Card from "@/app/components/ui/Card";
+import { useTema } from "@/app/lib/tema";
 import { ETIQUETA_PLURAL, type EstadoSolicitud } from "./datos";
 import styles from "./GraficoEstados.module.css";
 
@@ -36,11 +37,11 @@ export interface GraficoEstadosProps {
 /**
  * Gráfico de Chart.js con alternativa en texto: el canvas lleva un resumen (role="img") y la figura
  * una tabla para lectores de pantalla. Como el canvas no lee variables CSS, los colores se toman de
- * los tokens al dibujar y el gráfico se redibuja cuando cambia el tema del sistema.
+ * los tokens al dibujar y el gráfico se redibuja cuando cambia el tema (sistema o botón).
  */
 export default function GraficoEstados({ tipo, titulo, descripcion, datos }: GraficoEstadosProps) {
     const lienzoRef = useRef<HTMLCanvasElement>(null);
-    const [tema, setTema] = useState<"light" | "dark">("light");
+    const tema = useTema() === "oscuro" ? "dark" : "light";
 
     const total = datos.reduce((suma, d) => suma + d.cantidad, 0);
     const porcentaje = (cantidad: number) => (total ? Math.round((cantidad / total) * 100) : 0);
@@ -51,14 +52,6 @@ export default function GraficoEstados({ tipo, titulo, descripcion, datos }: Gra
                 : `${ETIQUETA_PLURAL[d.estado]}: ${d.cantidad}`,
         )
         .join(", ");
-
-    useEffect(() => {
-        const consulta = window.matchMedia("(prefers-color-scheme: dark)");
-        const actualizar = () => setTema(consulta.matches ? "dark" : "light");
-        actualizar();
-        consulta.addEventListener("change", actualizar);
-        return () => consulta.removeEventListener("change", actualizar);
-    }, []);
 
     useEffect(() => {
         if (!lienzoRef.current) return;

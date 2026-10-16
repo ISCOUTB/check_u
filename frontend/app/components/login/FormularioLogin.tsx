@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import BotonTema from "@/app/components/ui/BotonTema";
 import Button from "@/app/components/ui/Button";
 import Field from "@/app/components/ui/Field";
 import styles from "./FormularioLogin.module.css";
@@ -77,13 +78,16 @@ export default function FormularioLogin() {
                 <div className={styles.contenido}>
                     <div className={styles.logos}>
                         <Image src="/icons/checku_logo.png" alt="CheckU" width={72} height={72} priority />
-                        <Image
-                            src="/icons/logo_utb1.png"
-                            alt="Universidad Tecnológica de Bolívar"
-                            width={95}
-                            height={48}
-                            priority
-                        />
+                        <div className={styles.logosDerecha}>
+                            <Image
+                                src="/icons/logo_utb1.png"
+                                alt="Universidad Tecnológica de Bolívar"
+                                width={95}
+                                height={48}
+                                priority
+                            />
+                            <BotonTema />
+                        </div>
                     </div>
 
                     <h1 id="titulo-login" className={styles.titulo}>
