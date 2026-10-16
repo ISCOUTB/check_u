@@ -217,7 +217,7 @@ export default function Home() {
                     aria-valuenow={cargados}
                     aria-valuetext={`${cargados} de ${total} documentos cargados`}
                 >
-                    <div className={styles.progresoRelleno} style={{ width: `${total ? (cargados / total) * 100 : 0}%` }} />
+                    <div className={styles.progresoRelleno} style={{ transform: `scaleX(${total ? cargados / total : 0})` }} />
                 </div>
                 <ul className={styles.documentos}>{solicitud.documentos.map(filaDocumento)}</ul>
             </Card>
