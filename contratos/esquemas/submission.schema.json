@@ -8,15 +8,15 @@
       "properties": {
         "idempotency_key": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "id_student": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "request_id": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "submission_number": {
           "type": "integer",
@@ -166,15 +166,15 @@
       "properties": {
         "idempotency_key": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "id_student": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "request_id": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "submission_number": {
           "type": "integer",

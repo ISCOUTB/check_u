@@ -8,7 +8,7 @@
       "properties": {
         "rule": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "result": {
           "type": "string",
@@ -54,7 +54,7 @@
       "properties": {
         "rule": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "result": {
           "type": "string",

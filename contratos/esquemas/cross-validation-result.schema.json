@@ -6,11 +6,11 @@
   "properties": {
     "rule": {
       "type": "string",
-      "minLength": 1
+      "pattern": "^\\S(?:.*\\S)?$"
     },
     "rule_version": {
       "type": "string",
-      "minLength": 1
+      "pattern": "^\\S(?:.*\\S)?$"
     },
     "sources": {
       "minItems": 2,
@@ -35,7 +35,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "minLength": 1
+        "pattern": "^\\S(?:.*\\S)?$"
       }
     },
     "outcome": {
@@ -69,7 +69,7 @@
           },
           "field": {
             "type": "string",
-            "minLength": 1
+            "pattern": "^\\S(?:.*\\S)?$"
           },
           "value": {
             "type": [

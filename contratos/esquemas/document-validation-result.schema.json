@@ -8,7 +8,7 @@
       "properties": {
         "id_student": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "type_document": {
           "type": "string",
@@ -83,7 +83,7 @@
                 "properties": {
                   "rule": {
                     "type": "string",
-                    "minLength": 1
+                    "pattern": "^\\S(?:.*\\S)?$"
                   },
                   "result": {
                     "type": "string",
@@ -129,7 +129,7 @@
                 "properties": {
                   "rule": {
                     "type": "string",
-                    "minLength": 1
+                    "pattern": "^\\S(?:.*\\S)?$"
                   },
                   "result": {
                     "type": "string",
@@ -202,7 +202,7 @@
         },
         "validation_version": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "timestamp": {
           "type": "string",
@@ -244,7 +244,7 @@
       "properties": {
         "id_student": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "type_document": {
           "type": "string",
@@ -319,7 +319,7 @@
                 "properties": {
                   "rule": {
                     "type": "string",
-                    "minLength": 1
+                    "pattern": "^\\S(?:.*\\S)?$"
                   },
                   "result": {
                     "type": "string",
@@ -365,7 +365,7 @@
                 "properties": {
                   "rule": {
                     "type": "string",
-                    "minLength": 1
+                    "pattern": "^\\S(?:.*\\S)?$"
                   },
                   "result": {
                     "type": "string",
@@ -438,7 +438,7 @@
         },
         "validation_version": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^\\S(?:.*\\S)?$"
         },
         "timestamp": {
           "type": "string",

@@ -10,8 +10,14 @@ export const FechaLocal = z.iso.date();
 /** Confianza de una extracción o comparación, entre 0 y 1. */
 export const Confianza = z.number().min(0).max(1);
 
-/** Identificador opaco (id_student, request_id, idempotency_key…): texto no vacío. */
-export const Identificador = z.string().min(1);
+/**
+ * Identificador opaco (id_student, request_id, idempotency_key…): texto no vacío y sin espacios
+ * al inicio ni al final; "   " es vacío y " 123" sería otro estudiante. Es un patrón para que
+ * viaje igual al JSON Schema.
+ */
+export const Identificador = z
+  .string()
+  .regex(/^\S(?:.*\S)?$/, 'No puede estar en blanco ni tener espacios al inicio o al final');
 
 /**
  * Texto con contenido; solo espacios cuenta como vacío. Es un patrón (no trim()) para que la

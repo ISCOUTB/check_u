@@ -36,7 +36,7 @@ Nunca edites los `.json` de `contratos/esquemas/` a mano.
 - **Fecha y hora:** ISO 8601 con zona horaria (`2026-10-14T09:30:00-05:00` o `…Z`). Sin zona es inválida.
 - **Fecha local:** `AAAA-MM-DD`, en la zona `America/Bogota`.
 - **Confianza:** entre 0 y 1.
-- **Identificadores** (`id_student`, `request_id`, `idempotency_key`…): texto no vacío.
+- **Identificadores** (`id_student`, `request_id`, `idempotency_key`…): texto no vacío, sin espacios al inicio ni al final (`"   "` y `" 123"` son inválidos).
 
 ## Enums
 

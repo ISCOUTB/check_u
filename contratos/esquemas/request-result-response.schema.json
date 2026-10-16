@@ -6,11 +6,11 @@
   "properties": {
     "request_id": {
       "type": "string",
-      "minLength": 1
+      "pattern": "^\\S(?:.*\\S)?$"
     },
     "id_student": {
       "type": "string",
-      "minLength": 1
+      "pattern": "^\\S(?:.*\\S)?$"
     },
     "level": {
       "type": "string",
@@ -141,7 +141,7 @@
                       "properties": {
                         "rule": {
                           "type": "string",
-                          "minLength": 1
+                          "pattern": "^\\S(?:.*\\S)?$"
                         },
                         "result": {
                           "type": "string",
@@ -187,7 +187,7 @@
                       "properties": {
                         "rule": {
                           "type": "string",
-                          "minLength": 1
+                          "pattern": "^\\S(?:.*\\S)?$"
                         },
                         "result": {
                           "type": "string",
@@ -353,7 +353,7 @@
                       "properties": {
                         "rule": {
                           "type": "string",
-                          "minLength": 1
+                          "pattern": "^\\S(?:.*\\S)?$"
                         },
                         "result": {
                           "type": "string",
@@ -399,7 +399,7 @@
                       "properties": {
                         "rule": {
                           "type": "string",
-                          "minLength": 1
+                          "pattern": "^\\S(?:.*\\S)?$"
                         },
                         "result": {
                           "type": "string",
