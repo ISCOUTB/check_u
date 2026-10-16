@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState } from "react";
+import Button from "@/app/components/ui/Button";
+import Dialog from "@/app/components/ui/Dialog";
+import Icono from "@/app/components/ui/Icono";
+import StatusBadge, { type EstadoVisible } from "@/app/components/ui/StatusBadge";
 import styles from "./DocumentAnalysis.module.css";
 
 export interface ExtractedField {
@@ -30,253 +34,123 @@ interface DocumentAnalysisProps {
     data?: DocumentAnalysisData | null;
 }
 
-export default function DocumentAnalysis({
-    open,
-    onClose,
-    data,
-}: DocumentAnalysisProps) {
+const ESTADO: Record<DocumentAnalysisData["status"], EstadoVisible> = {
+    VALIDO: "valido",
+    NO_VALIDO: "no_valido",
+    INCONSISTENTE: "inconsistente",
+    POR_REVISAR: "por_revisar",
+};
 
-    useEffect(() => {
-        if (!open) return;
+/**
+ * Análisis automático de un documento, en un diálogo modal. Conserva el último documento mientras
+ * se cierra, para que el diálogo pueda devolver el foco al botón que lo abrió.
+ */
+export default function DocumentAnalysis({ open, onClose, data }: DocumentAnalysisProps) {
+    const [ultimo, setUltimo] = useState<DocumentAnalysisData | null>(data ?? null);
+    if (data && data !== ultimo) setUltimo(data);
+    const actual = data ?? ultimo;
 
-        const handleEscape = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                onClose();
-            }
-        };
-
-        // Ahora `document` es el global del navegador
-        document.addEventListener("keydown", handleEscape);
-
-        return () => {
-            document.removeEventListener("keydown", handleEscape);
-        };
-    }, [open, onClose]);
-
-    if (!open || !data) {
-        return null;
-    }
-
-    const statusClass = {
-        VALIDO: styles.statusValid,
-        NO_VALIDO: styles.statusInvalid,
-        INCONSISTENTE: styles.statusInconsistent,
-        POR_REVISAR: styles.statusReview,
-    }[data.status];
-
-    const statusLabel = {
-        VALIDO: "Válido",
-        NO_VALIDO: "No válido",
-        INCONSISTENTE: "Inconsistente",
-        POR_REVISAR: "Por revisar",
-    }[data.status];
+    if (!actual) return null;
 
     return (
-        <div
-            className={styles.overlay}
-            onMouseDown={(event) => {
-                if (event.target === event.currentTarget) {
-                    onClose();
-                }
-            }}
+        <Dialog
+            abierto={open && !!data}
+            alCerrar={onClose}
+            etiqueta="Análisis automático"
+            titulo={actual.documentType}
+            descripcion={actual.fileName}
         >
-            <section
-                className={styles.modal}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="document-analysis-title"
-            >
-                <header className={styles.header}>
-                    <div className={styles.headerInfo}>
-                        <span className={styles.eyebrow}>
-                            Análisis automático
-                        </span>
-
-                        <h2 id="document-analysis-title">
-                            {data.documentType}
-                        </h2>
-
-                        <p>{data.fileName}</p>
-                    </div>
-
-                    <button
-                        type="button"
-                        className={styles.closeButton}
-                        onClick={onClose}
-                        aria-label="Cerrar análisis"
-                    >
-                        ×
-                    </button>
-                </header>
-
-                <div className={styles.content}>
-                    {/* DOCUMENTO */}
-                    <div className={styles.documentPanel}>
-                        <div className={styles.panelHeader}>
-                            <div>
-                                <span className={styles.panelEyebrow}>
-                                    Documento
-                                </span>
-
-                                <h3>Vista del documento</h3>
-                            </div>
+            <div className={styles.contenido}>
+                <section className={styles.panelDocumento} aria-labelledby="analisis-vista">
+                    <h3 id="analisis-vista" className={styles.tituloSeccion}>
+                        Vista del documento
+                    </h3>
+                    <div className={styles.vistaPrevia} aria-hidden="true">
+                        <div className={styles.pagina}>
+                            <p className={styles.membrete}>
+                                UNIVERSIDAD TECNOLÓGICA <strong>DE BOLÍVAR</strong>
+                            </p>
+                            <span className={styles.linea} />
+                            <p className={styles.tituloPagina}>RESULTADOS DE LA PRUEBA</p>
+                            <dl className={styles.filasPagina}>
+                                <dt>Nombre</dt>
+                                <dd>Juan Pérez Gómez</dd>
+                                <dt>Identificación</dt>
+                                <dd>1000123456</dd>
+                                <dt>Puntaje global</dt>
+                                <dd>287</dd>
+                                <dt>Número de registro</dt>
+                                <dd>123456789</dd>
+                                <dt>Fecha de aplicación</dt>
+                                <dd>15/09/2025</dd>
+                            </dl>
                         </div>
-
-                        <div className={styles.documentPreview}>
-                            <div className={styles.documentPage}>
-                                <div className={styles.fakeDocumentHeader}>
-                                    <span>UNIVERSIDAD TECNOLÓGICA</span>
-                                    <strong>DE BOLÍVAR</strong>
-                                </div>
-
-                                <div className={styles.fakeDocumentLine} />
-
-                                <div className={styles.fakeDocumentTitle}>
-                                    RESULTADOS DE LA PRUEBA
-                                </div>
-
-                                <div className={styles.fakeDocumentRows}>
-                                    <div>
-                                        <span>Nombre</span>
-                                        <strong>Juan Pérez Gómez</strong>
-                                    </div>
-
-                                    <div>
-                                        <span>Identificación</span>
-                                        <strong>1000123456</strong>
-                                    </div>
-
-                                    <div>
-                                        <span>Puntaje global</span>
-                                        <strong>287</strong>
-                                    </div>
-
-                                    <div>
-                                        <span>Número de registro</span>
-                                        <strong>123456789</strong>
-                                    </div>
-
-                                    <div>
-                                        <span>Fecha de aplicación</span>
-                                        <strong>15/09/2025</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {data.documentUrl && (
-                            <button
-                                type="button"
-                                className={styles.originalButton}
-                                onClick={() => {
-                                    window.open(data.documentUrl, "_blank");
-                                }}
-                            >
-                                Ver documento original
-                            </button>
-                        )}
                     </div>
+                    {actual.documentUrl && (
+                        <Button
+                            variante="secundario"
+                            onClick={() => window.open(actual.documentUrl, "_blank", "noopener")}
+                        >
+                            Ver documento original
+                        </Button>
+                    )}
+                </section>
 
-                    {/* INFORMACIÓN EXTRAÍDA */}
-                    <div className={styles.analysisPanel}>
-                        <div className={styles.section}>
-                            <div className={styles.sectionTitle}>
-                                <span className={styles.sectionIcon}>01</span>
-
-                                <div>
-                                    <span>Extracción</span>
-                                    <h3>Información identificada</h3>
+                <div className={styles.panelAnalisis}>
+                    <section aria-labelledby="analisis-extraccion">
+                        <h3 id="analisis-extraccion" className={styles.tituloSeccion}>
+                            Información identificada
+                        </h3>
+                        <dl className={styles.campos}>
+                            {actual.extractedFields.map((campo, indice) => (
+                                <div key={`${campo.label}-${indice}`} className={styles.campo}>
+                                    <dt>{campo.label}</dt>
+                                    <dd className={styles.valor}>{campo.value}</dd>
+                                    {campo.source && <dd className={styles.fuente}>Fuente: {campo.source}</dd>}
                                 </div>
-                            </div>
+                            ))}
+                        </dl>
+                    </section>
 
-                            <div className={styles.fields}>
-                                {data.extractedFields.map((field, index) => (
-                                    <div
-                                        className={styles.field}
-                                        key={`${field.label}-${index}`}
-                                    >
-                                        <span className={styles.fieldLabel}>
-                                            {field.label}
-                                        </span>
-
-                                        <strong className={styles.fieldValue}>
-                                            {field.value}
-                                        </strong>
-
-                                        {field.source && (
-                                            <span className={styles.fieldSource}>
-                                                Fuente: {field.source}
+                    <section aria-labelledby="analisis-reglas">
+                        <h3 id="analisis-reglas" className={styles.tituloSeccion}>
+                            Reglas aplicadas
+                        </h3>
+                        <ul className={styles.reglas}>
+                            {actual.validations.map((regla, indice) => (
+                                <li
+                                    key={`${regla.description}-${indice}`}
+                                    className={styles.regla}
+                                    data-cumple={regla.result}
+                                >
+                                    <span className={styles.reglaIcono}>
+                                        <Icono nombre={regla.result ? "valido" : "no_valido"} />
+                                    </span>
+                                    <div>
+                                        <p className={styles.reglaTitulo}>
+                                            {regla.description}
+                                            <span className={styles.reglaResultado}>
+                                                {regla.result ? "Cumple" : "No cumple"}
                                             </span>
-                                        )}
+                                        </p>
+                                        {regla.detail && <p className={styles.reglaDetalle}>{regla.detail}</p>}
                                     </div>
-                                ))}
-                            </div>
-                        </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
 
-                        {/* VALIDACIONES */}
-                        <div className={styles.section}>
-                            <div className={styles.sectionTitle}>
-                                <span className={styles.sectionIcon}>02</span>
-
-                                <div>
-                                    <span>Validación</span>
-                                    <h3>Reglas aplicadas</h3>
-                                </div>
-                            </div>
-
-                            <div className={styles.validations}>
-                                {data.validations.map((validation, index) => (
-                                    <div
-                                        className={`${styles.validation} ${
-                                            validation.result
-                                                ? styles.validationSuccess
-                                                : styles.validationError
-                                        }`}
-                                        key={`${validation.description}-${index}`}
-                                    >
-                                        <div className={styles.validationIcon}>
-                                            {validation.result ? "✓" : "!"}
-                                        </div>
-
-                                        <div>
-                                            <strong>
-                                                {validation.description}
-                                            </strong>
-
-                                            {validation.detail && (
-                                                <p>{validation.detail}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* RESULTADO */}
-                        <div className={styles.resultSection}>
-                            <div>
-                                <span className={styles.resultLabel}>
-                                    Resultado del análisis
-                                </span>
-
-                                <strong>{statusLabel}</strong>
-                            </div>
-
-                            <span className={`${styles.status} ${statusClass}`}>
-                                {statusLabel}
-                            </span>
-                        </div>
+                    <div className={styles.resultado}>
+                        <p>Resultado del análisis</p>
+                        <StatusBadge estado={ESTADO[actual.status]} />
                     </div>
                 </div>
+            </div>
 
-                <footer className={styles.footer}>
-                    <span>Análisis generado automáticamente por CheckU</span>
-
-                    <span>
-                        La decisión final puede requerir revisión del funcionario.
-                    </span>
-                </footer>
-            </section>
-        </div>
+            <p className={styles.nota}>
+                <strong>Análisis generado automáticamente por CheckU.</strong> La decisión final puede requerir
+                revisión del funcionario.
+            </p>
+        </Dialog>
     );
 }

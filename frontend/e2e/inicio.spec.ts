@@ -65,11 +65,17 @@ test.describe("inicio del estudiante", () => {
         await sesionComo(page, "estudiante");
         await page.goto(INICIO);
         await page.locator('main#contenido:not([aria-busy="true"])').waitFor();
-        await page.keyboard.press("End");
+        // Al final de la página de un salto: la tecla Fin anima el desplazamiento y la animación
+        // seguiría moviendo la página mientras se tabula.
+        await page.evaluate(() =>
+            window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }),
+        );
         for (let i = 0; i < 40; i++) {
             await page.keyboard.press("Shift+Tab");
             // Tapado = lo que se ve en el centro del elemento enfocado es otra cosa (WCAG 2.4.11).
-            const tapado = await page.evaluate(() => {
+            const tapado = await page.evaluate(async () => {
+                // Se mide después de los dos cuadros en que la página termina de desplazarse.
+                await new Promise((listo) => requestAnimationFrame(() => requestAnimationFrame(listo)));
                 const foco = document.activeElement!;
                 const caja = foco.getBoundingClientRect();
                 if (foco === document.body || caja.bottom <= 0 || caja.top >= innerHeight) return false;

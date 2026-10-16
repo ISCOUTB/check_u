@@ -1,0 +1,79 @@
+.pagina {
+    width: 100%;
+    max-width: 720px;
+    min-height: 100dvh;
+    margin: 0 auto;
+    padding: 48px var(--space-4);
+}
+
+.tarjeta {
+    min-height: 120px;
+}
+
+.estado {
+    color: var(--color-text-secondary);
+    font-size: 15px;
+}
+
+.resultado {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+}
+
+.icono {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+}
+
+.resultado[data-tono="exito"] .icono {
+    background: var(--status-valid-bg);
+    color: var(--status-valid-text);
+}
+
+.resultado[data-tono="error"] .icono {
+    background: var(--status-invalid-bg);
+    color: var(--status-invalid-text);
+}
+
+.titulo {
+    color: var(--color-title);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.datos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-6);
+    margin-top: var(--space-2);
+    font-size: 14px;
+}
+
+.datos div {
+    display: flex;
+    gap: var(--space-1);
+}
+
+.datos dt {
+    color: var(--color-text-secondary);
+}
+
+.datos dt::after {
+    content: ":";
+}
+
+.datos dd {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.mensaje {
+    margin-top: var(--space-2);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}

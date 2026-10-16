@@ -141,6 +141,11 @@ main:focus {
     outline: none;
 }
 
+/* Con un diálogo modal abierto, la página de fondo no se desplaza. */
+html:has(dialog[open]) {
+    overflow: hidden;
+}
+
 /* Oculta a la vista, pero no al lector de pantalla. */
 .solo-lector {
     position: absolute;

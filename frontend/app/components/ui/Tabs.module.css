@@ -1,0 +1,53 @@
+.lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    margin-bottom: var(--space-6);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.pestana {
+    position: relative;
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-control) var(--radius-control) 0 0;
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color var(--duracion-rapida) ease;
+}
+
+.pestana::after {
+    position: absolute;
+    right: var(--space-2);
+    bottom: -1px;
+    left: var(--space-2);
+    height: 3px;
+    background: var(--color-accent);
+    border-radius: 3px 3px 0 0;
+    content: "";
+    transform: scaleX(0);
+    transition: transform var(--duracion) var(--ease-out);
+}
+
+.pestana[aria-selected="true"] {
+    color: var(--color-accent-text);
+}
+
+.pestana[aria-selected="true"]::after {
+    transform: scaleX(1);
+}
+
+.panel:focus-visible {
+    outline-offset: 6px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .pestana:hover {
+        color: var(--color-title);
+    }
+}
