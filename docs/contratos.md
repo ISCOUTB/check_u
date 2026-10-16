@@ -189,8 +189,6 @@ Ejemplo (`contratos/ejemplos/document-validation-result/validos/reenvio-permitid
 }
 ```
 
-## Lo que el JSON Schema no expresa
+### Sin tipos repetidos en una entrega
 
-JSON Schema no puede exigir que **no se repita un `type_document` en `Submission.documents`**: los elementos son objetos que difieren en la versión, así que `uniqueItems` no los atrapa. Zod sí lo rechaza.
-
-**El trabajador de Python debe comprobarlo por su cuenta.** Es la única excepción de la prueba de paridad (`SOLO_ZOD` en `backend/src/contratos/exportar.spec.ts`).
+`Submission.documents` no admite dos documentos con el mismo `type_document`. `uniqueItems` no sirve, porque los elementos difieren en la versión. Por eso el JSON Schema lleva una cláusula por cada uno de los 5 tipos: a lo sumo un documento con ese tipo (`contains` + `maxContains: 1`). Zod y el JSON Schema rechazan lo mismo; la prueba de paridad no tiene excepciones.

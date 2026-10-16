@@ -60,7 +60,84 @@
               "document_version"
             ],
             "additionalProperties": false
-          }
+          },
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "identification"
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "academic_evaluation"
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "paz_y_salvo_bib"
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "estampilla_pro_cultura"
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "saber_pro"
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            }
+          ]
         },
         "submission_type": {
           "type": "string",
@@ -141,7 +218,84 @@
               "document_version"
             ],
             "additionalProperties": false
-          }
+          },
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "identification"
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "academic_evaluation"
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "paz_y_salvo_bib"
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "estampilla_pro_cultura"
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "saber_pro"
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            }
+          ]
         },
         "submission_type": {
           "type": "string",

@@ -10,8 +10,8 @@ export const SubmittedDocument = z.strictObject({
 export type SubmittedDocument = z.infer<typeof SubmittedDocument>;
 
 /**
- * Sin tipos repetidos. JSON Schema no puede expresar la unicidad por campo, así que esta regla
- * solo la exige Zod: el trabajador de Python debe comprobarla (ver docs/contratos.md).
+ * Sin tipos repetidos. uniqueItems no sirve (los documentos difieren en la versión), así que en el
+ * JSON Schema va una cláusula por tipo: a lo sumo un documento con ese type_document.
  */
 const DocumentosEntregados = z
   .array(SubmittedDocument)
@@ -19,7 +19,18 @@ const DocumentosEntregados = z
   .refine(
     (documentos) => new Set(documentos.map((d) => d.type_document)).size === documentos.length,
     { message: 'Un tipo de documento no puede repetirse en una entrega' },
-  );
+  )
+  .meta({
+    allOf: TypeDocument.options.map((tipo) => ({
+      contains: {
+        type: 'object',
+        properties: { type_document: { const: tipo } },
+        required: ['type_document'],
+      },
+      minContains: 0,
+      maxContains: 1,
+    })),
+  });
 
 const campos = {
   /** Clave de idempotencia: la misma entrega enviada dos veces no se procesa dos veces. */
