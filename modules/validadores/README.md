@@ -5,7 +5,7 @@ Cada validador recibe el archivo que subió el estudiante y devuelve un `Documen
 - la clasificación del documento (`valid`, `invalid` o `to_check`);
 - la acción que debe tomar el estudiante.
 
-Hoy existe el de **Saber Pro** (Tarea 08e). Diseño: `docs/superpowers/specs/2026-10-17-validador-saber-pro-design.md`.
+Hoy existen el de **Saber Pro** (Tarea 08e) y el de **cédula** (Tarea 08a). Diseño: `docs/superpowers/specs/2026-10-17-validador-saber-pro-design.md`.
 
 ## Archivos
 
@@ -18,6 +18,12 @@ Hoy existe el de **Saber Pro** (Tarea 08e). Diseño: `docs/superpowers/specs/202
 | `saber_pro/firma.py` | Firma del ICFES con el `SignatureValidator` de `firma_electronica/`. Distingue firma ausente, no verificable (archivo guardado de nuevo) y presente. |
 | `saber_pro/reglas.py` | Las 5 reglas, `VERSION = "saber_pro@1.0.0"` y `PUNTAJE_MINIMO = 100`. |
 | `saber_pro/certificados/` | Certificados públicos de Camerfirma Colombia (ver su README). |
+| `consola.py` | Comando compartido para probar un validador con archivos propios (`python -m modules.validadores.<tipo>`). |
+| `fuentes/rui.py` | Adaptador del RUI: `consultar_rui(numero)` → encontrado / sin registro / sin respuesta. |
+| `cedula/__init__.py` | `validar_cedula(contenido, id_student=…, document_version=…)`. |
+| `cedula/paginas.py`, `cedula/calidad.py` | PDF o imagen → páginas; resolución y nitidez de cada página. |
+| `cedula/extraccion.py` | Adapta lo que devuelve `leer_cedula` (modules/cedula) a datos con confianza; reconoce la versión de la cédula. |
+| `cedula/reglas.py` | Las 5 reglas de la cédula y `VERSION = "cedula@1.0.0"`. |
 
 ## Uso
 
@@ -41,6 +47,21 @@ venv/Scripts/python.exe -m modules.validadores.saber_pro "ruta/a/tu-reporte.pdf"
 Muestra la clasificación, los datos extraídos y cada regla con su mensaje. También acepta una carpeta (valida todos sus PDF), y con `--json` muestra el resultado completo del contrato. Nada se guarda ni se envía.
 
 Un consejo para la prueba: descarga el reporte de icfes.gov.co y pásalo **sin abrirlo antes en el navegador**. Si se abre y se guarda desde Chrome o Edge, la firma del ICFES deja de ser verificable y el reporte queda por revisar.
+
+## Cédula (Tarea 08a)
+
+`validar_cedula(contenido, id_student=…, document_version=…)` recibe un PDF o una imagen.
+- Adapta la lectura que ya existía (`modules/cedula`: MRZ de la cédula digital, PDF417 y OCR de la amarilla con hologramas) y reconoce la cédula de extranjería.
+- Consulta el RUI con el adaptador `fuentes/rui.py`, como regla informativa.
+- Diseño: `docs/superpowers/specs/2026-10-17-validador-cedula-design.md`.
+
+Para probarla con tu propia cédula (PDF, PNG o JPG):
+
+```bash
+venv/Scripts/python.exe -m modules.validadores.cedula "ruta/a/tu-cedula.png"
+```
+
+Sin `--rui` **no** consulta el RUI, así que no envía el número de documento a ningún servicio externo. Con `--rui` sí lo consulta. Necesita Tesseract instalado.
 
 ## Instalar y probar
 

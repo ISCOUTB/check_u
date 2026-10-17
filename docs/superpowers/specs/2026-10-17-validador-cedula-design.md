@@ -81,7 +81,7 @@ Confianza:
 
 | Regla | Obligatoria | Cumple | No cumple | No evaluable |
 |---|---|---|---|---|
-| `identification_document` | sí | Hay MRZ o PDF417, o el texto dice que es una cédula (de ciudadanía o de extranjería) | Hay texto legible (40 caracteres o más) pero no es una cédula | Sin texto legible, o el archivo está vacío o dañado (`low_confidence`) |
+| `identification_document` | sí | Hay MRZ o PDF417, o el texto dice que es una cédula: de extranjería ("EXTRANJERÍA", "MIGRACIÓN COLOMBIA") o de ciudadanía, con **al menos 2 palabras distintas** del frente o del reverso ("REPÚBLICA DE COLOMBIA", "IDENTIFICACIÓN PERSONAL", "FECHA DE NACIMIENTO", "LUGAR DE NACIMIENTO", "ESTATURA", "G.S. RH", "ÍNDICE DERECHO"…), comparando solo letras porque el OCR pega palabras. Corregido al probar: las muestras son el reverso y no traen las palabras del frente | Hay texto legible (40 caracteres o más) pero no es una cédula | Sin texto legible, o el archivo está vacío o dañado (`low_confidence`) |
 | `required_fields_present` | sí | Nombre, tipo y número con confianza ≥ 0.8 | (nunca) | Falta alguno o está bajo 0.8 (`low_confidence`) |
 | `machine_readable_code` | sí | Digital o extranjería: MRZ con dígitos de control válidos. Amarilla: PDF417 leído | (nunca: un código ilegible no prueba nada) | No se leyó el código o el MRZ no cuadra (`low_confidence`) |
 | `image_quality` | **no** | Resolución y nitidez sobre los umbrales provisionales | Por debajo de alguno (con los valores medidos en el mensaje) | Sin páginas que medir (`missing_dependency`) |

@@ -16,8 +16,25 @@ from modules.cedula.lectura import ResultadoCedula, leer_cedula
 
 CAMPOS = ("full_name", "identification_type", "identification_number", "birth_date", "sex")
 
-MARCAS_EXTRANJERIA = ("EXTRANJERIA", "MIGRACION COLOMBIA")
-MARCAS_CIUDADANIA = ("CEDULA DE CIUDADANIA", "IDENTIFICACION PERSONAL", "REGISTRADURIA")
+# Se comparan solo letras (sin espacios ni signos): el OCR pega palabras ("LUGARDENACIMIENTO") y
+# mete signos sueltos ("GS.RH.").
+MARCAS_EXTRANJERIA = ("EXTRANJERIA", "MIGRACIONCOLOMBIA")
+# Vocabulario del frente y del reverso de la cédula de ciudadanía. Hacen falta al menos
+# MARCAS_MINIMAS distintas: una sola ("fecha de nacimiento") aparece en muchos otros documentos.
+VOCABULARIO_CEDULA = (
+    "REPUBLICADECOLOMBIA",
+    "IDENTIFICACIONPERSONAL",
+    "CEDULADECIUDADANIA",
+    "REGISTRADURIA",
+    "REGISTRADOR",
+    "FECHADENACIMIENTO",
+    "LUGARDENACIMIENTO",
+    "ESTATURA",
+    "GSRH",
+    "INDICEDERECHO",
+    "EXPEDICION",
+)
+MARCAS_MINIMAS = 2
 # Con menos texto que esto no se puede decir que el archivo sea otra cosa: queda ilegible.
 TEXTO_MINIMO = 40
 
@@ -90,11 +107,12 @@ def _normalizar(nombre: str, valor) -> str | None:
 
 
 def _formato(resultado: ResultadoCedula, texto: str, hay_pdf417: bool) -> Formato | None:
-    if any(marca in texto for marca in MARCAS_EXTRANJERIA):
+    letras = re.sub(r"[^A-Z]", "", texto)
+    if any(marca in letras for marca in MARCAS_EXTRANJERIA):
         return "extranjeria"
     if resultado.formato == "digital":
         return "digital"
-    if hay_pdf417 or any(marca in texto for marca in MARCAS_CIUDADANIA):
+    if hay_pdf417 or sum(marca in letras for marca in VOCABULARIO_CEDULA) >= MARCAS_MINIMAS:
         return "amarilla_hologramas"
     return None
 

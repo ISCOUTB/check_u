@@ -112,6 +112,19 @@ def test_no_es_cedula():
     assert extraccion.datos["identification_type"] == NULO
 
 
+def test_reverso_de_cedula_es_cedula():
+    # Texto como el que saca el OCR del reverso, con sus errores (palabras pegadas, signos sueltos).
+    texto = "FECHA DE NACIMIENTO __ DD-MM-YYYY LUGARDENACI¡MIENTO ESTATURA — ¡..GS.RH. - .SEXO INDICE DERECHO"
+    extraccion = desde_lectura(lectura(texto=texto))
+    assert extraccion.es_cedula is True
+    assert extraccion.formato == "amarilla_hologramas"
+
+
+def test_una_sola_palabra_de_cedula_no_basta():
+    texto = "CERTIFICADO DE NOTAS DEL ESTUDIANTE CON SU FECHA DE NACIMIENTO Y PROMEDIO ACUMULADO DEL SEMESTRE"
+    assert desde_lectura(lectura(texto=texto)).es_cedula is False
+
+
 def test_sin_texto():
     extraccion = desde_lectura(lectura(texto="  \n "))
     assert extraccion.es_cedula is None
@@ -164,5 +177,6 @@ def test_muestra_png(requiere_tesseract, png):
 
 def test_muestra_pdf_escaneado(requiere_tesseract, pdf_escaneado):
     extraccion = extraer(cargar_paginas(pdf_escaneado))
+    assert extraccion.es_cedula is True
     assert extraccion.codigo_leido is False
     assert extraccion.datos["full_name"] == NULO
