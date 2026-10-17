@@ -1,1318 +1,316 @@
 "use client";
 
 import { useState } from "react";
+import DocumentAnalysis, { type DocumentAnalysisData } from "@/app/components/document_analysis/DocumentAnalysis";
+import Navbar from "@/app/components/navbar/Navbar";
+import Button from "@/app/components/ui/Button";
+import Card from "@/app/components/ui/Card";
+import Icono from "@/app/components/ui/Icono";
+import PageHeader from "@/app/components/ui/PageHeader";
+import StatusBadge from "@/app/components/ui/StatusBadge";
+import Tabs from "@/app/components/ui/Tabs";
+import { useSesion } from "@/app/lib/useSesion";
+import { type Documento, documentAnalysisMock, documentos, estudiante, informacionAdicional } from "./datos";
+import styles from "./detalle.module.css";
 
-import Navbar from "../../../components/navbar/Navbar";
+const CON_PROBLEMAS = documentos.filter((d) => d.estado !== "valido");
+const VALIDOS = documentos.filter((d) => d.estado === "valido");
 
-import DocumentAnalysis, {
-    DocumentAnalysisData,
-} from "@/app/components/document_analysis/DocumentAnalysis";
+const ESTADO_GENERAL = documentos.some((d) => d.estado === "por_revisar")
+    ? { titulo: "Por revisar", tono: "revisar" as const, icono: "por_revisar" as const }
+    : CON_PROBLEMAS.length > 0
+      ? { titulo: "Se requiere corregir documentos", tono: "corregir" as const, icono: "inconsistente" as const }
+      : { titulo: "Preinscripción lista para continuar", tono: "lista" as const, icono: "valido" as const };
 
-import "./detalle.css";
+const INICIALES = estudiante.nombre
+    .split(" ")
+    .slice(0, 2)
+    .map((parte) => parte[0])
+    .join("");
 
-type EstadoDocumento =
-    | "Válido"
-    | "No válido"
-    | "Inconsistente"
-    | "Por revisar";
-
-type TipoPrograma = "PREGRADO" | "POSGRADO";
-
-interface Documento {
-    id: string;
-    nombre: string;
-    descripcion: string;
-    estado: EstadoDocumento;
-    mensaje: string;
-    obligatorio: boolean;
+function CampoLectura({ etiqueta, valor, ancho = false }: { etiqueta: string; valor: string; ancho?: boolean }) {
+    return (
+        <div className={ancho ? `${styles.campo} ${styles.campoAncho}` : styles.campo}>
+            <dt>{etiqueta}</dt>
+            <dd>{valor}</dd>
+        </div>
+    );
 }
-
-const estudiante = {
-    codigo: "T00012345",
-    tipoDocumento: "Cédula de ciudadanía",
-    numeroDocumento: "1.234.567.890",
-    nombre: "Juan David Pérez Rodríguez",
-    programa: "Ingeniería de Sistemas y Computación",
-    nivel: "PREGRADO" as TipoPrograma,
-    facultad: "Facultad de Ingeniería",
-    direccion: "Carrera 10 # 25-40",
-    telefono: "300 123 4567",
-    correo: "juan.perez@utb.edu.co",
-    ciudad: "Cartagena de Indias",
-    fechaSolicitud: "7 de octubre de 2026",
-};
-
-const documentos: Documento[] = [
-    {
-        id: "cedula",
-        nombre: "Cédula de ciudadanía",
-        descripcion: "Documento de identificación del estudiante",
-        estado: "Válido",
-        mensaje:
-            "El documento suministrado parece auténtico con un nivel de confianza del 98%.",
-        obligatorio: true,
-    },
-    {
-        id: "banner",
-        nombre: "Evaluación de Grado expedida por Banner",
-        descripcion: "Evaluación de grado generada por el sistema académico",
-        estado: "Válido",
-        mensaje: "Cumples con los requisitos académicos establecidos.",
-        obligatorio: true,
-    },
-    {
-        id: "estampilla",
-        nombre: "Comprobante de pago de estampilla Pro-Cultura",
-        descripcion: "Comprobante de pago correspondiente a la estampilla",
-        estado: "Inconsistente",
-        mensaje:
-            "La información del comprobante no coincide con la información suministrada.",
-        obligatorio: true,
-    },
-    {
-        id: "biblioteca",
-        nombre: "Paz y Salvo de Biblioteca",
-        descripcion:
-            "Certificado de paz y salvo expedido por la Biblioteca",
-        estado: "Válido",
-        mensaje:
-            "Se verificó correctamente la firma electrónica del documento.",
-        obligatorio: true,
-    },
-    {
-        id: "saber-pro",
-        nombre: "Resultados de las Pruebas Saber Pro",
-        descripcion: "Resultados de las pruebas de Estado",
-        estado: "Válido",
-        mensaje:
-            "Cumples con el requisito mínimo de 100 puntos establecido.",
-        obligatorio: true,
-    },
-];
-
-const informacionAdicional = [
-    {
-        label: "Facultad",
-        value: estudiante.facultad,
-    },
-    {
-        label: "Nivel académico",
-        value: estudiante.nivel,
-    },
-    {
-        label: "Ciudad",
-        value: estudiante.ciudad,
-    },
-    {
-        label: "Fecha de solicitud",
-        value: estudiante.fechaSolicitud,
-    },
-];
-
-/* ========================================================= */
-/* DATASET FICTICIO DEL ANÁLISIS AUTOMÁTICO                  */
-/* ========================================================= */
-
-/*
- * IMPORTANTE:
- *
- * Este objeto solamente simula la respuesta que posteriormente
- * entregará el backend.
- *
- * Cuando exista la API, esta información NO debe permanecer aquí.
- *
- * El flujo será:
- *
- * Backend
- *    ↓
- * servicio / fetch
- *    ↓
- * DocumentAnalysisData
- *    ↓
- * DocumentAnalysis
- */
-
-const documentAnalysisMock: Record<
-    string,
-    DocumentAnalysisData
-> = {
-    cedula: {
-        documentType: "Cédula de ciudadanía",
-        fileName: "cedula_1000123456.pdf",
-        status: "VALIDO",
-
-        extractedFields: [
-            {
-                label: "Nombre completo",
-                value: "Juan David Pérez Rodríguez",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Número de documento",
-                value: "1.234.567.890",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Tipo de documento",
-                value: "Cédula de ciudadanía",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Fecha de nacimiento",
-                value: "12/03/2004",
-                source: "Página 1 · OCR",
-            },
-        ],
-
-        validations: [
-            {
-                description:
-                    "El documento corresponde a una cédula de ciudadanía",
-                result: true,
-                detail:
-                    "La estructura y los elementos identificados corresponden al tipo de documento esperado.",
-            },
-            {
-                description:
-                    "La identificación coincide con la solicitud",
-                result: true,
-                detail:
-                    "Documento extraído: 1.234.567.890.",
-            },
-            {
-                description:
-                    "El nombre coincide con la información registrada",
-                result: true,
-                detail:
-                    "Juan David Pérez Rodríguez.",
-            },
-        ],
-    },
-
-    banner: {
-        documentType:
-            "Evaluación de Grado expedida por Banner",
-        fileName: "evaluacion_grado_banner.pdf",
-        status: "VALIDO",
-
-        extractedFields: [
-            {
-                label: "Código estudiantil",
-                value: "T00012345",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Nombre del estudiante",
-                value: "Juan David Pérez Rodríguez",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Programa académico",
-                value:
-                    "Ingeniería de Sistemas y Computación",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Estado académico",
-                value: "Cumple",
-                source: "Página 1 · OCR",
-            },
-        ],
-
-        validations: [
-            {
-                description:
-                    "El documento corresponde a una evaluación de grado",
-                result: true,
-                detail:
-                    "Se identificaron los campos esperados para el documento.",
-            },
-            {
-                description:
-                    "El código estudiantil coincide",
-                result: true,
-                detail:
-                    "Código encontrado: T00012345.",
-            },
-            {
-                description:
-                    "El estado académico permite continuar",
-                result: true,
-                detail:
-                    "El documento indica que el estudiante cumple.",
-            },
-        ],
-    },
-
-    estampilla: {
-        documentType:
-            "Comprobante de pago de estampilla Pro-Cultura",
-        fileName: "estampilla_pro_cultura.pdf",
-        status: "INCONSISTENTE",
-
-        extractedFields: [
-            {
-                label: "Nombre",
-                value: "Juan David Pérez Rodríguez",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Número de identificación",
-                value: "1.234.567.890",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Valor pagado",
-                value: "$85.000",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Referencia de pago",
-                value: "PC-2026-009845",
-                source: "Página 1 · OCR",
-            },
-        ],
-
-        validations: [
-            {
-                description:
-                    "El documento corresponde a un comprobante de pago",
-                result: true,
-                detail:
-                    "Se identificó la estructura de un comprobante.",
-            },
-            {
-                description:
-                    "La identificación coincide con la solicitud",
-                result: true,
-                detail:
-                    "Documento extraído: 1.234.567.890.",
-            },
-            {
-                description:
-                    "La referencia del pago presenta inconsistencias",
-                result: false,
-                detail:
-                    "La referencia encontrada requiere revisión.",
-            },
-        ],
-    },
-
-    biblioteca: {
-        documentType: "Paz y Salvo de Biblioteca",
-        fileName: "paz_salvo_biblioteca.pdf",
-        status: "VALIDO",
-
-        extractedFields: [
-            {
-                label: "Nombre del estudiante",
-                value: "Juan David Pérez Rodríguez",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Código estudiantil",
-                value: "T00012345",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Estado",
-                value: "Paz y salvo",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Firma electrónica",
-                value: "Verificada",
-                source: "Metadatos del documento",
-            },
-        ],
-
-        validations: [
-            {
-                description:
-                    "El documento corresponde a un paz y salvo",
-                result: true,
-                detail:
-                    "Se identificaron los elementos requeridos.",
-            },
-            {
-                description:
-                    "El código estudiantil coincide",
-                result: true,
-                detail:
-                    "Código encontrado: T00012345.",
-            },
-            {
-                description:
-                    "La firma electrónica fue verificada",
-                result: true,
-                detail:
-                    "La firma del documento fue validada correctamente.",
-            },
-        ],
-    },
-
-    "saber-pro": {
-        documentType: "Resultados de las Pruebas Saber Pro",
-        fileName: "resultado_saber_pro_1000123456.pdf",
-        status: "VALIDO",
-
-        extractedFields: [
-            {
-                label: "Nombre del estudiante",
-                value: "Juan David Pérez Rodríguez",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Identificación",
-                value: "1.234.567.890",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Puntaje global",
-                value: "287",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Número de registro",
-                value: "123456789",
-                source: "Página 1 · OCR",
-            },
-            {
-                label: "Fecha de aplicación",
-                value: "15/09/2025",
-                source: "Página 1 · OCR",
-            },
-        ],
-
-        validations: [
-            {
-                description:
-                    "El documento corresponde a una prueba Saber Pro",
-                result: true,
-                detail:
-                    "Se identificó correctamente el tipo de resultado.",
-            },
-            {
-                description:
-                    "La identificación coincide con la solicitud",
-                result: true,
-                detail:
-                    "Identificación encontrada: 1.234.567.890.",
-            },
-            {
-                description:
-                    "El puntaje cumple el mínimo requerido",
-                result: true,
-                detail:
-                    "Puntaje obtenido: 287. Mínimo requerido: 100.",
-            },
-            {
-                description:
-                    "Los datos obligatorios fueron encontrados",
-                result: true,
-                detail:
-                    "Todos los campos requeridos fueron identificados.",
-            },
-        ],
-    },
-};
 
 export default function DetallePreinscripcionPage() {
-
+    const { usuario, cargando } = useSesion("funcionario");
     const [pestana, setPestana] = useState("resumen");
+    const [analisis, setAnalisis] = useState<DocumentAnalysisData | null>(null);
+    const [revisados, setRevisados] = useState<Record<string, boolean>>({});
 
-    /* ========================================================= */
-    /* ESTADO DEL MÓDULO DE ANÁLISIS                             */
-    /* ========================================================= */
+    if (cargando || !usuario) {
+        return (
+            <main id="contenido" tabIndex={-1} className={styles.cargando} aria-busy="true">
+                <p>Verificando sesión...</p>
+            </main>
+        );
+    }
 
-    const [analysisOpen, setAnalysisOpen] = useState(false);
-
-    const [selectedDocument, setSelectedDocument] =
-        useState<DocumentAnalysisData | null>(null);
-
-    const documentosConProblemas = documentos.filter(
-        (documento) => documento.estado !== "Válido"
-    );
-
-    const documentosValidos = documentos.filter(
-        (documento) => documento.estado === "Válido"
-    );
-
-    const estadoGeneral =
-        documentos.some(
-            (documento) => documento.estado === "Por revisar"
-        )
-            ? "Por revisar"
-            : documentos.some(
-                (documento) =>
-                    documento.estado === "No válido" ||
-                    documento.estado === "Inconsistente"
-            )
-                ? "Se requiere corregir documentos"
-                : "Preinscripción lista para continuar";
-
-    /* ========================================================= */
-    /* ABRIR ANÁLISIS AUTOMÁTICO                                 */
-    /* ========================================================= */
-
-    const handleOpenAnalysis = (
-        documento: Documento
-    ) => {
-
-        /*
-         * ACTUALMENTE:
-         * Utilizamos el dataset ficticio.
-         *
-         * FUTURO:
-         * Aquí se realizará la solicitud al backend.
-         *
-         * Ejemplo futuro:
-         *
-         * const response = await fetch(
-         *     `${API_URL}/documentos/${documento.id}/analisis`
-         * );
-         *
-         * const data = await response.json();
-         *
-         * setSelectedDocument(data);
-         */
-
-        const analysis =
-            documentAnalysisMock[documento.id];
-
-        if (!analysis) {
-            console.warn(
-                `No existe análisis ficticio para ${documento.id}`
-            );
-
-            return;
-        }
-
-        setSelectedDocument(analysis);
-        setAnalysisOpen(true);
+    /** Desde una alerta: abre la pestaña Documentos y lleva el foco a ese documento. */
+    const revisar = (documento: Documento) => {
+        setPestana("documentos");
+        requestAnimationFrame(() => document.getElementById(`documento-${documento.id}`)?.focus());
     };
 
-    /* ========================================================= */
-    /* CERRAR ANÁLISIS                                           */
-    /* ========================================================= */
+    const resumen = (
+        <div className={styles.seccion}>
+            <div className={styles.seccionEncabezado}>
+                <h2>Resumen documental</h2>
+                <p>Resultado general del análisis automático de los documentos suministrados.</p>
+            </div>
 
-    const handleCloseAnalysis = () => {
-        setAnalysisOpen(false);
-        setSelectedDocument(null);
-    };
+            <dl className={styles.metricas}>
+                <div className={styles.metrica}>
+                    <dt>Documentos analizados</dt>
+                    <dd className={styles.metricaValor}>{documentos.length}</dd>
+                    <dd>Documentos requeridos</dd>
+                </div>
+                <div className={styles.metrica} data-tono="valido">
+                    <dt>Válidos</dt>
+                    <dd className={styles.metricaValor}>{VALIDOS.length}</dd>
+                    <dd>Sin novedades</dd>
+                </div>
+                <div className={styles.metrica} data-tono="atencion">
+                    <dt>Requieren atención</dt>
+                    <dd className={styles.metricaValor}>{CON_PROBLEMAS.length}</dd>
+                    <dd>Con alertas</dd>
+                </div>
+                <div className={styles.metrica}>
+                    <dt>Nivel académico</dt>
+                    <dd className={styles.metricaValor}>{estudiante.nivel}</dd>
+                    <dd>Tipo de solicitud</dd>
+                </div>
+            </dl>
+
+            {CON_PROBLEMAS.length > 0 && (
+                <Card
+                    titulo="Alertas"
+                    nivelTitulo={3}
+                    acciones={<span className={styles.contador}>{CON_PROBLEMAS.length}</span>}
+                >
+                    <p className={styles.textoSecundario}>Documentos que requieren revisión o corrección.</p>
+                    <ul className={styles.alertas}>
+                        {CON_PROBLEMAS.map((documento) => (
+                            <li key={documento.id} className={styles.alerta}>
+                                <span className={styles.alertaIcono} data-estado={documento.estado}>
+                                    <Icono nombre={documento.estado} />
+                                </span>
+                                <div className={styles.alertaTexto}>
+                                    <div className={styles.filaTitulo}>
+                                        <strong>{documento.nombre}</strong>
+                                        <StatusBadge estado={documento.estado} />
+                                    </div>
+                                    <p>{documento.mensaje}</p>
+                                </div>
+                                <Button
+                                    variante="secundario"
+                                    aria-label={`Revisar ${documento.nombre}`}
+                                    onClick={() => revisar(documento)}
+                                >
+                                    Revisar
+                                </Button>
+                            </li>
+                        ))}
+                    </ul>
+                </Card>
+            )}
+
+            <Card titulo="Estado de los documentos" nivelTitulo={3}>
+                <p className={styles.textoSecundario}>Vista rápida del resultado de cada documento.</p>
+                <ul className={styles.resumenDocumentos}>
+                    {documentos.map((documento) => (
+                        <li key={documento.id} className={styles.resumenDocumento}>
+                            <span className={styles.iconoDocumento}>
+                                <Icono nombre="documento" />
+                            </span>
+                            <div className={styles.resumenTexto}>
+                                <strong>{documento.nombre}</strong>
+                                <span>{documento.descripcion}</span>
+                            </div>
+                            <StatusBadge estado={documento.estado} />
+                        </li>
+                    ))}
+                </ul>
+            </Card>
+        </div>
+    );
+
+    const informacion = (
+        <div className={styles.seccion}>
+            <div className={styles.seccionEncabezado}>
+                <h2>Información del estudiante</h2>
+                <p>Información suministrada durante el proceso de preinscripción.</p>
+            </div>
+
+            <Card titulo="Datos personales" nivelTitulo={3}>
+                <p className={styles.textoSecundario}>Información básica de identificación.</p>
+                <dl className={styles.campos}>
+                    <CampoLectura etiqueta="Código estudiantil" valor={estudiante.codigo} />
+                    <CampoLectura etiqueta="Tipo de documento" valor={estudiante.tipoDocumento} />
+                    <CampoLectura etiqueta="Número de documento" valor={estudiante.numeroDocumento} />
+                    <CampoLectura etiqueta="Nombre completo" valor={estudiante.nombre} ancho />
+                </dl>
+            </Card>
+
+            <Card titulo="Información académica" nivelTitulo={3}>
+                <p className={styles.textoSecundario}>Datos relacionados con la solicitud de grado.</p>
+                <dl className={styles.campos}>
+                    <CampoLectura etiqueta="Carrera / programa" valor={estudiante.programa} ancho />
+                    {informacionAdicional.map((item) => (
+                        <CampoLectura key={item.label} etiqueta={item.label} valor={item.value} />
+                    ))}
+                </dl>
+            </Card>
+
+            <Card titulo="Información de contacto" nivelTitulo={3}>
+                <p className={styles.textoSecundario}>Datos de contacto registrados en la solicitud.</p>
+                <dl className={styles.campos}>
+                    <CampoLectura etiqueta="Dirección" valor={estudiante.direccion} ancho />
+                    <CampoLectura etiqueta="Número de teléfono" valor={estudiante.telefono} />
+                    <CampoLectura etiqueta="Correo electrónico" valor={estudiante.correo} />
+                </dl>
+            </Card>
+        </div>
+    );
+
+    const listaDocumentos = (
+        <div className={styles.seccion}>
+            <div className={styles.seccionEncabezado}>
+                <h2>Documentos analizados</h2>
+                <p>Detalle de los resultados obtenidos durante la validación documental.</p>
+            </div>
+
+            <ul className={styles.documentos}>
+                {documentos.map((documento, indice) => (
+                    <li key={documento.id}>
+                        <article className={styles.documento} aria-labelledby={`documento-${documento.id}`}>
+                            <div className={styles.documentoCabecera}>
+                                <span className={styles.numero} aria-hidden="true">
+                                    {String(indice + 1).padStart(2, "0")}
+                                </span>
+                                <div className={styles.documentoTitulo}>
+                                    <h3 id={`documento-${documento.id}`} tabIndex={-1}>
+                                        {documento.nombre}
+                                    </h3>
+                                    <p>{documento.descripcion}</p>
+                                </div>
+                                <StatusBadge estado={documento.estado} />
+                            </div>
+                            <div className={styles.resultado}>
+                                <p className={styles.resultadoEtiqueta}>Resultado del análisis</p>
+                                <p>{documento.mensaje}</p>
+                            </div>
+                            <div className={styles.acciones}>
+                                <Button
+                                    variante="secundario"
+                                    aria-label={`Ver análisis automático: ${documento.nombre}`}
+                                    onClick={() => setAnalisis(documentAnalysisMock[documento.id] ?? null)}
+                                >
+                                    Ver análisis automático
+                                </Button>
+                                {documento.estado !== "valido" && (
+                                    <Button
+                                        variante="sutil"
+                                        aria-pressed={!!revisados[documento.id]}
+                                        onClick={() =>
+                                            setRevisados((previos) => ({
+                                                ...previos,
+                                                [documento.id]: !previos[documento.id],
+                                            }))
+                                        }
+                                    >
+                                        {revisados[documento.id] && <Icono nombre="valido" />}
+                                        Marcar como revisado
+                                    </Button>
+                                )}
+                            </div>
+                        </article>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 
     return (
-        <div className="detalle-page">
+        <>
+            <Navbar tipoUsuario="funcionario" nombreUsuario={usuario.name} />
+            <main id="contenido" tabIndex={-1} className={styles.pagina}>
+                <PageHeader
+                    ruta={[
+                        { texto: "Funcionarios" },
+                        { texto: "Preinscripciones", href: "/funcionario/dashboard" },
+                        { texto: "Detalle" },
+                    ]}
+                    titulo="Detalle de preinscripción"
+                    descripcion="Revisión documental de la solicitud de grado del estudiante."
+                />
 
-            <Navbar
-                tipoUsuario="funcionario"
-                nombreUsuario="Rosana Marriaga Gonzalez"
-            />
+                <section className={styles.estudiante} aria-labelledby="nombre-estudiante">
+                    <span className={styles.avatar} aria-hidden="true">
+                        {INICIALES}
+                    </span>
+                    <div className={styles.estudianteDatos}>
+                        <div className={styles.filaTitulo}>
+                            <h2 id="nombre-estudiante">{estudiante.nombre}</h2>
+                            <span className={styles.nivel}>{estudiante.nivel}</span>
+                        </div>
+                        <p className={styles.programa}>{estudiante.programa}</p>
+                        <dl className={styles.meta}>
+                            <div>
+                                <dt>Código</dt>
+                                <dd>{estudiante.codigo}</dd>
+                            </div>
+                            <div>
+                                <dt>{estudiante.tipoDocumento}</dt>
+                                <dd>{estudiante.numeroDocumento}</dd>
+                            </div>
+                            <div>
+                                <dt>Correo</dt>
+                                <dd>{estudiante.correo}</dd>
+                            </div>
+                            <div>
+                                <dt>Teléfono</dt>
+                                <dd>{estudiante.telefono}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </section>
 
-            <main className="detalle-container">
-
-                {/* ===================================================== */}
-                {/* ENCABEZADO                                             */}
-                {/* ===================================================== */}
-
-                <section className="page-header">
-
+                <section className={styles.estadoGeneral} data-tono={ESTADO_GENERAL.tono} aria-labelledby="estado-general">
+                    <span className={styles.estadoIcono}>
+                        <Icono nombre={ESTADO_GENERAL.icono} tamano={22} />
+                    </span>
                     <div>
-
-                        <div className="breadcrumb">
-                            Funcionarios / Preinscripciones / Detalle
-                        </div>
-
-                        <div className="title-row">
-
-                            <div>
-
-                                <h1>
-                                    Detalle de preinscripción
-                                </h1>
-
-                                <p>
-                                    Revisión documental de la solicitud
-                                    de grado del estudiante.
-                                </p>
-
-                            </div>
-
-                            <span className="codigo-badge">
-                                {estudiante.codigo}
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </section>
-
-                {/* ===================================================== */}
-                {/* IDENTIFICACIÓN DEL ESTUDIANTE                          */}
-                {/* ===================================================== */}
-
-                <section className="student-header">
-
-                    <div className="student-avatar">
-
-                        {estudiante.nombre
-                            .split(" ")
-                            .slice(0, 2)
-                            .map((nombre) => nombre[0])
-                            .join("")}
-
-                    </div>
-
-                    <div className="student-main-info">
-
-                        <div className="student-name-row">
-
-                            <h2>
-                                {estudiante.nombre}
-                            </h2>
-
-                            <span
-                                className={`program-badge ${
-                                    estudiante.nivel === "POSGRADO"
-                                        ? "program-postgrado"
-                                        : "program-pregrado"
-                                }`}
-                            >
-                                {estudiante.nivel}
-                            </span>
-
-                        </div>
-
+                        <p className={styles.estadoEtiqueta}>Estado general</p>
+                        <h2 id="estado-general">{ESTADO_GENERAL.titulo}</h2>
                         <p>
-                            {estudiante.programa}
+                            {CON_PROBLEMAS.length > 0
+                                ? `${CON_PROBLEMAS.length} ${
+                                      CON_PROBLEMAS.length === 1 ? "documento requiere" : "documentos requieren"
+                                  } atención antes de continuar con el proceso.`
+                                : "Todos los documentos requeridos fueron validados correctamente."}
                         </p>
-
-                        <div className="student-meta">
-
-                            <span>
-                                <strong>
-                                    {estudiante.tipoDocumento}:
-                                </strong>{" "}
-                                {estudiante.numeroDocumento}
-                            </span>
-
-                            <span>
-                                {estudiante.correo}
-                            </span>
-
-                            <span>
-                                {estudiante.telefono}
-                            </span>
-
-                        </div>
-
                     </div>
-
                 </section>
 
-                {/* ===================================================== */}
-                {/* ESTADO GENERAL                                          */}
-                {/* ===================================================== */}
-
-                <section
-                    className={`general-status ${
-                        estadoGeneral ===
-                        "Preinscripción lista para continuar"
-                            ? "status-success"
-                            : estadoGeneral === "Por revisar"
-                                ? "status-review"
-                                : "status-warning"
-                    }`}
-                >
-
-                    <div className="status-icon">
-
-                        {estadoGeneral ===
-                        "Preinscripción lista para continuar"
-                            ? "✓"
-                            : estadoGeneral === "Por revisar"
-                                ? "?"
-                                : "!"}
-
-                    </div>
-
-                    <div className="status-content">
-
-                        <span className="status-label">
-                            Estado general
-                        </span>
-
-                        <h2>
-                            {estadoGeneral}
-                        </h2>
-
-                        {documentosConProblemas.length > 0 ? (
-                            <p>
-                                {documentosConProblemas.length} documento
-                                {documentosConProblemas.length !== 1
-                                    ? "s requieren"
-                                    : " requiere"}{" "}
-                                atención antes de continuar con el proceso.
-                            </p>
-                        ) : (
-                            <p>
-                                Todos los documentos requeridos fueron
-                                validados correctamente.
-                            </p>
-                        )}
-
-                    </div>
-
-                </section>
-
-                {/* ===================================================== */}
-                {/* PESTAÑAS                                                */}
-                {/* ===================================================== */}
-
-                <nav className="detail-tabs">
-
-                    <button
-                        className={
-                            pestana === "resumen"
-                                ? "active"
-                                : ""
-                        }
-                        onClick={() =>
-                            setPestana("resumen")
-                        }
-                    >
-                        Resumen documental
-                    </button>
-
-                    <button
-                        className={
-                            pestana === "estudiante"
-                                ? "active"
-                                : ""
-                        }
-                        onClick={() =>
-                            setPestana("estudiante")
-                        }
-                    >
-                        Información del estudiante
-                    </button>
-
-                    <button
-                        className={
-                            pestana === "documentos"
-                                ? "active"
-                                : ""
-                        }
-                        onClick={() =>
-                            setPestana("documentos")
-                        }
-                    >
-                        Documentos
-                    </button>
-
-                </nav>
-
-                {/* ===================================================== */}
-                {/* RESUMEN DOCUMENTAL                                      */}
-                {/* ===================================================== */}
-
-                {pestana === "resumen" && (
-
-                    <section className="tab-content">
-
-                        <div className="section-heading">
-
-                            <div>
-
-                                <h2>
-                                    Resumen documental
-                                </h2>
-
-                                <p>
-                                    Resultado general del análisis
-                                    automático de los documentos
-                                    suministrados.
-                                </p>
-
-                            </div>
-
-                        </div>
-
-                        <div className="metrics-grid">
-
-                            <div className="metric-card">
-
-                                <span className="metric-title">
-                                    Documentos analizados
-                                </span>
-
-                                <strong>
-                                    {documentos.length}
-                                </strong>
-
-                                <span className="metric-description">
-                                    Documentos requeridos
-                                </span>
-
-                            </div>
-
-                            <div className="metric-card metric-success">
-
-                                <span className="metric-title">
-                                    Válidos
-                                </span>
-
-                                <strong>
-                                    {documentosValidos.length}
-                                </strong>
-
-                                <span className="metric-description">
-                                    Sin novedades
-                                </span>
-
-                            </div>
-
-                            <div className="metric-card metric-danger">
-
-                                <span className="metric-title">
-                                    Requieren atención
-                                </span>
-
-                                <strong>
-                                    {documentosConProblemas.length}
-                                </strong>
-
-                                <span className="metric-description">
-                                    Con alertas
-                                </span>
-
-                            </div>
-
-                            <div className="metric-card">
-
-                                <span className="metric-title">
-                                    Nivel académico
-                                </span>
-
-                                <strong>
-                                    {estudiante.nivel}
-                                </strong>
-
-                                <span className="metric-description">
-                                    Tipo de solicitud
-                                </span>
-
-                            </div>
-
-                        </div>
-
-                        {documentosConProblemas.length > 0 && (
-
-                            <div className="content-block">
-
-                                <div className="block-header">
-
-                                    <div>
-
-                                        <h3>
-                                            Alertas
-                                        </h3>
-
-                                        <p>
-                                            Documentos que requieren
-                                            revisión o corrección.
-                                        </p>
-
-                                    </div>
-
-                                    <span className="alert-count">
-                                        {documentosConProblemas.length}
-                                    </span>
-
-                                </div>
-
-                                <div className="alerts-list">
-
-                                    {documentosConProblemas.map(
-                                        (documento) => (
-
-                                            <div
-                                                className="alert-item"
-                                                key={documento.id}
-                                            >
-
-                                                <div
-                                                    className={`alert-status-icon ${getStatusClass(
-                                                        documento.estado
-                                                    )}`}
-                                                >
-                                                    !
-                                                </div>
-
-                                                <div className="alert-information">
-
-                                                    <div className="alert-title-row">
-
-                                                        <strong>
-                                                            {documento.nombre}
-                                                        </strong>
-
-                                                        <StatusBadge
-                                                            estado={
-                                                                documento.estado
-                                                            }
-                                                        />
-
-                                                    </div>
-
-                                                    <p>
-                                                        {documento.mensaje}
-                                                    </p>
-
-                                                </div>
-
-                                                <button
-                                                    className="secondary-button"
-                                                    onClick={() =>
-                                                        setPestana(
-                                                            "documentos"
-                                                        )
-                                                    }
-                                                >
-                                                    Revisar
-                                                </button>
-
-                                            </div>
-
-                                        )
-                                    )}
-
-                                </div>
-
-                            </div>
-
-                        )}
-
-                        <div className="content-block">
-
-                            <div className="block-header">
-
-                                <div>
-
-                                    <h3>
-                                        Estado de los documentos
-                                    </h3>
-
-                                    <p>
-                                        Vista rápida del resultado
-                                        de cada documento.
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-                            <div className="document-summary-list">
-
-                                {documentos.map(
-                                    (documento) => (
-
-                                        <div
-                                            className="document-summary-item"
-                                            key={documento.id}
-                                        >
-
-                                            <div className="document-summary-main">
-
-                                                <div className="document-icon">
-                                                    PDF
-                                                </div>
-
-                                                <div>
-
-                                                    <strong>
-                                                        {documento.nombre}
-                                                    </strong>
-
-                                                    <p>
-                                                        {documento.descripcion}
-                                                    </p>
-
-                                                </div>
-
-                                            </div>
-
-                                            <StatusBadge
-                                                estado={
-                                                    documento.estado
-                                                }
-                                            />
-
-                                        </div>
-
-                                    )
-                                )}
-
-                            </div>
-
-                        </div>
-
-                    </section>
-                )}
-
-                {/* ===================================================== */}
-                {/* INFORMACIÓN DEL ESTUDIANTE                              */}
-                {/* ===================================================== */}
-
-                {pestana === "estudiante" && (
-
-                    <section className="tab-content">
-
-                        <div className="section-heading">
-
-                            <div>
-
-                                <h2>
-                                    Información del estudiante
-                                </h2>
-
-                                <p>
-                                    Información suministrada durante
-                                    el proceso de preinscripción.
-                                </p>
-
-                            </div>
-
-                        </div>
-
-                        <div className="content-block">
-
-                            <div className="block-header">
-
-                                <div>
-
-                                    <h3>
-                                        Datos personales
-                                    </h3>
-
-                                    <p>
-                                        Información básica de identificación.
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-                            <div className="form-grid">
-
-                                <ReadOnlyField
-                                    label="Código estudiantil"
-                                    value={estudiante.codigo}
-                                />
-
-                                <ReadOnlyField
-                                    label="Tipo de documento"
-                                    value={estudiante.tipoDocumento}
-                                />
-
-                                <ReadOnlyField
-                                    label="Número de documento"
-                                    value={estudiante.numeroDocumento}
-                                />
-
-                                <ReadOnlyField
-                                    label="Nombre completo"
-                                    value={estudiante.nombre}
-                                    wide
-                                />
-
-                            </div>
-
-                        </div>
-
-                        <div className="content-block">
-
-                            <div className="block-header">
-
-                                <div>
-
-                                    <h3>
-                                        Información académica
-                                    </h3>
-
-                                    <p>
-                                        Datos relacionados con la
-                                        solicitud de grado.
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-                            <div className="form-grid">
-
-                                <ReadOnlyField
-                                    label="Carrera / programa"
-                                    value={estudiante.programa}
-                                    wide
-                                />
-
-                                {informacionAdicional.map(
-                                    (item) => (
-
-                                        <ReadOnlyField
-                                            key={item.label}
-                                            label={item.label}
-                                            value={item.value}
-                                        />
-
-                                    )
-                                )}
-
-                            </div>
-
-                        </div>
-
-                        <div className="content-block">
-
-                            <div className="block-header">
-
-                                <div>
-
-                                    <h3>
-                                        Información de contacto
-                                    </h3>
-
-                                    <p>
-                                        Datos de contacto registrados
-                                        en la solicitud.
-                                    </p>
-
-                                </div>
-
-                            </div>
-
-                            <div className="form-grid">
-
-                                <ReadOnlyField
-                                    label="Dirección"
-                                    value={estudiante.direccion}
-                                    wide
-                                />
-
-                                <ReadOnlyField
-                                    label="Número de teléfono"
-                                    value={estudiante.telefono}
-                                />
-
-                                <ReadOnlyField
-                                    label="Correo electrónico"
-                                    value={estudiante.correo}
-                                />
-
-                            </div>
-
-                        </div>
-
-                    </section>
-                )}
-
-                {/* ===================================================== */}
-                {/* DOCUMENTOS                                              */}
-                {/* ===================================================== */}
-
-                {pestana === "documentos" && (
-
-                    <section className="tab-content">
-
-                        <div className="section-heading">
-
-                            <div>
-
-                                <h2>
-                                    Documentos analizados
-                                </h2>
-
-                                <p>
-                                    Detalle de los resultados obtenidos
-                                    durante la validación documental.
-                                </p>
-
-                            </div>
-
-                        </div>
-
-                        <div className="documents-detail-list">
-
-                            {documentos.map(
-                                (documento, index) => (
-
-                                    <article
-                                        className="document-detail-card"
-                                        key={documento.id}
-                                    >
-
-                                        <div className="document-detail-header">
-
-                                            <div className="document-number">
-                                                {String(index + 1).padStart(
-                                                    2,
-                                                    "0"
-                                                )}
-                                            </div>
-
-                                            <div className="document-detail-title">
-
-                                                <h3>
-                                                    {documento.nombre}
-                                                </h3>
-
-                                                <p>
-                                                    {documento.descripcion}
-                                                </p>
-
-                                            </div>
-
-                                            <StatusBadge
-                                                estado={
-                                                    documento.estado
-                                                }
-                                            />
-
-                                        </div>
-
-                                        <div className="document-message">
-
-                                            <span className="message-label">
-                                                Resultado del análisis
-                                            </span>
-
-                                            <p>
-                                                {documento.mensaje}
-                                            </p>
-
-                                        </div>
-
-                                        <div className="document-actions">
-
-                                            <button
-                                                className="secondary-button"
-                                                onClick={() =>
-                                                    handleOpenAnalysis(
-                                                        documento
-                                                    )
-                                                }
-                                            >
-                                                Ver análisis automático
-                                            </button>
-
-                                            {(documento.estado ===
-                                                "Por revisar" ||
-                                                documento.estado ===
-                                                    "Inconsistente" ||
-                                                documento.estado ===
-                                                    "No válido") && (
-
-                                                <button className="outline-button">
-                                                    Marcar como revisado
-                                                </button>
-
-                                            )}
-
-                                        </div>
-
-                                    </article>
-
-                                )
-                            )}
-
-                        </div>
-
-                    </section>
-                )}
-
+                <Tabs
+                    etiqueta="Secciones de la preinscripción"
+                    activa={pestana}
+                    alCambiar={setPestana}
+                    pestanas={[
+                        { id: "resumen", titulo: "Resumen documental", contenido: resumen },
+                        { id: "estudiante", titulo: "Información del estudiante", contenido: informacion },
+                        { id: "documentos", titulo: "Documentos", contenido: listaDocumentos },
+                    ]}
+                />
             </main>
 
-            {/* ========================================================= */}
-            {/* MÓDULO REUTILIZABLE DE ANÁLISIS                            */}
-            {/* ========================================================= */}
-
-            <DocumentAnalysis
-                open={analysisOpen}
-                onClose={handleCloseAnalysis}
-                data={selectedDocument}
-            />
-
-        </div>
+            <DocumentAnalysis open={analisis !== null} onClose={() => setAnalisis(null)} data={analisis} />
+        </>
     );
-}
-
-/* ========================================================= */
-/* COMPONENTES                                                */
-/* ========================================================= */
-
-function ReadOnlyField({
-    label,
-    value,
-    wide = false,
-}: {
-    label: string;
-    value: string;
-    wide?: boolean;
-}) {
-    return (
-        <div
-            className={`readonly-field ${
-                wide ? "field-wide" : ""
-            }`}
-        >
-            <label>
-                {label}
-            </label>
-
-            <div className="readonly-value">
-                {value}
-            </div>
-        </div>
-    );
-}
-
-function StatusBadge({
-    estado,
-}: {
-    estado: EstadoDocumento;
-}) {
-    return (
-        <span
-            className={`status-badge ${getStatusClass(
-                estado
-            )}`}
-        >
-            <span className="status-dot" />
-            {estado}
-        </span>
-    );
-}
-
-function getStatusClass(
-    estado: EstadoDocumento
-) {
-    switch (estado) {
-
-        case "Válido":
-            return "valid";
-
-        case "No válido":
-            return "invalid";
-
-        case "Inconsistente":
-            return "inconsistent";
-
-        case "Por revisar":
-            return "review";
-
-        default:
-            return "";
-    }
 }

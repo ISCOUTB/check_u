@@ -1,0 +1,34 @@
+.boton {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-text);
+    cursor: pointer;
+    transition:
+        background-color var(--duracion-rapida) ease,
+        transform var(--duracion-rapida) var(--ease-out);
+}
+
+.boton:active {
+    transform: scale(0.94);
+}
+
+.boton svg {
+    transition: transform var(--duracion) var(--ease-out);
+}
+
+.boton[aria-pressed="true"] svg {
+    transform: rotate(-20deg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .boton:hover {
+        background: var(--color-accent-soft);
+        color: var(--color-accent-text);
+    }
+}

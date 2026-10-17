@@ -1,0 +1,189 @@
+/* Celular: la foto es una franja arriba y el formulario debajo. Desde 1024 px, lado a lado. */
+.login {
+    display: grid;
+    grid-template-areas:
+        "foto"
+        "formulario";
+    grid-template-rows: auto 1fr;
+    min-height: 100dvh;
+    background: var(--color-bg);
+}
+
+.columnaFormulario {
+    grid-area: formulario;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6) var(--space-4) var(--space-8);
+}
+
+.contenido {
+    width: 100%;
+    max-width: 430px;
+}
+
+.logos {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-7);
+}
+
+.logosDerecha {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.logos img {
+    width: auto;
+    height: 48px;
+}
+
+/* El logo de CheckU trae fondo blanco: se presenta como ícono de aplicación en los dos temas. */
+.logos img:first-child {
+    border-radius: var(--radius-icon);
+}
+
+.titulo {
+    color: var(--color-title);
+    font-size: clamp(28px, 6vw, 36px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    text-wrap: balance;
+}
+
+.subtitulo {
+    margin: var(--space-3) 0 var(--space-7);
+    color: var(--color-text-secondary);
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.formulario {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.olvido {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: calc(var(--space-2) * -1);
+}
+
+.error {
+    padding: var(--space-3) var(--space-4);
+    background: var(--status-invalid-bg);
+    border-radius: var(--radius-control);
+    color: var(--status-invalid-text);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.enviar {
+    width: 100%;
+    min-height: 48px;
+}
+
+.aviso {
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+/* Vacía, la región sigue en el árbol de accesibilidad (oculta solo a la vista) para que se anuncie. */
+.aviso:empty {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.descripcion {
+    margin-top: var(--space-7);
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.columnaFoto {
+    grid-area: foto;
+    padding: var(--space-3) var(--space-3) 0;
+}
+
+.foto {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    min-height: 168px;
+    height: 100%;
+    overflow: hidden;
+    border-radius: var(--radius-card);
+    background: var(--overlay-photo-strong);
+}
+
+.imagen {
+    object-fit: cover;
+    object-position: center 35%;
+}
+
+.textoFoto {
+    position: relative;
+    width: 100%;
+    padding: var(--space-6) var(--space-5) var(--space-5);
+    background: linear-gradient(to top, var(--overlay-photo-strong) 35%, var(--overlay-photo-weak));
+    color: var(--color-on-photo);
+}
+
+.marca {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+}
+
+.lema {
+    margin-top: var(--space-2);
+    font-size: clamp(20px, 5vw, 38px);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+
+.bajada {
+    display: none;
+    max-width: 46ch;
+    margin-top: var(--space-3);
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+@media (min-width: 1024px) {
+    .login {
+        grid-template-areas: "formulario foto";
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+        grid-template-rows: 1fr;
+    }
+
+    .columnaFormulario {
+        padding: var(--space-8) 6%;
+    }
+
+    .columnaFoto {
+        padding: var(--space-6);
+    }
+
+    .foto {
+        min-height: calc(100dvh - 48px);
+    }
+
+    .textoFoto {
+        padding: 55px;
+    }
+
+    .bajada {
+        display: block;
+    }
+}

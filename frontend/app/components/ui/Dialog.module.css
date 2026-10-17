@@ -1,0 +1,123 @@
+.dialogo {
+    width: min(100% - var(--space-6), 1040px);
+    max-height: min(100% - var(--space-6), 920px);
+    margin: auto;
+    padding: 0;
+    overflow: hidden;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-popover);
+    color: var(--color-text);
+    opacity: 0;
+    transform: scale(0.97);
+    transition:
+        opacity var(--duracion) var(--ease-out),
+        transform var(--duracion) var(--ease-out),
+        overlay var(--duracion) allow-discrete,
+        display var(--duracion) allow-discrete;
+}
+
+.dialogo[open] {
+    display: flex;
+    opacity: 1;
+    transform: scale(1);
+}
+
+@starting-style {
+    .dialogo[open] {
+        opacity: 0;
+        transform: scale(0.97);
+    }
+}
+
+.dialogo::backdrop {
+    background: var(--overlay-photo-strong);
+}
+
+.contenido {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-height: inherit;
+}
+
+.cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding: var(--space-5) var(--space-6);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.titulos {
+    min-width: 0;
+}
+
+.etiqueta {
+    color: var(--color-accent-text);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.titulo {
+    margin-top: var(--space-1);
+    color: var(--color-title);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.3;
+    text-wrap: balance;
+}
+
+.descripcion {
+    margin-top: var(--space-1);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.cerrar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+.cuerpo {
+    overflow-y: auto;
+    padding: var(--space-6);
+}
+
+/* El contorno va por dentro: por fuera lo recortaría el diálogo. */
+.cuerpo:focus-visible {
+    outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .cerrar:hover {
+        background: var(--color-surface-muted);
+    }
+}
+
+@media (max-width: 480px) {
+    .dialogo {
+        width: 100%;
+        max-height: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+
+    .cabecera,
+    .cuerpo {
+        padding: var(--space-4);
+    }
+}
