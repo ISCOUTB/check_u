@@ -229,15 +229,17 @@ export async function obtenerSolicitudDetalle(): Promise<SolicitudDetalle> {
 export async function enviarDocumentosReenvio(
   _solicitudId: string,
   tipos: TipoDocumento[],
-  _idempotencyKey: string
+  idempotencyKey: string
 ): Promise<{ ok: boolean; mensaje: string }> {
   await new Promise((r) => setTimeout(r, 400));
+
+  // SIMULADO: en producción se envía la cabecera Idempotency-Key
+  void idempotencyKey;
 
   if (tipos.length === 0) {
     return { ok: false, mensaje: "No hay documentos seleccionados." };
   }
 
-  // Simulación simple de éxito
   return {
     ok: true,
     mensaje: `Se enviaron ${tipos.length} documento(s) para revalidación.`,
