@@ -30,6 +30,18 @@ resultado["document_classification"]  # "valid" | "invalid" | "to_check"
 
 La raíz del repositorio debe estar en `sys.path` (igual que en `webapp/app.py`).
 
+### Probarlo con tu propio PDF
+
+Desde la raíz del repositorio:
+
+```bash
+venv/Scripts/python.exe -m modules.validadores.saber_pro "ruta/a/tu-reporte.pdf"
+```
+
+Muestra la clasificación, los datos extraídos y cada regla con su mensaje. También acepta una carpeta (valida todos sus PDF), y con `--json` muestra el resultado completo del contrato. Nada se guarda ni se envía.
+
+Un consejo para la prueba: descarga el reporte de icfes.gov.co y pásalo **sin abrirlo antes en el navegador**. Si se abre y se guarda desde Chrome o Edge, la firma del ICFES deja de ser verificable y el reporte queda por revisar.
+
 ## Instalar y probar
 
 Desde la raíz del repositorio, con el `venv`:
