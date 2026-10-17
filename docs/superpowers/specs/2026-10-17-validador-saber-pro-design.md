@@ -143,7 +143,7 @@ Todas devuelven el `RuleEvaluation` del contrato. El mensaje incluye la evidenci
 | `saber_pro_report` | sí | Tiene texto, dice "Reporte de resultados" y trae un registro `EK` | Tiene texto pero es otro documento (por ejemplo, un Saber 11 con registro `AC`) | Vacío, dañado o sin texto (`low_confidence`) |
 | `required_fields_present` | sí | Están nombre, tipo y número de identificación, registro y fecha | (nunca) | Falta alguno (`low_confidence`) |
 | `global_score_minimum` | sí | Puntaje ≥ `PUNTAJE_MINIMO` (100) | Puntaje < 100 | No se encontró el puntaje (`low_confidence`) |
-| `icfes_signature_intact` | sí | Hay firma, el PDF no cambió después de firmarse y la firmó el ICFES (NIT 860024301-6) | El PDF se modificó después de firmarse, o lo firmó otro | Sin firma, o firma no verificable porque el archivo se guardó de nuevo (`low_confidence`) |
+| `icfes_signature_intact` | sí | Hay firma, el PDF no cambió después de firmarse y la firmó el ICFES: NIT 860024301-6 **en un certificado emitido por Camerfirma**. La emisión se verifica criptográficamente, sin exigir que el certificado esté vigente; un certificado propio que solo diga tener ese NIT no pasa (arreglo de la revisión final) | El PDF se modificó después de firmarse, o lo firmó otro | Sin firma, o firma no verificable porque el archivo se guardó de nuevo (`low_confidence`) |
 | `icfes_certificate_valid` | **no** | Cadena hasta la raíz de Camerfirma, certificado vigente al firmar y no revocado | ⚠️ Certificado vencido al firmar, revocado, o de otra autoridad | Sin firma (`missing_dependency`), o no se pudo consultar la revocación (`source_unavailable`) |
 
 - Si `saber_pro_report` no cumple o no es evaluable, las otras 4 quedan `no_evaluable` con motivo `missing_dependency`.
