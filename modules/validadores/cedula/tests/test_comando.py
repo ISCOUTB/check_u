@@ -42,10 +42,31 @@ def test_archivo_inexistente(tmp_path, capsys):
     assert "No existe" in capsys.readouterr().out
 
 
-def test_sin_rui_no_consulta(tmp_path, capsys, monkeypatch):
+def test_sin_rui_no_consulta(requiere_tesseract, png, tmp_path, capsys, monkeypatch):
+    # Con una cédula legible sí se llegaría a consultar: sin --rui no debe salir el número.
     import modules.validadores.fuentes.rui as rui
 
-    monkeypatch.setattr(rui, "consultar_rui", lambda *a, **k: (_ for _ in ()).throw(AssertionError("consultó el RUI")))
-    vacio = tmp_path / "vacia.png"
-    vacio.write_bytes(b"")
-    assert main([str(vacio)]) == 0
+    def prohibido(*_args, **_kwargs):
+        raise AssertionError("consultó el RUI sin --rui")
+
+    monkeypatch.setattr(rui, "consultar_rui", prohibido)
+    archivo = tmp_path / "cedula.png"
+    archivo.write_bytes(png)
+    assert main([str(archivo)]) == 0
+    assert "No se consultó el RUI: usa --rui para consultarlo." in capsys.readouterr().out
+
+
+def test_con_rui_consulta(requiere_tesseract, png, tmp_path, capsys, monkeypatch):
+    import modules.validadores.fuentes.rui as rui
+
+    consultados = []
+
+    def simulado(numero, **_kwargs):
+        consultados.append(numero)
+        return rui.RespuestaRui("sin_respuesta", None, "simulado")
+
+    monkeypatch.setattr(rui, "consultar_rui", simulado)
+    archivo = tmp_path / "cedula.png"
+    archivo.write_bytes(png)
+    assert main([str(archivo), "--rui"]) == 0
+    assert consultados == ["79937877"]
