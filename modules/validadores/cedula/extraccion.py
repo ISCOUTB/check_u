@@ -19,19 +19,22 @@ CAMPOS = ("full_name", "identification_type", "identification_number", "birth_da
 # Se comparan solo letras (sin espacios ni signos): el OCR pega palabras ("LUGARDENACIMIENTO") y
 # mete signos sueltos ("GS.RH.").
 MARCAS_EXTRANJERIA = ("EXTRANJERIA", "MIGRACIONCOLOMBIA")
-# Vocabulario del frente y del reverso de la cédula de ciudadanía. Hacen falta al menos
-# MARCAS_MINIMAS distintas: una sola ("fecha de nacimiento") aparece en muchos otros documentos.
+# Palabras del frente y del reverso de la cédula de ciudadanía. Son palabras sueltas, no frases: con
+# baja resolución el OCR rompe "REPÚBLICA DE COLOMBIA" pero deja "REPUBLICA" y "COLOMBIA". Hacen
+# falta al menos MARCAS_MINIMAS distintas: una sola ("nacimiento") aparece en muchos documentos.
 VOCABULARIO_CEDULA = (
-    "REPUBLICADECOLOMBIA",
-    "IDENTIFICACIONPERSONAL",
-    "CEDULADECIUDADANIA",
-    "REGISTRADURIA",
+    "REPUBLICA",
+    "COLOMBIA",
+    "IDENTIFICACION",
+    "PERSONAL",
+    "CEDULA",
+    "CIUDADANIA",
     "REGISTRADOR",
-    "FECHADENACIMIENTO",
-    "LUGARDENACIMIENTO",
+    "REGISTRADURIA",
+    "NACIMIENTO",
     "ESTATURA",
     "GSRH",
-    "INDICEDERECHO",
+    "INDICE",
     "EXPEDICION",
 )
 MARCAS_MINIMAS = 2

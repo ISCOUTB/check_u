@@ -34,7 +34,7 @@ NO_ES_CEDULA = "El archivo no es una cédula. Sube una foto o un PDF de tu cédu
 CODIGO_ILEGIBLE = "No se pudo leer el código de la cédula (MRZ o PDF417); un funcionario la revisará."
 
 
-def _regla_documento(extraccion: ExtraccionCedula, ahora: datetime) -> dict:
+def _regla_documento(extraccion: ExtraccionCedula, calidades: list[Calidad], ahora: datetime) -> dict:
     nombre = "identification_document"
     if extraccion.es_cedula:
         return evaluacion(
@@ -44,8 +44,19 @@ def _regla_documento(extraccion: ExtraccionCedula, ahora: datetime) -> dict:
             message=f"Se leyó la cédula: {NOMBRES_FORMATO[extraccion.formato]}.",
             ahora=ahora,
         )
-    if extraccion.es_cedula is False:
+    # "No es una cédula" solo se afirma con una imagen de buena calidad: un escaneo de baja
+    # resolución de una cédula real puede no dejar ninguna palabra reconocible.
+    if extraccion.es_cedula is False and calidades and all(es_suficiente(c) for c in calidades):
         return evaluacion(nombre, "no_cumple", mandatory=True, message=NO_ES_CEDULA, ahora=ahora)
+    if extraccion.es_cedula is False:
+        return evaluacion(
+            nombre,
+            "no_evaluable",
+            mandatory=True,
+            message="No se reconoce como cédula, pero la imagen es de baja calidad; un funcionario la revisará.",
+            motivo="low_confidence",
+            ahora=ahora,
+        )
     return evaluacion(
         nombre,
         "no_evaluable",
@@ -179,7 +190,7 @@ def evaluar(
     umbral_rui: float = UMBRAL_SIMILITUD,
 ) -> list[dict]:
     """Las 5 reglas en orden. Si no es (o no se sabe si es) una cédula, las demás no se evalúan."""
-    documento = _regla_documento(extraccion, ahora)
+    documento = _regla_documento(extraccion, calidades, ahora)
     if documento["result"] != "cumple":
         return [
             documento,

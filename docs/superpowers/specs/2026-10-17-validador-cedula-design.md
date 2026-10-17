@@ -81,7 +81,7 @@ Confianza:
 
 | Regla | Obligatoria | Cumple | No cumple | No evaluable |
 |---|---|---|---|---|
-| `identification_document` | sí | Hay MRZ o PDF417, o el texto dice que es una cédula: de extranjería ("EXTRANJERÍA", "MIGRACIÓN COLOMBIA") o de ciudadanía, con **al menos 2 palabras distintas** del frente o del reverso ("REPÚBLICA DE COLOMBIA", "IDENTIFICACIÓN PERSONAL", "FECHA DE NACIMIENTO", "LUGAR DE NACIMIENTO", "ESTATURA", "G.S. RH", "ÍNDICE DERECHO"…), comparando solo letras porque el OCR pega palabras. Corregido al probar: las muestras son el reverso y no traen las palabras del frente | Hay texto legible (40 caracteres o más) pero no es una cédula | Sin texto legible, o el archivo está vacío o dañado (`low_confidence`) |
+| `identification_document` | sí | Hay MRZ o PDF417, o el texto dice que es una cédula: de extranjería ("EXTRANJERÍA", "MIGRACIÓN COLOMBIA") o de ciudadanía, con **al menos 2 palabras sueltas distintas** del frente o del reverso (REPÚBLICA, COLOMBIA, IDENTIFICACIÓN, PERSONAL, CÉDULA, CIUDADANÍA, NACIMIENTO, ESTATURA, G.S. RH, ÍNDICE, EXPEDICIÓN…), comparando solo letras porque el OCR pega y rompe palabras | Hay texto legible (40 caracteres o más) que no es de una cédula **y la imagen es de buena calidad** (ancho y nitidez sobre los umbrales) | Sin texto legible, archivo vacío o dañado, o no reconocida con una imagen de baja calidad (`low_confidence`) |
 | `required_fields_present` | sí | Nombre, tipo y número con confianza ≥ 0.8 | (nunca) | Falta alguno o está bajo 0.8 (`low_confidence`) |
 | `machine_readable_code` | sí | Digital o extranjería: MRZ con dígitos de control válidos. Amarilla: PDF417 leído | (nunca: un código ilegible no prueba nada) | No se leyó el código o el MRZ no cuadra (`low_confidence`) |
 | `image_quality` | **no** | Resolución y nitidez sobre los umbrales provisionales | Por debajo de alguno (con los valores medidos en el mensaje) | Sin páginas que medir (`missing_dependency`) |
@@ -118,6 +118,20 @@ Nunca `inconsistent`. Mensajes clave:
 - **En memoria:** la conversión de `ResultadoCedula` (fuentes y confianzas, datos bajo 0.8, extranjería, MRZ inválido), cada regla en sus tres resultados, el RUI (coincide, no coincide, sin respuesta, sin registro, extranjería), la calidad (bajo umbral, sin páginas) y bytes vacíos o dañados.
 - Cada resultado se valida contra el esquema del contrato.
 - El comando `__main__` se prueba como el de la 08e.
+
+## 8.1 Prueba con 11 cédulas amarillas reales (17/10/2026)
+
+Héctor pasó 11 PDF de cédulas amarillas escaneadas (de 277 a 472 px de ancho, las dos caras juntas). Se probaron solo en su PC: no están en el repositorio, no se consultó el RUI y no se registraron nombres ni números.
+- Primera corrida:
+  - **5 de 11 salían "no es una cédula"** (no válidas). El OCR de baja resolución rompía las frases ("REPÚBLICA DE COLOMBIA"), y el rechazo no miraba la calidad de la imagen.
+  - Se corrigió (decisión de Héctor) con palabras sueltas y rechazando solo con una imagen de buena calidad.
+- Después del arreglo:
+  - **las 11 quedan por revisar**: ninguna válida y ninguna rechazada;
+  - **ningún dato equivocado aceptado**;
+  - **0 de 11 PDF417 leídos**, porque la resolución no alcanza para el código de barras;
+  - el número sale correcto en 5 (2 con confianza ≥ 0.8);
+  - la calidad marca la baja resolución.
+- Nombres por OCR: `amarilla.py` pierde la confianza al unir nombres y apellidos. Medido con la confianza conservada, 3 nombres correctos tendrían ≥ 0.8, pero también 1 equivocado (68 % parecido) con 0.91. **Héctor decidió dejarlos nulos**: sin PDF417 o MRZ, el nombre lo revisa un funcionario.
 
 ## 9. Pendiente
 

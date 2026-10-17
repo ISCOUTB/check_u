@@ -120,6 +120,12 @@ def test_reverso_de_cedula_es_cedula():
     assert extraccion.formato == "amarilla_hologramas"
 
 
+def test_palabras_sueltas_de_cedula():
+    # Con baja resolución el OCR rompe las frases ("REPUBLICA X COLOMBIA") pero deja palabras sueltas.
+    texto = "REPUBL ICA REPUBLICA X COLOMBIA 4F%$ ## PERSONA L CEDULA ... ruido ruido ruido"
+    assert desde_lectura(lectura(texto=texto)).es_cedula is True
+
+
 def test_una_sola_palabra_de_cedula_no_basta():
     texto = "CERTIFICADO DE NOTAS DEL ESTUDIANTE CON SU FECHA DE NACIMIENTO Y PROMEDIO ACUMULADO DEL SEMESTRE"
     assert desde_lectura(lectura(texto=texto)).es_cedula is False

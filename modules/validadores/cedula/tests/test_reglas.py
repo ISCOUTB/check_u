@@ -61,6 +61,16 @@ def test_no_es_cedula():
         assert reglas[nombre]["no_evaluable_reason"] == "missing_dependency", nombre
 
 
+def test_no_reconocida_con_mala_imagen_queda_por_revisar():
+    # Una cédula real escaneada en baja resolución puede no dejar palabras reconocibles: con mala
+    # imagen no se puede afirmar que no sea una cédula.
+    mala = [Calidad(400, 50.0)]
+    reglas = por_regla(evaluar(extraccion(formato=None, es_cedula=False), mala, None, ahora=AHORA))
+    documento = reglas["identification_document"]
+    assert (documento["result"], documento["no_evaluable_reason"]) == ("no_evaluable", "low_confidence")
+    assert "baja calidad" in documento["message"]
+
+
 def test_ilegible():
     reglas = por_regla(evaluar(extraccion(formato=None, es_cedula=None), [], None, ahora=AHORA))
     assert (reglas["identification_document"]["result"], reglas["identification_document"]["no_evaluable_reason"]) == (
