@@ -112,6 +112,30 @@ services:
         limits:
           cpus: "0.50"
           memory: 384M
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:?define DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?define DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:?define DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
   db-migrate:
     build:
       context: https://github.com/ISCOUTB/check_u.git#${CHECKU_REF:-main}:db
@@ -130,3 +154,4 @@ services:
     command: ["sh", "-c", "for f in /sql/*.sql; do echo \"Aplicando $$f\"; psql -v ON_ERROR_STOP=1 -f \"$$f\" || exit 1; done"]
 volumes:
   casos:
+  postgres_data:
