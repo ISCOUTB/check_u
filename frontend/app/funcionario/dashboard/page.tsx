@@ -42,13 +42,14 @@ export default function Dashboard() {
 
     const filtradas = filtro === "todos" ? SOLICITUDES : SOLICITUDES.filter((s) => s.estado === filtro);
 
-    /** Desde un contador: filtra la lista y la trae a la vista. */
+    /** Desde un contador: filtra la lista y lleva el foco a su título, debajo de la barra fija. */
     const verEstado = (estado: EstadoSolicitud) => {
         setFiltro(estado);
-        const reducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        requestAnimationFrame(() =>
-            document.getElementById("solicitudes")?.scrollIntoView({ behavior: reducido ? "auto" : "smooth" }),
-        );
+        requestAnimationFrame(() => {
+            const titulo = document.getElementById("titulo-solicitudes");
+            titulo?.focus({ preventScroll: true });
+            titulo?.scrollIntoView({ block: "start" });
+        });
     };
 
     return (
@@ -64,6 +65,9 @@ export default function Dashboard() {
                     <h2 id="titulo-resumen" className="solo-lector">
                         Resumen por estado
                     </h2>
+                    <p id="ayuda-contadores" className="solo-lector">
+                        Al pulsar un contador se filtra la lista de preinscripciones.
+                    </p>
                     <ul className={styles.contadores}>
                         {CONTEO.map(({ estado, cantidad }) => (
                             <li key={estado}>
@@ -71,6 +75,7 @@ export default function Dashboard() {
                                     type="button"
                                     className={styles.contador}
                                     data-estado={estado}
+                                    aria-describedby="ayuda-contadores"
                                     onClick={() => verEstado(estado)}
                                 >
                                     <span className={styles.contadorCabecera}>
@@ -105,6 +110,7 @@ export default function Dashboard() {
 
                 <Card
                     id="solicitudes"
+                    tituloId="titulo-solicitudes"
                     titulo="Preinscripciones"
                     className={styles.listado}
                     acciones={

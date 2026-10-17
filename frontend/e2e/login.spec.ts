@@ -91,4 +91,27 @@ test.describe("login", () => {
             "La recuperación de contraseña todavía no está disponible.",
         );
     });
+
+    test("la región del aviso ya existe (vacía) antes de pulsar, para que se anuncie", async ({ page }) => {
+        await sesionComo(page, null);
+        await page.goto("/");
+        await expect(page.locator("main").getByRole("status")).toBeAttached();
+        await expect(page.locator("main").getByRole("status")).toHaveText("");
+    });
+
+    test("enviar con campos vacíos no llama al backend y marca cada campo", async ({ page }) => {
+        await sesionComo(page, null);
+        let llamadas = 0;
+        await page.route(`${API}/auth/login`, (r) => {
+            llamadas++;
+            return r.fulfill({ status: 401, json: { message: "Usuario o contraseña incorrectos" } });
+        });
+        await page.goto("/");
+        await page.getByRole("button", { name: "Iniciar sesión" }).click();
+        await expect(page.getByText("Ingresa tu correo institucional o usuario.")).toBeVisible();
+        await expect(page.getByText("Ingresa tu contraseña.")).toBeVisible();
+        await expect(page.getByLabel("Correo institucional o usuario de prueba")).toHaveAttribute("aria-invalid", "true");
+        await expect(page.getByLabel("Correo institucional o usuario de prueba")).toBeFocused();
+        expect(llamadas).toBe(0);
+    });
 });

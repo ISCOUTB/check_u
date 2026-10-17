@@ -8,12 +8,15 @@ export interface CardProps {
     acciones?: ReactNode;
     className?: string;
     id?: string;
+    /** Id fijo para el título; lo hace enfocable (tabIndex -1) para llevar el foco a la sección. */
+    tituloId?: string;
     children: ReactNode;
 }
 
 /** Sección con fondo de superficie; su título la nombra para el lector de pantalla. */
-export default function Card({ titulo, nivelTitulo = 2, acciones, className, id, children }: CardProps) {
-    const idTitulo = useId();
+export default function Card({ titulo, nivelTitulo = 2, acciones, className, id, tituloId, children }: CardProps) {
+    const generado = useId();
+    const idTitulo = tituloId ?? generado;
     const Titulo = nivelTitulo === 2 ? "h2" : "h3";
 
     return (
@@ -25,7 +28,7 @@ export default function Card({ titulo, nivelTitulo = 2, acciones, className, id,
             {(titulo || acciones) && (
                 <div className={styles.cabecera}>
                     {titulo && (
-                        <Titulo id={idTitulo} className={styles.titulo}>
+                        <Titulo id={idTitulo} className={styles.titulo} tabIndex={tituloId ? -1 : undefined}>
                             {titulo}
                         </Titulo>
                     )}

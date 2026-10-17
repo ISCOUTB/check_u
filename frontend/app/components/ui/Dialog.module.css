@@ -97,6 +97,11 @@
     padding: var(--space-6);
 }
 
+/* El contorno va por dentro: por fuera lo recortaría el diálogo. */
+.cuerpo:focus-visible {
+    outline-offset: -2px;
+}
+
 @media (hover: hover) and (pointer: fine) {
     .cerrar:hover {
         background: var(--color-surface-muted);

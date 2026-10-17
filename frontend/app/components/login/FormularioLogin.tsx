@@ -17,6 +17,8 @@ interface User {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const ID_ERROR = "login-error";
+const ID_CORREO = "login-correo";
+const ID_CLAVE = "login-clave";
 
 export default function FormularioLogin() {
     const router = useRouter();
@@ -25,12 +27,30 @@ export default function FormularioLogin() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [aviso, setAviso] = useState("");
+    const [faltan, setFaltan] = useState<{ correo?: string; clave?: string }>({});
+
+    /** Vacía la región y luego escribe: así el lector lo anuncia aunque el texto se repita. */
+    function anunciar(texto: string) {
+        setAviso("");
+        requestAnimationFrame(() => setAviso(texto));
+    }
     const [cargando, setCargando] = useState(false);
 
     async function iniciarSesion(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError("");
         setAviso("");
+
+        const vacios = {
+            correo: email.trim() ? undefined : "Ingresa tu correo institucional o usuario.",
+            clave: password ? undefined : "Ingresa tu contraseña.",
+        };
+        setFaltan(vacios);
+        if (vacios.correo || vacios.clave) {
+            document.getElementById(vacios.correo ? ID_CORREO : ID_CLAVE)?.focus();
+            return;
+        }
+
         setCargando(true);
 
         try {
@@ -97,35 +117,43 @@ export default function FormularioLogin() {
 
                     <form aria-labelledby="titulo-login" className={styles.formulario} onSubmit={iniciarSesion} noValidate>
                         <Field
+                            id={ID_CORREO}
                             etiqueta="Correo institucional o usuario de prueba"
+                            error={faltan.correo}
                             type="text"
                             name="email"
                             placeholder="correo@utb.edu.co"
                             autoComplete="username"
                             required
                             value={email}
-                            onChange={(event) => setEmail(event.target.value)}
+                            onChange={(event) => {
+                                setEmail(event.target.value);
+                                setFaltan((previos) => ({ ...previos, correo: undefined }));
+                            }}
                             {...camposConError}
                         />
 
                         <Field
+                            id={ID_CLAVE}
                             etiqueta="Contraseña"
+                            error={faltan.clave}
                             type="password"
                             name="password"
                             placeholder="Ingresa tu contraseña"
                             autoComplete="current-password"
                             required
                             value={password}
-                            onChange={(event) => setPassword(event.target.value)}
+                            onChange={(event) => {
+                                setPassword(event.target.value);
+                                setFaltan((previos) => ({ ...previos, clave: undefined }));
+                            }}
                             {...camposConError}
                         />
 
                         <div className={styles.olvido}>
                             <Button
                                 variante="sutil"
-                                onClick={() =>
-                                    setAviso("La recuperación de contraseña todavía no está disponible.")
-                                }
+                                onClick={() => anunciar("La recuperación de contraseña todavía no está disponible.")}
                             >
                                 ¿Olvidaste tu contraseña?
                             </Button>

@@ -88,7 +88,10 @@ export default function Dialog({ abierto, alCerrar, titulo, descripcion, etiquet
                         <Icono nombre="cerrar" tamano={20} />
                     </button>
                 </header>
-                <div className={styles.cuerpo}>{children}</div>
+                {/* El cuerpo se desplaza: enfocable para recorrerlo con flechas, AvPág y Fin. */}
+                <div className={styles.cuerpo} tabIndex={0} role="region" aria-labelledby={idTitulo}>
+                    {children}
+                </div>
             </div>
         </dialog>
     );

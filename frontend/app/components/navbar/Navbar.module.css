@@ -87,6 +87,11 @@
     border-color: var(--color-border);
 }
 
+/* Sobre --color-accent-soft el texto secundario no llega a 4.5:1: se usa el texto normal. */
+.botonUsuario[aria-expanded="true"] .rolUsuario {
+    color: var(--color-text);
+}
+
 .datosUsuario {
     display: flex;
     flex-direction: column;
@@ -193,6 +198,10 @@
 @media (hover: hover) and (pointer: fine) {
     .botonUsuario:hover {
         background: var(--color-accent-soft);
+    }
+
+    .botonUsuario:hover .rolUsuario {
+        color: var(--color-text);
     }
 
     .opcion:hover {

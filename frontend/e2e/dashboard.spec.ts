@@ -56,4 +56,36 @@ test.describe("dashboard", () => {
         await page.emulateMedia({ colorScheme: "dark" });
         await expect(figuras.first()).toHaveAttribute("data-tema", "dark");
     });
+
+    test("activar un contador con el teclado filtra y lleva el foco a la lista, a la vista", async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await sesionComo(page, "funcionario");
+        await page.goto(DASHBOARD);
+        const contador = page.getByRole("button", { name: /^Válidas 2/ });
+        await expect(contador).toHaveAccessibleDescription(/filtra la lista/i);
+        await contador.focus();
+        await page.keyboard.press("Enter");
+        await expect(page.getByRole("button", { name: "Válidas", exact: true })).toHaveAttribute("aria-pressed", "true");
+        const titulo = page.getByRole("heading", { name: "Preinscripciones", exact: true });
+        await expect(titulo).toBeFocused();
+        const tapado = await titulo.evaluate(async (e) => {
+            await new Promise((listo) => requestAnimationFrame(() => requestAnimationFrame(listo)));
+            const caja = e.getBoundingClientRect();
+            const visible = document.elementFromPoint(caja.left + 10, caja.top + caja.height / 2);
+            return !visible || !e.contains(visible);
+        });
+        expect(tapado).toBe(false);
+    });
+
+    test("el gráfico se vuelve a pintar con otros colores al cambiar el tema", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+        await page.goto(DASHBOARD);
+        const lienzo = page.locator("figure canvas").first();
+        await expect(page.locator("figure").first()).toHaveAttribute("data-tema", "light");
+        const antes = await lienzo.evaluate((c) => (c as HTMLCanvasElement).toDataURL());
+        await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+        await expect(page.locator("figure").first()).toHaveAttribute("data-tema", "dark");
+        await expect.poll(() => lienzo.evaluate((c) => (c as HTMLCanvasElement).toDataURL())).not.toBe(antes);
+    });
 });

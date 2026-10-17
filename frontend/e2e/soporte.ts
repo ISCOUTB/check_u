@@ -48,12 +48,17 @@ export async function revisarPagina(
     await page.goto(ruta);
     await page.locator('main#contenido:not([aria-busy="true"])').waitFor();
 
+    await revisarAxe(page);
+
+    const desborde = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(desborde, "scroll horizontal en píxeles").toBeLessThanOrEqual(0);
+}
+
+/** axe (WCAG 2.2 A/AA) sobre el estado actual de la página: sirve también con un diálogo o un menú abiertos. */
+export async function revisarAxe(page: Page): Promise<void> {
     const { violations } = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();
     const resumen = violations.map((v) => ({ id: v.id, nodos: v.nodes.map((n) => n.target.join(" ")) }));
     expect(resumen, "violaciones de axe").toEqual([]);
-
-    const desborde = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(desborde, "scroll horizontal en píxeles").toBeLessThanOrEqual(0);
 }

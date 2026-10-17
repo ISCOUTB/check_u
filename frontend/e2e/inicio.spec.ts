@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ANCHOS, revisarPagina, sesionComo, TEMAS } from "./soporte";
+import { ANCHOS, revisarAxe, revisarPagina, sesionComo, TEMAS } from "./soporte";
 
 const INICIO = "/estudiante/home";
 
@@ -85,4 +85,19 @@ test.describe("inicio del estudiante", () => {
             expect(tapado).toBe(false);
         }
     });
+
+    for (const tema of TEMAS)
+        test(`el menú de usuario abierto y con el puntero encima pasa axe (${tema})`, async ({ page }) => {
+            await page.setViewportSize({ width: 1280, height: 900 });
+            await page.emulateMedia({ colorScheme: tema, reducedMotion: "reduce" });
+            await sesionComo(page, "estudiante");
+            await page.goto(INICIO);
+            const boton = page.getByRole("button", { name: /Ana Prueba/ });
+            await boton.click();
+            await expect(boton).toHaveAttribute("aria-expanded", "true");
+            await revisarAxe(page);
+            await page.keyboard.press("Escape");
+            await boton.hover();
+            await revisarAxe(page);
+        });
 });

@@ -92,8 +92,14 @@
     font-size: 14px;
 }
 
+/* Vacía, la región sigue en el árbol de accesibilidad (oculta solo a la vista) para que se anuncie. */
 .aviso:empty {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
 }
 
 .descripcion {

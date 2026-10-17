@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ANCHOS, revisarPagina, sesionComo, TEMAS } from "./soporte";
+import { ANCHOS, revisarAxe, revisarPagina, sesionComo, TEMAS } from "./soporte";
 
 const DETALLE = "/funcionario/detalle_preinscripcion/GR-2026-001";
 
@@ -54,4 +54,38 @@ test.describe("detalle", () => {
         await expect(dialogo).toBeHidden();
         await expect(abrir).toBeFocused();
     });
+
+    for (const [ancho, alto] of [[1280, 720], [360, 740]] as const)
+        for (const tema of TEMAS)
+            test(`el análisis abierto pasa axe y se recorre con el teclado (${tema}, ${ancho}px)`, async ({ page }) => {
+                await page.setViewportSize({ width: ancho, height: alto });
+                await page.emulateMedia({ colorScheme: tema, reducedMotion: "reduce" });
+                await sesionComo(page, "funcionario");
+                await page.goto(DETALLE);
+                await page.getByRole("tab", { name: "Documentos" }).click();
+                await page.getByRole("button", { name: /Ver análisis automático/ }).nth(2).click();
+                const dialogo = page.getByRole("dialog");
+                await expect(dialogo).toBeVisible();
+                await revisarAxe(page);
+                // La región que se desplaza lleva el nombre del diálogo (el documento abierto).
+                const contenido = dialogo.getByRole("region", {
+                    name: "Comprobante de pago de estampilla Pro-Cultura",
+                    exact: true,
+                });
+                await page.keyboard.press("Tab");
+                await expect(contenido).toBeFocused();
+                await page.keyboard.press("End");
+                await expect.poll(() => contenido.evaluate((e) => e.scrollTop)).toBeGreaterThan(0);
+            });
+
+    for (const tema of TEMAS)
+        for (const nombre of ["Información del estudiante", "Documentos"])
+            test(`la pestaña «${nombre}» pasa axe (${tema})`, async ({ page }) => {
+                await page.setViewportSize({ width: 1280, height: 900 });
+                await page.emulateMedia({ colorScheme: tema, reducedMotion: "reduce" });
+                await sesionComo(page, "funcionario");
+                await page.goto(DETALLE);
+                await page.getByRole("tab", { name: nombre }).click();
+                await revisarAxe(page);
+            });
 });
