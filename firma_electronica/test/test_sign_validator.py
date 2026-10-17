@@ -32,6 +32,7 @@ def test_firmado(validador):
     assert resultado["revoked"] is False
     assert resultado["trust_problem"] == "CHAIN_CONSTRAINTS_FAILURE"
     assert resultado["signer_not_after"] is not None
+    assert resultado["issued_by_trusted_root"] is False
 
 
 def test_modificado(validador):

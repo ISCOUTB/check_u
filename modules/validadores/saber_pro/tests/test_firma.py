@@ -84,9 +84,10 @@ def test_mapeo_de_problemas_de_confianza(resultado, esperado):
 class ValidadorFalso:
     """Registra con qué allow_fetching lo llaman y devuelve una firma intacta del ICFES."""
 
-    def __init__(self, vence: datetime):
+    def __init__(self, vence: datetime, emitido_por_camerfirma: bool = True):
         self.llamadas = []
         self.vence = vence
+        self.emitido_por_camerfirma = emitido_por_camerfirma
 
     def validate_bytes(self, data: bytes, *, allow_fetching: bool | None = None) -> dict:
         self.llamadas.append(allow_fetching)
@@ -104,7 +105,37 @@ class ValidadorFalso:
             "signer_reported_time": FIRMADO_EN,
             "revoked": False,
             "trust_problem": None if allow_fetching else "NO_CERTIFICATE_CHAIN_FOUND",
+            "issued_by_trusted_root": self.emitido_por_camerfirma,
         }
+
+
+def test_nit_del_icfes_sin_emision_de_camerfirma_no_es_icfes():
+    # Cualquiera puede crear un certificado que diga tener el NIT del ICFES: sin la emisión de
+    # Camerfirma no cuenta como firma del ICFES.
+    estado = verificar(b"%PDF", validador=ValidadorFalso(VENCIDO_EL, emitido_por_camerfirma=False))
+    assert estado.firmante_es_icfes is False
+
+
+def test_certificado_real_del_icfes_lo_emitio_camerfirma(muestras_de_tipo):
+    # Las copias del equipo ya no tienen una firma verificable, pero conservan el certificado del
+    # ICFES dentro del /Contents de la firma: sirve para probar la emisión con un certificado real.
+    import binascii
+    import re
+
+    from asn1crypto import cms
+
+    from firma_electronica.infra.sign_validator import certificate_issued_by
+    from modules.validadores.saber_pro.firma import raices_camerfirma
+    from firma_electronica.infra.sign_validator import _load_trusted_cert
+
+    raices = [_load_trusted_cert(ruta) for ruta in raices_camerfirma()]
+    for nombre, reporte in muestras_de_tipo("reporte").items():
+        contenido = re.search(rb"/Contents\s*<([0-9A-Fa-f]+)>", reporte["contenido"]).group(1)
+        firma = cms.ContentInfo.load(binascii.unhexlify(contenido), strict=False)
+        certificado = firma["content"]["certificates"][0].chosen
+        assert certificado.subject.native["serial_number"] == "8600243016", nombre
+        assert certificate_issued_by(certificado, raices) is True, nombre
+        assert certificate_issued_by(certificado, []) is False, nombre
 
 
 def test_vencido_no_consulta_revocacion():

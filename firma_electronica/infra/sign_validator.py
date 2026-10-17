@@ -4,6 +4,8 @@ from io import BytesIO
 from pathlib import Path
 
 from asn1crypto import pem, x509
+from cryptography.exceptions import InvalidSignature
+from cryptography.x509 import load_der_x509_certificate
 from pyhanko_certvalidator import ValidationContext
 from pyhanko.pdf_utils.reader import PdfFileReader
 from pyhanko.sign.validation import validate_pdf_signature
@@ -21,6 +23,22 @@ def _load_trusted_cert(path: Path) -> x509.Certificate:
     if pem.detect(data):
         _, _, data = pem.unarmor(data)
     return x509.Certificate.load(data)
+
+
+def certificate_issued_by(cert: x509.Certificate, issuers: Sequence[x509.Certificate]) -> bool:
+    """True si alguno de los emisores firmó directamente el certificado, aunque esté vencido.
+
+    Prueba quién emitió el certificado sin depender de su vigencia: un certificado que solo dice
+    ser de alguien (por ejemplo, autofirmado con su NIT) no pasa.
+    """
+    child = load_der_x509_certificate(cert.dump())
+    for issuer in issuers:
+        try:
+            child.verify_directly_issued_by(load_der_x509_certificate(issuer.dump()))
+            return True
+        except (ValueError, TypeError, InvalidSignature):
+            continue
+    return False
 
 
 class SignatureValidator:
@@ -68,6 +86,7 @@ class SignatureValidator:
                 "signer_reported_time": None,
                 "revoked": False,
                 "trust_problem": None,
+                "issued_by_trusted_root": False,
             }
 
         context = ValidationContext(
@@ -95,6 +114,7 @@ class SignatureValidator:
             "signer_reported_time": status.signer_reported_dt,
             "revoked": bool(status.revoked),
             "trust_problem": status.trust_problem_indic.name if status.trust_problem_indic else None,
+            "issued_by_trusted_root": certificate_issued_by(status.signing_cert, self._trust_roots),
         }
 
     @staticmethod

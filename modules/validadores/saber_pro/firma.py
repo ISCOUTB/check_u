@@ -97,7 +97,8 @@ def verificar(
         presencia="presente",
         intacta=resultado["signature_valid"] and not resultado["modified"] and resultado["entire_file"],
         firmante=resultado["signer_organization"],
-        firmante_es_icfes=resultado["signer_serial_number"] == NIT_ICFES,
+        # El NIT solo cuenta si Camerfirma emitió el certificado: cualquiera puede escribirlo en uno propio.
+        firmante_es_icfes=resultado["signer_serial_number"] == NIT_ICFES and resultado["issued_by_trusted_root"],
         certificado=_estado_certificado(resultado, ahora),
         vence=resultado["signer_not_after"],
         detalle=resultado["message"],

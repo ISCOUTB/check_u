@@ -88,6 +88,12 @@ def test_nombre_con_tildes_y_espacios():
     assert extraer_de_paginas([texto]).datos["full_name"]["value"] == "Ana María Prueba Núñez"
 
 
+def test_nombre_largo_en_dos_lineas():
+    # El reporte parte en dos líneas los valores largos (como la institución del reporte real).
+    texto = REPORTE.replace("Ana María Prueba Núñez", "María Fernanda De Los Ángeles\nGutiérrez Pérez")
+    assert extraer_de_paginas([texto]).datos["full_name"]["value"] == "María Fernanda De Los Ángeles Gutiérrez Pérez"
+
+
 @pytest.mark.parametrize(
     ("original", "imposible", "campo"),
     [

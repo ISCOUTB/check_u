@@ -74,6 +74,24 @@ def _valor_de(etiqueta: re.Pattern, texto: str) -> str | None:
     return " ".join(valor.split())
 
 
+def _valor_en_varias_lineas(etiqueta: re.Pattern, texto: str, maximo: int = 3) -> str | None:
+    """Como _valor_de, pero une las líneas de un valor largo que el reporte partió, hasta la siguiente etiqueta."""
+    encontrada = etiqueta.search(texto)
+    if not encontrada:
+        return None
+    resto = texto[encontrada.end():].split("\n")
+    partes = []
+    for linea in [resto[0].strip(" \t:")] + [linea.strip() for linea in resto[1:]]:
+        if not linea:
+            if partes:
+                break
+            continue
+        if linea.endswith(":") or len(partes) == maximo:
+            break
+        partes.append(linea)
+    return " ".join(" ".join(partes).split()) or None
+
+
 def _fecha_iso(texto: str | None) -> str | None:
     if not texto or not FORMATO_FECHA.fullmatch(texto):
         return None
@@ -100,7 +118,7 @@ def extraer_de_paginas(paginas: list[str]) -> ExtraccionSaberPro:
     # Sin encabezado no es un reporte Saber Pro; igual se lee lo que haya para explicar qué es.
     seccion = texto[encabezado.start():] if encabezado else texto
 
-    nombre = _valor_de(ETIQUETAS["nombre"], seccion)
+    nombre = _valor_en_varias_lineas(ETIQUETAS["nombre"], seccion)
     if nombre and not re.search(r"[^\W\d_]", nombre):
         nombre = None
     identificacion = FORMATO_IDENTIFICACION.fullmatch(_valor_de(ETIQUETAS["identificacion"], seccion) or "")
