@@ -49,6 +49,8 @@ Todas las tomó Héctor el 17/10/2026, con opciones y una recomendación.
 | 21 | Dependencias | `modules/requirements.txt` (y `modules/requirements-dev.txt` para las de prueba), con versiones fijas. |
 | 22 | Valores esperados | En `modules/test_data/saber_pro/esperados.json`, local como los PDF: el código de las pruebas no lleva datos personales. |
 | 23 | Casos sin PDF | Las reglas y la clasificación se prueban también con datos en memoria (por ejemplo, puntaje 99). No se crea ningún PDF. |
+| 24 | Copia guardada de nuevo | Si el PDF conserva restos de la firma pero ya no se puede verificar (sección 6), `icfes_signature_intact` queda `no_evaluable` y el documento queda **por revisar**, igual que sin firma. Decidido el 17/10/2026, después de revisar los PDF del equipo. |
+| 25 | Certificado vencido | `icfes_certificate_valid` da `no_cumple` (informativa). Aprobado con el "construye y prueba" del 17/10/2026. |
 
 ## 3. Lo que se sabe del reporte (de los PDF del equipo)
 
@@ -120,6 +122,18 @@ Una regla estricta daría "no válida" o "no verificable" a **todo reporte auté
 
 Cuando el certificado está vencido no se consulta la revocación, porque las autoridades certificadoras no responden por certificados vencidos.
 
+### Los PDF del equipo son copias guardadas de nuevo
+
+Los dos reportes que mandó el equipo no son el archivo que firmó el ICFES:
+- la firma dice cubrir unos 3 MB (3.023.356 y 2.817.554 bytes), pero los archivos pesan 279 KB y 269 KB;
+- los dos dicen `Producer: PDFium`, el motor de PDF de Chrome y Edge, que aparece cuando un PDF se abre en el navegador y se guarda de nuevo;
+- conservan el dibujo y el diccionario de la firma, pero no el formulario de firmas (`/AcroForm`): pyHanko no encuentra ninguna firma.
+
+Héctor los recibió de otra persona; no hay un original para comparar. No se puede distinguir una copia inocente de una editada, así que la firma de una copia así se trata como **no verificable** (decisión 24). Por eso `firma.verificar` distingue tres casos:
+- **sin firma:** no hay rastro de firma;
+- **no verificable:** hay restos de firma (`/Type /Sig` o `/FT /Sig`), pero pyHanko no encuentra una firma que pueda validar;
+- **presente:** pyHanko la encuentra y la valida.
+
 ## 7. Reglas
 
 Todas devuelven el `RuleEvaluation` del contrato. El mensaje incluye la evidencia (por ejemplo, "Puntaje global: 154; mínimo: 100").
@@ -129,11 +143,12 @@ Todas devuelven el `RuleEvaluation` del contrato. El mensaje incluye la evidenci
 | `saber_pro_report` | sí | Tiene texto, dice "Reporte de resultados" y trae un registro `EK` | Tiene texto pero es otro documento (por ejemplo, un Saber 11 con registro `AC`) | Vacío, dañado o sin texto (`low_confidence`) |
 | `required_fields_present` | sí | Están nombre, tipo y número de identificación, registro y fecha | (nunca) | Falta alguno (`low_confidence`) |
 | `global_score_minimum` | sí | Puntaje ≥ `PUNTAJE_MINIMO` (100) | Puntaje < 100 | No se encontró el puntaje (`low_confidence`) |
-| `icfes_signature_intact` | sí | Hay firma, el PDF no cambió después de firmarse y la firmó el ICFES (NIT 860024301-6) | El PDF se modificó después de firmarse, o lo firmó otro | Sin firma (`low_confidence`) |
+| `icfes_signature_intact` | sí | Hay firma, el PDF no cambió después de firmarse y la firmó el ICFES (NIT 860024301-6) | El PDF se modificó después de firmarse, o lo firmó otro | Sin firma, o firma no verificable porque el archivo se guardó de nuevo (`low_confidence`) |
 | `icfes_certificate_valid` | **no** | Cadena hasta la raíz de Camerfirma, certificado vigente al firmar y no revocado | ⚠️ Certificado vencido al firmar, revocado, o de otra autoridad | Sin firma (`missing_dependency`), o no se pudo consultar la revocación (`source_unavailable`) |
 
 - Si `saber_pro_report` no cumple o no es evaluable, las otras 4 quedan `no_evaluable` con motivo `missing_dependency`.
-- ⚠️ **Por confirmar en la revisión:** en la pregunta dije que el certificado vencido daría "no evaluable". El contrato no tiene un motivo para "vencido" (solo `low_confidence`, `source_unavailable`, `source_pending` y `missing_dependency`), así que propongo **`no_cumple`**: que el certificado estaba vencido al firmar es un hecho confirmado, no falta de información. Como la regla es informativa, no cambia la clasificación.
+- El certificado vencido da **`no_cumple`** (decisión 25): el contrato no tiene un motivo para "vencido", y que el certificado estaba vencido al firmar es un hecho confirmado, no falta de información. Como la regla es informativa, no cambia la clasificación.
+- `icfes_certificate_valid` solo se evalúa cuando la firma está **presente**; si no, queda `no_evaluable` con motivo `missing_dependency`.
 
 ## 8. Clasificación y acción
 
@@ -166,7 +181,8 @@ Solo cuentan las reglas obligatorias:
 - **pytest** en `modules/validadores/saber_pro/tests/`.
 - Cada resultado se valida contra el esquema del contrato con `jsonschema`.
 - **Con los PDF del equipo** (`modules/test_data/saber_pro/`):
-  - cada reporte real da `valid` y los 6 datos coinciden con `esperados.json`;
+  - los 6 datos de cada reporte real coinciden con `esperados.json`;
+  - cada reporte real da `to_check`: sus otras reglas obligatorias cumplen, pero la firma no se puede verificar porque son copias guardadas de nuevo (sección 6);
   - el archivo vacío da `to_check` sin lanzar una excepción.
   - Si faltan los PDF o `esperados.json`, esas pruebas se **saltan con un aviso**: no fallan ni pasan en silencio.
 - **Con datos en memoria** (sin crear documentos):
