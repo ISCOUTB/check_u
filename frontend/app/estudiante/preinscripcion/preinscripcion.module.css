@@ -1,0 +1,831 @@
+
+.page {
+    min-height: calc(100vh - 72px);
+    padding: 32px 6% 80px;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #1e293b;
+    background: #f7f9fc;
+}
+
+/* Carga */
+.cargando {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 12px;
+  color: #64748b;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.textoError {
+  color: #a63a3a;
+  padding: 40px 0;
+}
+
+/* Header */
+.header {
+  margin-bottom: 24px;
+}
+
+.breadcrumb {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.breadcrumb a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.titleRow h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #172554;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.codigoBadge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Tarjeta estudiante */
+.studentCard {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.studentNameRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.studentNameRow h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #172554;
+}
+
+.nivelBadge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.programa {
+  margin: 0 0 4px;
+  color: #1e293b;
+  font-size: 0.95rem;
+}
+
+.meta {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+/* Banner estado */
+.bannerEstado {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 28px;
+}
+
+.bannerAtencion {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.bannerOk {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+}
+
+.bannerIcono {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.bannerAtencion .bannerIcono {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.bannerOk .bannerIcono {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.bannerLabel {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.bannerTitulo {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+  color: #172554;
+}
+
+.bannerFrase {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 24px;
+}
+
+.tab,
+.tabActiva {
+  background: none;
+  border: none;
+  padding: 12px 18px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  color: #64748b;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover {
+  color: #1e293b;
+}
+
+.tabActiva {
+  color: #2563eb;
+  font-weight: 600;
+  border-bottom-color: #2563eb;
+}
+
+/* Panel */
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-7);
+  box-shadow: var(--shadow-card);
+}
+
+.panelTitle {
+  margin: 0 0 4px;
+  font-size: 1.2rem;
+  color: #172554;
+}
+
+.panelSubtitle {
+  margin: 0 0 20px;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.placeholder {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Chips (para Fase 3) */
+.chipValido,
+.chipNoValido,
+.chipInconsistente,
+.chipPorRevisar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.chipValido {
+  background: #ecfdf5;
+  color: #1f6f48;
+}
+
+.chipNoValido {
+  background: #fef2f2;
+  color: #a63a3a;
+}
+
+.chipInconsistente {
+  background: #fffbeb;
+  color: #7a5c00;
+}
+
+.chipPorRevisar {
+  background: #eff6ff;
+  color: #3d68a3;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .page {
+    padding: 24px 4% 60px;
+  }
+
+  .titleRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .studentCard {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tabs {
+    overflow-x: auto;
+  }
+}
+
+/* 
+Contenido de pestañas y reenvio
+*/
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.chipDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+
+/*Metricas*/
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.metricCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metricOk {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.metricWarn {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.metricValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #172554;
+}
+
+.metricLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.metricHint {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+
+/* Alertas */
+
+.alertasBox {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 28px;
+}
+
+.alertasHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.alertasHeader h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #172554;
+}
+
+.alertasCount {
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.alertasSub {
+  margin: 0 0 16px;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.alertasList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.alertaItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.alertaItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.alertaMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.alertaMain strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #172554;
+}
+
+.alertaChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.alertaMsg {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+/* Estado de los documentos */
+
+.estadoDocs {
+  margin-top: 8px;
+}
+
+.estadoDocs h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  color: #172554;
+}
+
+.estadoList {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.estadoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.estadoRow:last-child {
+  border-bottom: none;
+}
+
+.estadoLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.estadoLeft strong {
+  display: block;
+  color: #172554;
+  font-size: 0.95rem;
+}
+
+.estadoLeft p {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.pdfBadge {
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 6px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+
+
+/* Tu informacion */
+
+.infoBlock {
+  margin-bottom: 28px;
+}
+
+.infoBlock h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  color: #172554;
+}
+
+.infoHint {
+  margin: 0 0 14px;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.fieldsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldLabel {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.fieldValue {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  color: #1e293b;
+}
+
+
+/* Tus documentos (Tarjetas) */
+
+.docCards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.docCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  background: #fff;
+}
+
+.docCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.docCardHeader h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #172554;
+}
+
+.docResultados {
+  margin-bottom: 16px;
+}
+
+.resultLabel {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.resultadoBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.resultadoBox p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.docActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.archivoSeleccionado {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  color: #1e293b;
+}
+
+
+/* Proximo envio */
+
+.proximoEnvio {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 24px;
+  background: #f8fafc;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.proximoEnvio h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  color: #172554;
+}
+
+.proximoEnvio p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+  max-width: 520px;
+}
+
+.envioActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.reenviosCount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 1.1rem;
+  color: #172554;
+}
+
+.reenviosCount small {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.mensajeEnvio {
+  width: 100%;
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: #1e293b;
+}
+
+/* Botones */
+
+.btnPrimario {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 22px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.15s;
+}
+
+.btnPrimario:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btnPrimario:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnSecundario {
+  background: #fff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 40px;
+  transition: background 0.15s;
+}
+
+.btnSecundario:hover {
+  background: #eff6ff;
+}
+
+/* Utilidades */
+
+.hiddenInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.textoOk {
+  color: #1f6f48;
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+}
+
+
+/* Responsive */
+
+@media (max-width: 768px) {
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fieldsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .alertaItem {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .estadoRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .proximoEnvio {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .envioActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reenviosCount {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+}
