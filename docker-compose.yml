@@ -112,6 +112,21 @@ services:
         limits:
           cpus: "0.50"
           memory: 384M
-
+  db-migrate:
+    build:
+      context: https://github.com/ISCOUTB/check_u.git#${CHECKU_REF:-main}:db
+      dockerfile_inline: |
+        FROM postgres:16
+        COPY init/ /sql/
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${DB_USER:?define DB_USER}
+      PGPASSWORD: ${DB_PASSWORD:?define DB_PASSWORD}
+      PGDATABASE: ${DB_NAME:?define DB_NAME}
+    command: ["sh", "-c", "for f in /sql/*.sql; do echo \"Aplicando $$f\"; psql -v ON_ERROR_STOP=1 -f \"$$f\" || exit 1; done"]
 volumes:
   casos:
