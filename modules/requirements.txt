@@ -1,0 +1,14 @@
+# Motor de Python de CheckU (modules/). Versiones probadas el 17/10/2026 en Python 3.11.
+# Validador de Saber Pro (08e)
+PyMuPDF==1.28.2
+pyHanko==0.37.0
+pyhanko-certvalidator==0.32.1
+# Lectura de cédula (modules/cedula, usada por el validador 08a). Además requiere Tesseract
+# instalado en el sistema, con el idioma español.
+opencv-python==5.0.0.93
+pytesseract==0.3.13
+zxing-cpp==3.1.1
+RapidFuzz==3.14.6
+pillow==12.3.0
+numpy==2.4.6
+requests==2.34.2

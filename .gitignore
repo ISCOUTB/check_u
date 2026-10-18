@@ -17,6 +17,9 @@ test_samples/
 # evitar subir certificados confidenciales
 *.crt
 *.key
+# Excepción: certificados PÚBLICOS de la autoridad certificadora que firmó al ICFES (Camerfirma
+# Colombia), para validar la firma del reporte Saber Pro. No son llaves ni certificados propios.
+!modules/validadores/saber_pro/certificados/*.crt
 dist/
 *.spec
 build/
