@@ -23,3 +23,10 @@ test_samples/
 dist/
 *.spec
 build/
+# Variables de entorno: no subir credenciales
+.env
+.env.*
+!.env.example
+!**/.env.example
+# Respaldos locales de la base de datos
+/backups/
