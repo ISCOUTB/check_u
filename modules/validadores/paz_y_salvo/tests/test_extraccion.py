@@ -48,6 +48,24 @@ def test_nombre_en_dos_lineas():
     assert extraer_de_texto(texto).datos["full_name"]["value"] == "ANA MARIA PRUEBA NUÑEZ"
 
 
+@pytest.mark.parametrize(
+    "fragmento",
+    [
+        "el alumno con el código T000000001 identificado",
+        "el alumno que aparece registrado en el sistema de préstamos de la biblioteca central identificado",
+    ],
+)
+def test_lo_que_no_parece_un_nombre_queda_nulo(fragmento):
+    # Un nombre son de 2 a 6 palabras solo con letras: ni números ni párrafos enteros.
+    texto = "PAZ Y SALVO BIBLIOTECA\nSe hace constar que " + fragmento + " se encuentra paz y salvo."
+    assert extraer_de_texto(texto).datos["full_name"] == NULO
+
+
+def test_nombre_con_guion_y_apostrofo():
+    texto = TEXTO.replace("ANA MARIA PRUEBA NUÑEZ", "ANA-MARIA D'ANGELO PRUEBA")
+    assert extraer_de_texto(texto).datos["full_name"]["value"] == "ANA-MARIA D'ANGELO PRUEBA"
+
+
 def test_campos_ausentes():
     texto = "PAZ Y SALVO BIBLIOTECA\nSe hace constar que el usuario se encuentra paz y salvo con la biblioteca."
     extraccion = extraer_de_texto(texto)

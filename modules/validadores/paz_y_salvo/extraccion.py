@@ -25,6 +25,8 @@ NEGACION = re.compile(r"\bNO\s+SE\s+ENCUENTRA\s+(?:A\s+)?PAZ\s+Y\s+SALVO\b")
 AFIRMACION = re.compile(r"\bSE\s+ENCUENTRA\s+(?:A\s+)?PAZ\s+Y\s+SALVO\b")
 NOMBRE = re.compile(r"\b(?:EL|LA)\s+(?:ALUMN[OA]|ESTUDIANTE)\s+(.+?)\s+IDENTIFICAD", re.DOTALL)
 CODIGO = re.compile(r"\bCODIGO\s*(?:NO\.?\s*)?(T\d{6,10})\b")
+PALABRA_DE_NOMBRE = re.compile(r"[^\W\d_]+(?:[-'’][^\W\d_]+)*")
+PALABRAS_MAXIMAS = 6
 
 Estado = Literal["paz_y_salvo", "no_paz_y_salvo"]
 
@@ -79,9 +81,11 @@ def extraer_de_texto(texto: str) -> ExtraccionPazYSalvo:
     encontrado = NOMBRE.search(normal)
     if encontrado:
         # Del texto original, para conservar las mayúsculas y tildes con que viene.
-        candidato = " ".join(texto[encontrado.start(1) : encontrado.end(1)].split())
-        if len(candidato.split()) >= 2 and all(re.search(r"[^\W\d_]", p) for p in candidato.split()):
-            nombre = candidato
+        palabras = texto[encontrado.start(1) : encontrado.end(1)].split()
+        # Un nombre son de 2 a 6 palabras solo con letras (se admiten guion y apóstrofo): así no
+        # se toma como nombre un código ("con el código T…") ni un párrafo entero.
+        if 2 <= len(palabras) <= PALABRAS_MAXIMAS and all(PALABRA_DE_NOMBRE.fullmatch(p) for p in palabras):
+            nombre = " ".join(palabras)
     codigo = CODIGO.search(normal)
 
     datos = {"full_name": _dato(nombre), "code_student": _dato(codigo.group(1) if codigo else None)}
