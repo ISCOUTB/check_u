@@ -5,7 +5,7 @@ Cada validador recibe el archivo que subió el estudiante y devuelve un `Documen
 - la clasificación del documento (`valid`, `invalid` o `to_check`);
 - la acción que debe tomar el estudiante.
 
-Hoy existen el de **Saber Pro** (Tarea 08e) y el de **cédula** (Tarea 08a). Diseño: `docs/superpowers/specs/2026-10-17-validador-saber-pro-design.md`.
+Hoy existen el de **Saber Pro** (Tarea 08e), el de **cédula** (Tarea 08a) y el de **Paz y Salvo de Biblioteca** (Tarea 08c). Diseño: `docs/superpowers/specs/2026-10-17-validador-saber-pro-design.md`.
 
 ## Archivos
 
@@ -24,6 +24,11 @@ Hoy existen el de **Saber Pro** (Tarea 08e) y el de **cédula** (Tarea 08a). Dis
 | `cedula/paginas.py`, `cedula/calidad.py` | PDF o imagen → páginas; resolución y nitidez de cada página. |
 | `cedula/extraccion.py` | Adapta lo que devuelve `leer_cedula` (modules/cedula) a datos con confianza; reconoce la versión de la cédula. |
 | `cedula/reglas.py` | Las 5 reglas de la cédula y `VERSION = "cedula@1.0.0"`. |
+| `firma_pdf.py` | Compartido: lee la firma de un PDF y distingue sin firma / no verificable (copia guardada de nuevo) / presente. |
+| `paz_y_salvo/__init__.py` | `validar_paz_y_salvo(contenido, id_student=…, document_version=…)`. |
+| `paz_y_salvo/extraccion.py` | Texto del PDF: nombre y código del estudiante, y si dice "se encuentra paz y salvo". |
+| `paz_y_salvo/firma.py` | Firma de la Biblioteca: integridad y nombre del firmante. |
+| `paz_y_salvo/reglas.py` | Las 4 reglas y `VERSION = "paz_y_salvo_bib@1.0.0"`. |
 
 ## Uso
 
@@ -62,6 +67,20 @@ venv/Scripts/python.exe -m modules.validadores.cedula "ruta/a/tu-cedula.png"
 ```
 
 Sin `--rui` **no** consulta el RUI, así que no envía el número de documento a ningún servicio externo. Con `--rui` sí lo consulta. Necesita Tesseract instalado.
+
+## Paz y Salvo de Biblioteca (Tarea 08c)
+
+`validar_paz_y_salvo(contenido, id_student=…, document_version=…)` recibe el PDF que generó la Biblioteca (con texto).
+- Extrae el nombre y el código del estudiante.
+- Revisa que diga "se encuentra paz y salvo" (con "no se encuentra paz y salvo" no cumple).
+- Verifica la firma con el `SignatureValidator` de `firma_electronica/`: sin firma o copia guardada de nuevo → por revisar; modificado después de firmar o firmado por otro → no válido.
+- Diseño: `docs/superpowers/specs/2026-10-21-validador-paz-y-salvo-design.md`.
+
+⚠️ **Riesgo aceptado:** solo se verifica la integridad y que el firmante se llame "Biblioteca"; el certificado no se valida. Un certificado propio con ese nombre pasaría. El formato del texto es el de las muestras de `firma_electronica/test/samples/` (no hay un Paz y Salvo real de muestra): es provisional.
+
+```bash
+venv/Scripts/python.exe -m modules.validadores.paz_y_salvo "firma_electronica/test/samples/PAZ Y SALVO BIBLIOTECA firmado.pdf"
+```
 
 ## Instalar y probar
 
