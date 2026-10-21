@@ -6,7 +6,6 @@ guardarlo); y firma presente, que pyHanko valida. Confía en los certificados p�
 Camerfirma Colombia de certificados/ y exige que el firmante sea el ICFES por su NIT.
 """
 
-import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,9 +13,10 @@ from typing import Literal
 
 from firma_electronica.infra.sign_validator import SignatureValidator
 
+from ..firma_pdf import esta_intacta, leer_firma
+
 CARPETA_CERTIFICADOS = Path(__file__).resolve().parent / "certificados"
 NIT_ICFES = "8600243016"
-RESTOS_DE_FIRMA = re.compile(rb"/(?:Type|FT)\s*/Sig\b")
 
 # Nombres de AdESIndeterminate / AdESFailure de pyHanko.
 PROBLEMAS_VENCIDO = {"EXPIRED", "OUT_OF_BOUNDS_NO_POE", "OUT_OF_BOUNDS_NOT_REVOKED", "NOT_YET_VALID"}
@@ -65,11 +65,6 @@ def _estado_certificado(resultado: dict, ahora: datetime) -> Certificado:
     return "desconocido"
 
 
-def _sin_firma_valida(contenido: bytes, detalle: str) -> EstadoFirma:
-    presencia = "no_verificable" if RESTOS_DE_FIRMA.search(contenido) else "ausente"
-    return EstadoFirma(presencia, None, None, None, None, None, detalle)
-
-
 def verificar(
     contenido: bytes,
     *,
@@ -78,12 +73,10 @@ def verificar(
 ) -> EstadoFirma:
     """Nunca lanza por un PDF dañado. Con el certificado vencido no consulta la revocación."""
     validador = validador or SignatureValidator(trusted_cert_paths=raices_camerfirma())
-    try:
-        resultado = validador.validate_bytes(contenido, allow_fetching=False)
-    except Exception:  # pyHanko lanza varios tipos con un PDF dañado
-        return _sin_firma_valida(contenido, "No se pudo leer la estructura del PDF.")
-    if not resultado["signed"]:
-        return _sin_firma_valida(contenido, resultado["message"])
+    lectura = leer_firma(contenido, validador)
+    if lectura.presencia != "presente":
+        return EstadoFirma(lectura.presencia, None, None, None, None, None, lectura.detalle)
+    resultado = lectura.resultado
 
     ahora = datetime.now(timezone.utc)
     vencido_al_firmar = _estado_certificado(resultado, ahora) == "vencido"
@@ -95,7 +88,7 @@ def verificar(
 
     return EstadoFirma(
         presencia="presente",
-        intacta=resultado["signature_valid"] and not resultado["modified"] and resultado["entire_file"],
+        intacta=esta_intacta(resultado),
         firmante=resultado["signer_organization"],
         # El NIT solo cuenta si Camerfirma emitió el certificado: cualquiera puede escribirlo en uno propio.
         firmante_es_icfes=resultado["signer_serial_number"] == NIT_ICFES and resultado["issued_by_trusted_root"],

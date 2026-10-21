@@ -28,6 +28,7 @@ def test_firmado(validador):
     assert resultado["certificate_trusted"] is False
     assert resultado["signature_valid"] is True
     assert resultado["signer_organization"] == "Biblioteca"
+    assert resultado["signer_common_name"] == "Biblioteca"
     assert resultado["entire_file"] is True
     assert resultado["revoked"] is False
     assert resultado["trust_problem"] == "CHAIN_CONSTRAINTS_FAILURE"
@@ -45,6 +46,7 @@ def test_sin_firma(validador):
     resultado = validador.validate(SIN_FIRMA)
     assert resultado["signed"] is False
     assert resultado["signer_organization"] is None
+    assert resultado["signer_common_name"] is None
 
 
 def test_validate_y_validate_bytes_coinciden(validador):
