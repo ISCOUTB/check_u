@@ -1,0 +1,454 @@
+/* Formulario de preinscripción: índice con progreso a la izquierda (768 px o más) y una tarjeta por sección. */
+
+.pagina {
+    width: 100%;
+    max-width: 1280px;
+    min-height: calc(100dvh - var(--altura-barra));
+    margin: 0 auto;
+    padding: 36px 6% 64px;
+}
+
+.cargando,
+.cargandoBorrador {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+.cargando {
+    min-height: 100dvh;
+}
+
+.cargandoBorrador {
+    min-height: 240px;
+}
+
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: girar 0.8s linear infinite;
+}
+
+@keyframes girar {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.errorCarga {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-4);
+    padding: var(--space-5) var(--space-6);
+    background: var(--status-invalid-bg);
+    border: 1px solid var(--status-invalid-mark);
+    border-radius: var(--radius-card);
+    color: var(--status-invalid-text);
+    font-weight: 500;
+}
+
+.rejilla {
+    display: grid;
+    gap: var(--space-5);
+    align-items: start;
+}
+
+.formulario {
+    display: grid;
+    gap: var(--space-6);
+    min-width: 0;
+}
+
+/* ── Secciones ─────────────────────────────────────────────────────────────── */
+
+/* Cada tarjeta es un contenedor: con poco ancho (el tablet, con el índice al lado) los campos van en una columna. */
+.seccion {
+    container-type: inline-size;
+}
+
+.grupoSeccion,
+.subgrupo {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+/* La leyenda flota para comportarse como un bloque normal, sin montarse sobre el borde del fieldset. */
+.leyendaSeccion,
+.leyendaSubgrupo {
+    float: left;
+    width: 100%;
+    padding: 0;
+}
+
+.leyendaSeccion + *,
+.leyendaSubgrupo + * {
+    clear: both;
+}
+
+.leyendaSeccion {
+    margin-bottom: var(--space-5);
+}
+
+.tituloSeccion {
+    color: var(--color-title);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    text-wrap: balance;
+}
+
+.leyendaSeccion:has(+ .descripcionSeccion) {
+    margin-bottom: var(--space-1);
+}
+
+.descripcionSeccion {
+    max-width: 65ch;
+    margin-bottom: var(--space-5);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.campos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5) var(--space-4);
+    align-items: start;
+}
+
+.ancho {
+    grid-column: 1 / -1;
+}
+
+/* Un grupo dentro de la sección (segundo programa, cada cargo): separado por una línea. */
+.subgrupo {
+    margin-top: var(--space-2);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--color-border);
+}
+
+.leyendaSubgrupo {
+    margin-bottom: var(--space-4);
+    color: var(--color-title);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+/* Los campos opcionales de una fila, alineados por abajo aunque solo uno tenga ayuda. */
+.alineadosAbajo {
+    align-items: end;
+}
+
+/* Un bloque con su propio subtítulo dentro de la sección (la experiencia laboral). */
+.bloque {
+    margin-top: var(--space-6);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--color-border);
+}
+
+/* Los cargos: el primero va pegado al subtítulo; el segundo, separado por la línea. */
+.cargo:first-of-type {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.cargo + .cargo {
+    margin-top: var(--space-6);
+}
+
+.subtitulo {
+    color: var(--color-title);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.subtitulo + .descripcionSeccion {
+    margin-top: var(--space-1);
+}
+
+.divisor {
+    height: 0;
+    margin: var(--space-1) 0;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+}
+
+.contador {
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Lo que aparece al responder "sí": entra en 180 ms con opacidad y 4 px; al irse, desaparece sin
+ * animación (se desmonta). Con el teclado no se anima. Con movimiento reducido, solo opacidad.
+ */
+.condicional {
+    transition:
+        opacity 180ms var(--ease-out),
+        translate 180ms var(--ease-out);
+}
+
+@starting-style {
+    .condicional {
+        opacity: 0;
+        translate: 0 -4px;
+    }
+}
+
+.formulario[data-entrada="teclado"] .condicional {
+    transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* Gana a la regla global que apaga las transiciones: un fundido no es movimiento. */
+    .condicional {
+        transition: opacity 180ms var(--ease-out) !important;
+    }
+
+    @starting-style {
+        .condicional {
+            translate: none;
+        }
+    }
+}
+
+/* ── Índice ────────────────────────────────────────────────────────────────── */
+
+.indice {
+    min-width: 0;
+}
+
+/* Celular: una barra con el resumen que despliega la lista (patrón de divulgación). */
+.indiceBoton {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 56px;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    color: var(--color-title);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: left;
+    cursor: pointer;
+}
+
+.indiceBoton[aria-expanded="true"] {
+    border-bottom-color: transparent;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    box-shadow: none;
+}
+
+.indiceBotonResumen,
+.indiceResumen {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.indiceBotonResumen[data-listo="true"],
+.indiceResumen[data-listo="true"] {
+    color: var(--status-valid-text);
+}
+
+/* Sin animación: el botón se usa con el teclado y el cambio debe ser inmediato. */
+.indiceFlecha {
+    display: flex;
+    flex-shrink: 0;
+    color: var(--color-text-secondary);
+}
+
+.indiceFlecha[data-abierto="true"] {
+    rotate: 180deg;
+}
+
+.indiceResumen {
+    display: none;
+}
+
+.indiceLista {
+    display: none;
+    list-style: none;
+}
+
+.indiceLista[data-abierta="true"] {
+    display: grid;
+    gap: var(--space-1);
+    padding: 0 var(--space-2) var(--space-2);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-top: 0;
+    border-radius: 0 0 var(--radius-card) var(--radius-card);
+}
+
+.indiceEnlace {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: var(--space-3);
+    align-items: start;
+    min-height: 44px;
+    padding: 10px var(--space-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    color: var(--color-text);
+    text-decoration: none;
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease;
+}
+
+.indiceEnlace[aria-current="location"] {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+}
+
+.indiceMarca {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-top: 1px;
+    border: 1.5px solid var(--color-border-control);
+    border-radius: 50%;
+    color: var(--status-valid-text);
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease,
+        color 150ms ease;
+}
+
+.indiceEnlace[data-estado="completa"] .indiceMarca {
+    background: var(--status-valid-bg);
+    border-color: var(--status-valid-mark);
+}
+
+.indiceTexto {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.indiceTitulo {
+    color: var(--color-title);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    transition: color 150ms ease;
+}
+
+.indiceEnlace[aria-current="location"] .indiceTitulo {
+    color: var(--color-accent-text);
+}
+
+.indiceEstado {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+    transition: color 150ms ease;
+}
+
+.indiceEnlace[data-estado="completa"] .indiceEstado {
+    color: var(--status-valid-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .indiceBoton:hover {
+        border-color: var(--color-border-control);
+    }
+
+    .indiceEnlace:hover {
+        background: var(--color-surface);
+    }
+
+    .indiceEnlace:hover .indiceTitulo {
+        color: var(--color-accent-text);
+    }
+}
+
+/* Escritorio y tablet: dos columnas, con el índice fijo debajo de la barra. */
+@media (min-width: 768px) {
+    .rejilla {
+        grid-template-columns: 216px minmax(0, 1fr);
+        gap: var(--space-6);
+    }
+
+    .indice {
+        position: sticky;
+        top: calc(var(--altura-barra) + var(--space-6));
+        max-height: calc(100dvh - var(--altura-barra) - var(--space-6) * 2);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .indiceBoton {
+        display: none;
+    }
+
+    .indiceResumen {
+        display: flex;
+        margin-bottom: var(--space-3);
+        padding: 0 var(--space-3) var(--space-3);
+        border-bottom: 1px solid var(--color-border);
+        color: var(--color-title);
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.4;
+        text-wrap: balance;
+    }
+
+    .indiceLista,
+    .indiceLista[data-abierta] {
+        display: grid;
+        gap: var(--space-1);
+        padding: 0;
+        background: none;
+        border: 0;
+    }
+}
+
+@media (min-width: 1024px) {
+    .rejilla {
+        grid-template-columns: 248px minmax(0, 1fr);
+        gap: var(--space-8);
+    }
+}
+
+/* Con poco ancho, los campos van en una sola columna: en el celular (480 px) y en tarjetas angostas. */
+@container (max-width: 520px) {
+    .campos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .pagina {
+        padding: var(--space-5) var(--space-4) var(--space-8);
+    }
+
+    .campos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
