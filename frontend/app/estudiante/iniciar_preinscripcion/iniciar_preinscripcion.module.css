@@ -193,8 +193,9 @@
 }
 
 /*
- * Lo que aparece al responder "sí": entra en 180 ms con opacidad y 4 px; al irse, desaparece sin
- * animación (se desmonta). Con el teclado no se anima. Con movimiento reducido, solo opacidad.
+ * Lo que aparece al responder "sí" (spec §3): entra en 180 ms con var(--ease-out), opacidad y 4 px;
+ * al irse, desaparece sin animación (se desmonta). Con el teclado no se anima. Con movimiento
+ * reducido, solo opacidad. Los 180 ms van tal cual porque los fija el spec.
  */
 .condicional {
     transition:
@@ -313,10 +314,12 @@
     border-radius: var(--radius-control);
     color: var(--color-text);
     text-decoration: none;
-    transition:
-        background-color 150ms ease,
-        border-color 150ms ease;
 }
+
+/*
+ * La sección actual cambia al desplazarse o al tabular: ese cambio no se anima (spec §3). Solo
+ * se animan las marcas de completitud (.indiceMarca y .indiceEstado), en 150 ms.
+ */
 
 .indiceEnlace[aria-current="location"] {
     background: var(--color-surface);
@@ -333,10 +336,16 @@
     border: 1.5px solid var(--color-border-control);
     border-radius: 50%;
     color: var(--status-valid-text);
+    /* Spec §3: las marcas del índice cambian de color en 150 ms. */
     transition:
-        background-color 150ms ease,
-        border-color 150ms ease,
-        color 150ms ease;
+        background-color 150ms var(--ease-out),
+        border-color 150ms var(--ease-out),
+        color 150ms var(--ease-out);
+}
+
+/* Opcional: ni completa ni pendiente; un anillo punteado, sin el color de completa. */
+.indiceEnlace[data-estado="opcional"] .indiceMarca {
+    border-style: dashed;
 }
 
 .indiceEnlace[data-estado="completa"] .indiceMarca {
@@ -355,7 +364,6 @@
     font-size: 14px;
     font-weight: 600;
     line-height: 1.35;
-    transition: color 150ms ease;
 }
 
 .indiceEnlace[aria-current="location"] .indiceTitulo {
@@ -367,7 +375,8 @@
     font-size: 13px;
     line-height: 1.45;
     font-variant-numeric: tabular-nums;
-    transition: color 150ms ease;
+    /* Spec §3: las marcas del índice cambian de color en 150 ms. */
+    transition: color 150ms var(--ease-out);
 }
 
 .indiceEnlace[data-estado="completa"] .indiceEstado {

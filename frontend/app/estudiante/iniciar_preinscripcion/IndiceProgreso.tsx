@@ -22,12 +22,24 @@ export function textoResumen(progreso: Progreso): string {
     return `Te ${verbo} ${partes.join(" y ")}`;
 }
 
+type EstadoSeccion = "completa" | "pendiente" | "opcional";
+
+/**
+ * Una sección sin campos obligatorios es "opcional": no se marca como completa, porque no hay
+ * nada que completar. Las demás están completas cuando no les falta nada.
+ */
+function estadoDe(seccion: ProgresoSeccion): EstadoSeccion {
+    if (seccion.opcional) return "opcional";
+    return seccion.faltan === 0 ? "completa" : "pendiente";
+}
+
 /** El estado de una sección, en texto: el color solo lo acompaña. */
 function textoEstado(seccion: ProgresoSeccion, progreso: Progreso): string {
     if (seccion.id === "documentos") {
         const { cargados, requeridos } = progreso.documentos;
         return `${cargados} de ${requeridos} documentos cargados`;
     }
+    if (seccion.opcional) return "Opcional";
     if (seccion.faltan === 0) return "Completa";
     return seccion.faltan === 1 ? "Falta 1 campo" : `Faltan ${seccion.faltan} campos`;
 }
@@ -125,13 +137,13 @@ export default function IndiceProgreso({ progreso, secciones }: { progreso: Prog
                 {secciones.map((id) => {
                     const seccion = porId.get(id);
                     if (!seccion) return null;
-                    const completa = seccion.faltan === 0;
+                    const estado = estadoDe(seccion);
                     return (
                         <li key={id}>
                             <a
                                 href={`#seccion-${id}`}
                                 className={styles.indiceEnlace}
-                                data-estado={completa ? "completa" : "pendiente"}
+                                data-estado={estado}
                                 aria-current={actual === id ? "location" : undefined}
                                 onClick={() => {
                                     // Se cierra antes de saltar, para que el salto caiga en su sitio.
@@ -140,7 +152,7 @@ export default function IndiceProgreso({ progreso, secciones }: { progreso: Prog
                                 }}
                             >
                                 <span className={styles.indiceMarca}>
-                                    {completa && <Icono nombre="valido" tamano={14} />}
+                                    {estado === "completa" && <Icono nombre="valido" tamano={14} />}
                                 </span>
                                 <span className={styles.indiceTexto}>
                                     <span className={styles.indiceTitulo}>{seccion.titulo}</span>

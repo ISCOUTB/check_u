@@ -257,11 +257,11 @@ test("progreso de un borrador vacío de pregrado", () => {
     const resultado = progreso(borradorVacio("PREGRADO", CORREO));
 
     expect(resultado.secciones).toEqual([
-        { id: "identificacion", titulo: "Identificación", faltan: 4 },
-        { id: "contacto", titulo: "Contacto y residencia", faltan: 0 },
-        { id: "academico", titulo: "Información académica", faltan: 3 },
-        { id: "saber_pro", titulo: "Saber Pro y vinculación con la UTB", faltan: 0 },
-        { id: "documentos", titulo: "Documentos", faltan: 5 },
+        { id: "identificacion", titulo: "Identificación", faltan: 4, opcional: false },
+        { id: "contacto", titulo: "Contacto y residencia", faltan: 0, opcional: true },
+        { id: "academico", titulo: "Información académica", faltan: 3, opcional: false },
+        { id: "saber_pro", titulo: "Saber Pro y vinculación con la UTB", faltan: 0, opcional: true },
+        { id: "documentos", titulo: "Documentos", faltan: 5, opcional: false },
     ]);
     expect(resultado.documentos).toEqual({ cargados: 0, requeridos: 5 });
     expect(resultado.seccionesPendientes).toBe(2);
@@ -274,6 +274,29 @@ test("progreso de posgrado usa sus secciones y sus 3 documentos", () => {
 
     expect(resultado.secciones.map((seccion) => seccion.id)).toEqual(seccionesDelNivel("POSGRADO"));
     expect(resultado.documentos).toEqual({ cargados: 0, requeridos: 3 });
+});
+
+test("las secciones sin obligatorios son opcionales en cada nivel; Documentos nunca", () => {
+    const opcionales = (borrador: BorradorPreinscripcion) =>
+        Object.fromEntries(progreso(borrador).secciones.map((seccion) => [seccion.id, seccion.opcional]));
+
+    expect(opcionales(borradorVacio("PREGRADO", CORREO))).toEqual({
+        identificacion: false,
+        contacto: true,
+        academico: false,
+        saber_pro: true,
+        documentos: false,
+    });
+    expect(opcionales(borradorVacio("POSGRADO", CORREO))).toEqual({
+        identificacion: false,
+        contacto: true,
+        academico: false,
+        estudios: true,
+        documentos: false,
+    });
+    // Que sea opcional depende del nivel, no de lo que se haya llenado.
+    expect(opcionales(completo("PREGRADO"))).toEqual(opcionales(borradorVacio("PREGRADO", CORREO)));
+    expect(opcionales(completo("POSGRADO"))).toEqual(opcionales(borradorVacio("POSGRADO", CORREO)));
 });
 
 test("progreso cuenta los documentos cargados y las secciones que se completan", () => {

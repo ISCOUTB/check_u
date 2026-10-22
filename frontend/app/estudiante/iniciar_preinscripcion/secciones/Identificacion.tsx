@@ -11,7 +11,8 @@ const REGLA_NUMERO = "Solo letras y números, sin puntos ni espacios";
 
 export default function Identificacion({ borrador, cambiar, errores }: PropsSeccion) {
     // Los caracteres no permitidos se quitan al escribir y al pegar. Si se quitó alguno, la regla
-    // se muestra como error (debajo del campo, sin moverlo) hasta salir del campo.
+    // se muestra como error (debajo del campo, sin moverlo) hasta salir del campo, y se anuncia en
+    // una región viva oculta (WCAG 4.1.3): el error solo enlazado no se lee hasta volver al campo.
     const [seQuitaron, setSeQuitaron] = useState(false);
     const { perfil } = borrador;
 
@@ -86,6 +87,10 @@ export default function Identificacion({ borrador, cambiar, errores }: PropsSecc
                     error={errores[ID_CAMPOS.genero]}
                 />
             </div>
+            {/* Siempre montada, para que el lector anuncie el cambio. Sin role: no choca con role="status". */}
+            <span className="solo-lector" aria-live="polite">
+                {seQuitaron ? REGLA_NUMERO : ""}
+            </span>
         </Seccion>
     );
 }

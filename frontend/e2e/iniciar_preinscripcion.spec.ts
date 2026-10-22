@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { API, revisarPagina, sesionComo, TEMAS, USUARIOS } from "./soporte";
 
 // Página del formulario de preinscripción (Tarea 25). El borrador es simulado (api.ts); lo único
@@ -9,6 +9,9 @@ const PREGRADO = `${RUTA}?nivel=PREGRADO`;
 const POSGRADO = `${RUTA}?nivel=POSGRADO`;
 
 const AVISO_NUMERO = "Solo letras y números, sin puntos ni espacios";
+
+/** `var(--ease-out)` de globals.css, tal como lo devuelve getComputedStyle. */
+const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
 
 /** Abre la página con la sesión del estudiante y espera a que termine de cargar. */
 async function abrir(page: Page, ruta: string): Promise<void> {
@@ -24,6 +27,11 @@ async function responder(page: Page, pregunta: string, respuesta: string): Promi
 
 function indice(page: Page) {
     return page.getByRole("navigation", { name: "Secciones del formulario" });
+}
+
+/** La región viva (aria-live="polite") que anuncia los caracteres quitados del número de documento. */
+function anuncio(page: Page) {
+    return page.locator('#seccion-identificacion [aria-live="polite"]');
 }
 
 /** El resumen visible del índice: en escritorio es un texto y en celular, el botón que lo despliega. */
@@ -112,11 +120,14 @@ test.describe("iniciar preinscripción", () => {
         const campo = page.locator("#campo-numero-documento");
         await expect(campo).not.toHaveAttribute("aria-invalid", "true");
 
+        await expect(anuncio(page)).toHaveText("");
+
         await campo.pressSequentially("1.043 640-743");
         await expect(campo).toHaveValue("1043640743");
         await expect(campo).toHaveAttribute("aria-invalid", "true");
         await expect(page.locator("#campo-numero-documento-error")).toHaveText(AVISO_NUMERO);
         await expect(campo).toHaveAccessibleDescription(AVISO_NUMERO);
+        await expect(anuncio(page)).toHaveText(AVISO_NUMERO);
     });
 
     test("pegar con puntos deja solo dígitos", async ({ page, context }) => {
@@ -124,12 +135,14 @@ test.describe("iniciar preinscripción", () => {
         await abrir(page, PREGRADO);
         const campo = page.locator("#campo-numero-documento");
         await page.evaluate(() => navigator.clipboard.writeText("1.043.640.743"));
+        await expect(anuncio(page)).toHaveText("");
         await campo.focus();
         await page.keyboard.press("ControlOrMeta+V");
         await expect(campo).toHaveValue("1043640743");
-        // Se avisa una sola vez, en el error del campo.
-        await expect(page.getByText(AVISO_NUMERO)).toHaveCount(1);
+        // Se ve una sola vez, en el error del campo, y se anuncia en la región viva (que ya existía).
         await expect(page.locator("#campo-numero-documento-error")).toHaveText(AVISO_NUMERO);
+        await expect(campo).toHaveAccessibleDescription(AVISO_NUMERO);
+        await expect(anuncio(page)).toHaveText(AVISO_NUMERO);
     });
 
     test("el índice marca Identificación como Completa al llenar sus obligatorios", async ({ page }) => {
@@ -147,6 +160,50 @@ test.describe("iniciar preinscripción", () => {
         await expect(resumen(page, "Te faltan 1 sección y 5 documentos")).toBeVisible();
     });
 
+    test("las secciones sin obligatorios dicen Opcional, sin la marca de completa", async ({ page }) => {
+        await abrir(page, PREGRADO);
+        for (const titulo of ["Contacto y residencia", "Saber Pro y vinculación con la UTB"]) {
+            const enlace = indice(page).getByRole("link", { name: new RegExp(titulo) });
+            await expect(enlace).toContainText("Opcional");
+            await expect(enlace).not.toContainText("Completa");
+            await expect(enlace.locator("svg")).toHaveCount(0);
+        }
+
+        await page.goto(POSGRADO);
+        await page.locator('main#contenido:not([aria-busy="true"])').waitFor();
+        for (const titulo of ["Contacto y residencia", "Estudios y experiencia"]) {
+            const enlace = indice(page).getByRole("link", { name: new RegExp(titulo) });
+            await expect(enlace).toContainText("Opcional");
+            await expect(enlace).not.toContainText("Completa");
+            await expect(enlace.locator("svg")).toHaveCount(0);
+        }
+    });
+
+    test("movimiento según el spec: solo las marcas del índice cambian en 150 ms, con ease-out", async ({ page }) => {
+        await page.emulateMedia({ reducedMotion: "no-preference" });
+        await abrir(page, PREGRADO);
+        const transicion = (locator: Locator) =>
+            locator.evaluate((elemento) => {
+                const estilo = getComputedStyle(elemento);
+                return { duracion: estilo.transitionDuration, curva: estilo.transitionTimingFunction };
+            });
+        const enlace = indice(page).getByRole("link", { name: /Identificación/ });
+
+        // Lo que cambia al desplazarse o con el teclado no se anima.
+        expect((await transicion(enlace)).duracion).toBe("0s");
+        expect((await transicion(enlace.getByText("Identificación"))).duracion).toBe("0s");
+        const opcion = page.getByRole("radiogroup", { name: "Modalidad (obligatorio)" }).locator("label").first();
+        expect((await transicion(opcion)).duracion).toBe("0s");
+
+        // Las marcas de completitud: 150 ms y var(--ease-out) en cada propiedad.
+        for (const marca of [enlace.locator("> span").first(), enlace.getByText("Faltan 4 campos")]) {
+            const { duracion, curva } = await transicion(marca);
+            expect(duracion.split(", ").every((valor) => valor === "0.15s"), duracion).toBe(true);
+            const curvas = curva.split(/,\s(?=[a-z])/); // "cubic-bezier(…), cubic-bezier(…)"
+            expect(curvas.every((valor) => valor === EASE_OUT), curva).toBe(true);
+        }
+    });
+
     test("el enlace del índice lleva a su sección y la marca como actual", async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
         await abrir(page, PREGRADO);
@@ -156,6 +213,22 @@ test.describe("iniciar preinscripción", () => {
         await expect(enlace).toHaveAttribute("aria-current", "location");
         await expect(indice(page).locator('[aria-current="location"]')).toHaveCount(1);
         await expect(indice(page)).toBeInViewport();
+    });
+
+    test("al desplazarse, sin tocar el índice, se marca la sección que se está viendo", async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 800 });
+        await abrir(page, PREGRADO);
+        const identificacion = indice(page).getByRole("link", { name: /Identificación/ });
+        const academico = indice(page).getByRole("link", { name: /Información académica/ });
+        await expect(identificacion).toHaveAttribute("aria-current", "location");
+
+        await page.locator("#seccion-academico").evaluate((seccion) => seccion.scrollIntoView());
+        await expect(academico).toHaveAttribute("aria-current", "location");
+        await expect(identificacion).not.toHaveAttribute("aria-current", "location");
+
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+        await expect(identificacion).toHaveAttribute("aria-current", "location");
+        await expect(indice(page).locator('[aria-current="location"]')).toHaveCount(1);
     });
 
     test("en celular el índice es un botón que despliega las secciones", async ({ page }) => {
@@ -194,6 +267,12 @@ test.describe("iniciar preinscripción", () => {
         );
         await page.goto(PREGRADO);
         await expect(page).toHaveURL("/estudiante/bienvenida");
+    });
+
+    test("una solicitud ya enviada redirige a /estudiante/preinscripcion", async ({ page }) => {
+        await sesionComo(page, "estudiante");
+        await page.goto(`${PREGRADO}&escenario=enviada`);
+        await expect(page).toHaveURL("/estudiante/preinscripcion");
     });
 
     test("el correo viene de la sesión y es de solo lectura", async ({ page }) => {

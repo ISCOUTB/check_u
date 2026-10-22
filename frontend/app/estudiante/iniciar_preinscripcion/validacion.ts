@@ -32,7 +32,7 @@
  */
 
 import { documentosRequeridos, type Nivel } from "@/app/estudiante/documentos-requeridos";
-import type { BorradorPreinscripcion } from "./tipos";
+import { borradorVacio, type BorradorPreinscripcion } from "./tipos";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Ids de la página
@@ -191,6 +191,19 @@ export function faltantes(borrador: BorradorPreinscripcion): CampoFaltante[] {
     return resultado;
 }
 
+/**
+ * Las secciones que tienen algún campo obligatorio en un nivel. Sale de las mismas reglas de
+ * `faltantes` (lo que le falta a un borrador vacío), para que no haya una segunda lista que
+ * mantener. "documentos" no entra: sus requisitos son documentos, no campos.
+ */
+function seccionesConObligatorios(nivel: Nivel): Set<SeccionId> {
+    return new Set(
+        faltantes(borradorVacio(nivel, ""))
+            .map((pendiente) => pendiente.seccion)
+            .filter((seccion) => seccion !== "documentos"),
+    );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Progreso
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,6 +213,11 @@ export interface ProgresoSeccion {
     titulo: string;
     /** Campos obligatorios sin llenar; en "documentos", documentos requeridos sin cargar */
     faltan: number;
+    /**
+     * La sección no tiene ningún campo obligatorio en este nivel: todo en ella es opcional.
+     * Depende del nivel, no de lo llenado. "documentos" nunca es opcional.
+     */
+    opcional: boolean;
 }
 
 export interface Progreso {
@@ -219,10 +237,13 @@ export function progreso(borrador: BorradorPreinscripcion): Progreso {
     const requeridos = documentosRequeridos(borrador.nivel, borrador.segundoPrograma === true);
     const cargados = requeridos.filter((documento) => documentoCargado(borrador, documento.id)).length;
 
+    const conObligatorios = seccionesConObligatorios(borrador.nivel);
+
     const secciones = seccionesDelNivel(borrador.nivel).map((id) => ({
         id,
         titulo: SECCIONES[id],
         faltan: pendientes.filter((pendiente) => pendiente.seccion === id).length,
+        opcional: id !== "documentos" && !conObligatorios.has(id),
     }));
 
     return {
