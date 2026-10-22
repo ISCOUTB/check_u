@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { flushSync } from "react-dom";
 import Icono from "@/app/components/ui/Icono";
 import type { Progreso, ProgresoSeccion, SeccionId } from "./validacion";
-import styles from "./iniciar_preinscripcion.module.css";
+import styles from "./IndiceProgreso.module.css";
 
 /** "1 sección", "3 documentos"… */
 function contar(cantidad: number, singular: string, plural: string): string {
