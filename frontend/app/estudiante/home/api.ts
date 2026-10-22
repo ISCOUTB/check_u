@@ -11,11 +11,14 @@
  * TODO:   GET ${API_URL}/politica-reenvios  → PoliticaReenvios
  */
 
+import { DOCUMENTOS_REQUERIDOS, type Nivel } from "../documentos-requeridos";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos de dominio
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type NivelAcademico = "PREGRADO" | "POSGRADO";
+/** Alias de `Nivel`, que vive junto a la lista única de documentos requeridos. */
+export type NivelAcademico = Nivel;
 
 /** Estado de validación de un documento ya procesado */
 export type EstadoDocumento =
@@ -202,20 +205,13 @@ export async function obtenerPoliticaReenvios(): Promise<PoliticaReenvios> {
 // Utilitarios de presentación (sin lógica de negocio)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Lista de documentos requeridos según el nivel. Solo la UI la necesita. */
+/**
+ * Etiquetas de los documentos requeridos según el nivel. Solo la UI las necesita.
+ * Salen de la lista única de `../documentos-requeridos`, la misma del formulario.
+ */
 export const DOCUMENTOS_POR_NIVEL: Record<NivelAcademico, string[]> = {
-    PREGRADO: [
-        "Cédula de ciudadanía",
-        "Evaluación de Grado (Banner)",
-        "Paz y Salvo de Biblioteca",
-        "Estampilla Pro-Cultura",
-        "Resultados Saber Pro",
-    ],
-    POSGRADO: [
-        "Cédula de ciudadanía",
-        "Paz y Salvo de Biblioteca",
-        "Estampilla Pro-Cultura",
-    ],
+    PREGRADO: DOCUMENTOS_REQUERIDOS.PREGRADO.map((d) => d.etiqueta),
+    POSGRADO: DOCUMENTOS_REQUERIDOS.POSGRADO.map((d) => d.etiqueta),
 };
 
 /** Formatea una fecha ISO para mostrarla de forma legible. */
