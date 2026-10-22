@@ -10,7 +10,7 @@
  * Cuando existan los endpoints, se reemplaza el cuerpo de cada función y se quita el TODO.
  */
 
-import type { Nivel } from "@/app/estudiante/documentos-requeridos";
+import { documentosRequeridos, type Nivel } from "@/app/estudiante/documentos-requeridos";
 import { borradorVacio, type BorradorPreinscripcion } from "./tipos";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -21,7 +21,7 @@ import { borradorVacio, type BorradorPreinscripcion } from "./tipos";
  * Caso simulado que se pide con `?escenario=` en la URL, solo en desarrollo:
  *   - "ninguno":  sin borrador (lo normal).
  *   - "borrador": carga un borrador parcial con datos inventados.
- *   - "rechazo":  el envío se rechaza con motivos.
+ *   - "rechazo":  carga un borrador completo, listo para enviar, y el envío se rechaza con motivos.
  *   - "enviada":  la solicitud ya fue enviada.
  */
 export type Escenario = "ninguno" | "borrador" | "rechazo" | "enviada";
@@ -97,6 +97,51 @@ function borradorParcial(nivel: Nivel, correo: string): BorradorPreinscripcion {
     return borrador;
 }
 
+/**
+ * Un borrador completo: todos los campos del nivel llenos y un PDF por cada documento
+ * requerido (sin segundo programa). Se puede enviar de inmediato.
+ */
+function borradorCompleto(nivel: Nivel, correo: string): BorradorPreinscripcion {
+    const borrador = borradorParcial(nivel, correo);
+    borrador.codigoEstudiantil = "T00000001";
+    borrador.perfil = {
+        ...borrador.perfil,
+        genero: "OTRO",
+        telefonoFijo: "6050000000",
+        celular: "3000000000",
+        direccion: "Calle de ejemplo 1",
+    };
+    borrador.segundoPrograma = false;
+
+    if (nivel === "PREGRADO") {
+        borrador.programas[0].tipoOpcionGrado = "TRABAJO_DE_GRADO";
+        borrador.pregrado = {
+            conoceRegistroSaberPro: false,
+            numeroRegistroSaberPro: "",
+            fechaExamenSaberPro: "",
+            esEmpleadoUtb: false,
+            tipoContrato: "",
+            esHijoDeEmpleadoUtb: false,
+        };
+    } else {
+        borrador.posgrado = {
+            nivelEstudios: "PROFESIONAL",
+            tituloObtenido: "Título de ejemplo",
+            esEgresadoPregradoUtb: true,
+        };
+        borrador.experiencia = [
+            { orden: 1, empresa: "Empresa de ejemplo", cargo: "Cargo de ejemplo", tiempo: "2 años" },
+            { orden: 2, empresa: "Otra empresa de ejemplo", cargo: "Otro cargo de ejemplo", tiempo: "1 año" },
+        ];
+    }
+
+    borrador.documentos = {};
+    for (const { id } of documentosRequeridos(nivel, false)) {
+        borrador.documentos[id] = { id, nombre: `${id}-prueba.pdf`, tamano: 1024 };
+    }
+    return borrador;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Funciones públicas
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,6 +150,7 @@ function borradorParcial(nivel: Nivel, correo: string): BorradorPreinscripcion {
  * Carga el borrador del estudiante, o uno vacío si no tiene.
  * Si ya envió su solicitud, `estado` es "enviada" (la página redirige).
  * Lo guardado en esta misma visita a la página tiene prioridad sobre el escenario.
+ * Los escenarios "borrador" (parcial) y "rechazo" (completo) cargan un borrador de ejemplo.
  *
  * SIMULADO — TODO: endpoint pendiente (GET de la solicitud activa con su borrador, p. ej.
  * ${API_URL}/solicitudes/activa; ver también home/api.ts).
@@ -126,6 +172,9 @@ export async function cargarPreinscripcion(
     }
     if (escenario === "borrador") {
         return { estado: "borrador", borrador: borradorParcial(nivel, correo) };
+    }
+    if (escenario === "rechazo") {
+        return { estado: "borrador", borrador: borradorCompleto(nivel, correo) };
     }
     return { estado: "sin_borrador", borrador: borradorVacio(nivel, correo) };
 }

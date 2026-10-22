@@ -7,6 +7,7 @@ import {
     guardarBorrador,
     tamanoMaximoPdfBytes,
 } from "@/app/estudiante/iniciar_preinscripcion/api";
+import { documentosRequeridos } from "@/app/estudiante/documentos-requeridos";
 import { GENEROS, MODALIDADES, TIPOS_DOCUMENTO } from "@/app/estudiante/iniciar_preinscripcion/constantes";
 import { borradorVacio } from "@/app/estudiante/iniciar_preinscripcion/tipos";
 
@@ -72,10 +73,59 @@ test("cargarPreinscripcion sin escenario da sin_borrador y un borrador vacío co
     expect(respuesta.borrador).toEqual(borradorVacio("PREGRADO", "ninguno@utb.edu.co"));
 });
 
-test("cargarPreinscripcion con rechazo carga igual que sin escenario", async () => {
-    const respuesta = await cargarPreinscripcion("POSGRADO", "rechazo-carga@utb.edu.co", "rechazo");
-    expect(respuesta.estado).toBe("sin_borrador");
-    expect(respuesta.borrador).toEqual(borradorVacio("POSGRADO", "rechazo-carga@utb.edu.co"));
+test("rechazo carga un borrador completo para pregrado y posgrado", async () => {
+    // Completo: se puede pulsar "Enviar" de inmediato y ver el rechazo simulado.
+    for (const nivel of ["PREGRADO", "POSGRADO"] as const) {
+        const correo = `rechazo-carga-${nivel.toLowerCase()}@utb.edu.co`;
+        const respuesta = await cargarPreinscripcion(nivel, correo, "rechazo");
+        expect(respuesta.estado).toBe("borrador");
+
+        const { borrador } = respuesta;
+        expect(borrador.nivel).toBe(nivel);
+        expect(borrador.correo).toBe(correo);
+
+        // Obligatorios de la sección 4 del spec.
+        const obligatorios = {
+            nombres: borrador.nombres,
+            apellidos: borrador.apellidos,
+            tipoDocumento: borrador.perfil.tipoDocumento,
+            numeroDocumento: borrador.perfil.numeroDocumento,
+            correo: borrador.correo,
+            codigoEstudiantil: borrador.codigoEstudiantil,
+            programa: borrador.programas[0].programa,
+            modalidad: borrador.programas[0].modalidad,
+        };
+        for (const [campo, valor] of Object.entries(obligatorios)) {
+            expect(valor.trim(), `${nivel}: ${campo} sin llenar`).not.toBe("");
+        }
+        expect(borrador.nombres).toBe("Ana");
+        expect(borrador.apellidos).toBe("Prueba");
+        expect(TIPOS_DOCUMENTO.map((o) => o.valor)).toContain(borrador.perfil.tipoDocumento);
+        expect(MODALIDADES.map((o) => o.valor)).toContain(borrador.programas[0].modalidad);
+        expect(/^[A-Za-z0-9]+$/.test(borrador.perfil.numeroDocumento)).toBe(true);
+
+        // Sin segundo programa: la pregunta está respondida con "no".
+        expect(borrador.segundoPrograma).toBe(false);
+
+        // Un documento cargado por cada requerido, con su metadato y sin contenido.
+        const requeridos = documentosRequeridos(nivel, false).map((d) => d.id);
+        expect(Object.keys(borrador.documentos)).toEqual(requeridos);
+        for (const id of requeridos) {
+            expect(borrador.documentos[id].id).toBe(id);
+            expect(borrador.documentos[id].nombre).toBe(`${id}-prueba.pdf`);
+            expect(borrador.documentos[id].tamano).toBeGreaterThan(0);
+        }
+    }
+});
+
+test("rechazo carga un borrador completo aunque el borrador de ejemplo sea parcial", async () => {
+    const parcial = await cargarPreinscripcion("PREGRADO", "diferencia-parcial@utb.edu.co", "borrador");
+    const completo = await cargarPreinscripcion("PREGRADO", "diferencia-completo@utb.edu.co", "rechazo");
+    expect(Object.keys(parcial.borrador.documentos).length).toBeLessThan(
+        Object.keys(completo.borrador.documentos).length,
+    );
+    expect(parcial.borrador.perfil.celular).toBe("");
+    expect(completo.borrador.perfil.celular).not.toBe("");
 });
 
 test("cargarPreinscripcion con borrador da un borrador parcial con datos inventados", async () => {
