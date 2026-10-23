@@ -264,6 +264,8 @@ export function limpiarNumeroDocumento(texto: string): string {
     return texto.replace(/[^A-Za-z0-9]/g, "");
 }
 
+export const MENSAJE_NO_ES_PDF = "Solo se aceptan archivos PDF.";
+
 const BYTES_POR_MB = 1024 * 1024;
 const FORMATO_MEGAS = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
 
@@ -277,10 +279,28 @@ export function validarPdf(
     maximo: number | null,
 ): string | null {
     const esPdf = /\.pdf$/i.test(archivo.name) && archivo.type.toLowerCase() === "application/pdf";
-    if (!esPdf) return "Solo se aceptan archivos PDF.";
+    if (!esPdf) return MENSAJE_NO_ES_PDF;
     if (archivo.size === 0) return "El archivo está vacío.";
     if (maximo !== null && archivo.size > maximo) {
         return `El archivo pesa más de ${FORMATO_MEGAS.format(maximo / BYTES_POR_MB)} MB, el máximo permitido.`;
     }
     return null;
+}
+
+/** "%PDF-" en bytes: así empieza todo PDF. */
+const FIRMA_PDF = [0x25, 0x50, 0x44, 0x46, 0x2d];
+/** Dónde se busca la firma: los lectores de PDF la aceptan dentro del primer KB. */
+const BYTES_CON_FIRMA = 1024;
+
+/**
+ * Revisa que el archivo sea de verdad un PDF por sus primeros bytes. Hace falta porque el navegador
+ * saca `File.type` de la extensión, sin leer el archivo: una imagen renombrada a .pdf llega como
+ * application/pdf. Lee solo el primer KB, y no lo guarda ni lo envía.
+ */
+export async function tieneFirmaPdf(archivo: Blob): Promise<boolean> {
+    const bytes = new Uint8Array(await archivo.slice(0, BYTES_CON_FIRMA).arrayBuffer());
+    for (let inicio = 0; inicio + FIRMA_PDF.length <= bytes.length; inicio++) {
+        if (FIRMA_PDF.every((byte, i) => bytes[inicio + i] === byte)) return true;
+    }
+    return false;
 }

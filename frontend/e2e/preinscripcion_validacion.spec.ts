@@ -12,6 +12,7 @@ import {
     limpiarNumeroDocumento,
     progreso,
     seccionesDelNivel,
+    tieneFirmaPdf,
     validarPdf,
 } from "@/app/estudiante/iniciar_preinscripcion/validacion";
 
@@ -375,6 +376,26 @@ test("validarPdf acepta un PDF normal", () => {
 
 test("validarPdf rechaza un png con extensión pdf", () => {
     expect(validarPdf({ name: "a.pdf", type: "image/png", size: 10 }, null)).toBe("Solo se aceptan archivos PDF.");
+});
+
+// El navegador saca File.type de la extensión, sin leer el archivo: una imagen renombrada a .pdf
+// llega como application/pdf. Lo que la delata son sus primeros bytes.
+
+/** Los primeros bytes de un PNG de verdad. */
+const BYTES_PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
+
+test("tieneFirmaPdf reconoce un PDF por sus primeros bytes", async () => {
+    expect(await tieneFirmaPdf(new Blob(["%PDF-1.7\n%âãÏÓ\n"]))).toBe(true);
+});
+
+test("tieneFirmaPdf rechaza una imagen renombrada a .pdf", async () => {
+    expect(await tieneFirmaPdf(new Blob([BYTES_PNG], { type: "application/pdf" }))).toBe(false);
+    expect(await tieneFirmaPdf(new Blob(["hola"]))).toBe(false);
+});
+
+test("tieneFirmaPdf acepta bytes antes de %PDF- dentro del primer KB, como los lectores de PDF", async () => {
+    expect(await tieneFirmaPdf(new Blob(["x".repeat(100), "%PDF-1.4\n"]))).toBe(true);
+    expect(await tieneFirmaPdf(new Blob(["x".repeat(1024), "%PDF-1.4\n"]))).toBe(false);
 });
 
 test("validarPdf rechaza un PDF sin la extensión .pdf", () => {

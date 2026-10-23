@@ -8,6 +8,8 @@ import styles from "./BarraAcciones.module.css";
 export interface BarraAccionesProps {
     /** ISO 8601 del último guardado, o null si nunca se ha guardado */
     guardadoEn: string | null;
+    /** Cuántas veces se guardó en esta visita: cada guardado se anuncia, aunque diga la misma hora */
+    guardados: number;
     guardando: boolean;
     enviando: boolean;
     /** El último guardado falló */
@@ -26,6 +28,7 @@ export interface BarraAccionesProps {
  */
 export default function BarraAcciones({
     guardadoEn,
+    guardados,
     guardando,
     enviando,
     errorGuardado,
@@ -53,11 +56,15 @@ export default function BarraAcciones({
             <div className={styles.tarjeta}>
                 <div className={styles.textos}>
                     <p role="status" className={styles.estado}>
+                        {/*
+                         * Un nodo nuevo por guardado: el lector no repite un texto que no cambió, y dos
+                         * guardados en el mismo minuto dicen lo mismo.
+                         */}
                         {guardadoEn && !errorGuardado && (
-                            <>
+                            <span key={guardados}>
                                 Borrador guardado el{" "}
                                 <span className={styles.fecha}>{formatearGuardado(guardadoEn)}</span>
-                            </>
+                            </span>
                         )}
                     </p>
                     {errorGuardado && (

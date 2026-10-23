@@ -53,6 +53,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
     // Guardar. `cambios` cuenta las ediciones: lo escrito mientras se guardaba sigue sin guardar.
     const [sucio, setSucio] = useState(false);
     const [guardando, setGuardando] = useState(false);
+    const [guardados, setGuardados] = useState(0);
     const [errorGuardado, setErrorGuardado] = useState(false);
     const cambios = useRef(0);
 
@@ -117,6 +118,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
         try {
             const { guardadoEn } = await guardarBorrador(borrador);
             setBorrador((actual) => (actual ? { ...actual, guardadoEn } : actual));
+            setGuardados((veces) => veces + 1);
             if (cambios.current === cambiosAlGuardar) setSucio(false);
             return true;
         } catch {
@@ -154,9 +156,10 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
         enviandoRef.current = true;
         setEnviando(true);
         setErrorEnvio(false);
-        // Una clave por envío. Si falla la conexión, "Reintentar" repite la misma: el backend no la duplica.
-        claveRef.current ??= crypto.randomUUID();
         try {
+            // Una clave por envío. Si falla la conexión, "Reintentar" repite la misma: el backend no la
+            // duplica. Va dentro del try: sin contexto seguro (http://IP) crypto.randomUUID no existe.
+            claveRef.current ??= crypto.randomUUID();
             const resultado = await enviarPreinscripcion(borrador, claveRef.current, escenarioDesde(escenario));
             claveRef.current = null;
             if (resultado.ok) {
@@ -272,6 +275,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                             <Documentos borrador={borrador} cambiar={cambiar} errores={errores} progreso={avance} />
                             <BarraAcciones
                                 guardadoEn={borrador.guardadoEn}
+                                guardados={guardados}
                                 guardando={guardando}
                                 enviando={enviando}
                                 errorGuardado={errorGuardado}

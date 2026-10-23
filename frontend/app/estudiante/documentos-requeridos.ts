@@ -20,7 +20,10 @@ export interface DocumentoRequerido {
     tipo: TipoDocumento;
     /** Lo que ve el estudiante */
     etiqueta: string;
-    /** El Paz y Salvo: retirarlo es quitar esta entrada; el formulario no lo muestra. */
+    /**
+     * El Paz y Salvo, que se va a dejar de pedir: retirarlo es quitar esta entrada. Mientras
+     * tanto se sigue pidiendo; la marca es solo para el código y el estudiante no la ve.
+     */
     retirando?: true;
     /** La estampilla en pregrado: pide un segundo comprobante si hay segundo programa. */
     unoPorPrograma?: true;

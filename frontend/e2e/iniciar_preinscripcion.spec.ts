@@ -34,6 +34,22 @@ function anuncio(page: Page) {
     return page.locator('#seccion-identificacion [aria-live="polite"]');
 }
 
+type VentanaConMarca = { mensajeAnterior?: Node | null };
+
+/**
+ * Un lector de pantalla no repite un mensaje vivo que no cambió, pero sí anuncia un nodo nuevo.
+ * `marcarMensaje` recuerda el nodo que hay ahora en la región; `mensajeEsNuevo` dice si ya no está.
+ */
+async function marcarMensaje(region: Locator): Promise<void> {
+    await region.evaluate((elemento) => {
+        (window as unknown as VentanaConMarca).mensajeAnterior = elemento.firstChild;
+    });
+}
+
+async function mensajeEsNuevo(page: Page): Promise<boolean> {
+    return page.evaluate(() => (window as unknown as VentanaConMarca).mensajeAnterior?.isConnected === false);
+}
+
 /** El resumen visible del índice: en escritorio es un texto y en celular, el botón que lo despliega. */
 function resumen(page: Page, texto: string) {
     return indice(page).getByText(texto).filter({ visible: true });
@@ -434,6 +450,33 @@ test.describe("iniciar preinscripción", () => {
         );
     });
 
+    test("una imagen renombrada a .pdf se rechaza por su contenido", async ({ page }) => {
+        await abrir(page, PREGRADO);
+        const entrada = page.locator("#documento-identification");
+        // Así la entrega el navegador: el tipo sale de la extensión, aunque los bytes sean de un PNG.
+        const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
+        await entrada.setInputFiles({ name: "foto.pdf", mimeType: "application/pdf", buffer: png });
+        await expect(zona(page, "identification")).toContainText("Solo se aceptan archivos PDF.");
+        await expect(entrada).toHaveAttribute("aria-invalid", "true");
+        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+    });
+
+    test("el mismo archivo rechazado dos veces se vuelve a anunciar", async ({ page }) => {
+        await abrir(page, PREGRADO);
+        const entrada = page.locator("#documento-identification");
+        const aviso = page.locator('#seccion-documentos [aria-live="polite"]');
+        const png = { name: "foto.png", mimeType: "image/png", buffer: Buffer.from("png") };
+        const texto = "Cédula de ciudadanía: Solo se aceptan archivos PDF.";
+
+        await entrada.setInputFiles(png);
+        await expect(aviso).toHaveText(texto);
+        await marcarMensaje(aviso);
+
+        await entrada.setInputFiles(png);
+        await expect.poll(() => mensajeEsNuevo(page), { timeout: 3000 }).toBe(true);
+        await expect(aviso).toHaveText(texto);
+    });
+
     test("PDF vacío se rechaza", async ({ page }) => {
         await abrir(page, PREGRADO);
         const entrada = page.locator("#documento-saber_pro");
@@ -513,6 +556,23 @@ test.describe("iniciar preinscripción", () => {
         // Al corregirlo, el campo deja de marcar el error.
         await nombres.fill("Ana");
         await expect(nombres).not.toHaveAttribute("aria-invalid", "true");
+    });
+
+    test("un segundo guardado en el mismo minuto se vuelve a anunciar", async ({ page }) => {
+        await page.clock.setFixedTime(new Date("2026-10-22T20:40:00Z"));
+        await abrir(page, PREGRADO);
+        const guardar = page.getByRole("button", { name: "Guardar para continuar después" });
+        const estado = page.getByRole("status").filter({ hasText: "Borrador guardado" });
+        const texto = /^Borrador guardado el 22\/10\/2026, 3:40\sp\.\sm\.$/;
+
+        await guardar.click();
+        await expect(estado).toHaveText(texto);
+        await expect(guardar).toBeEnabled();
+        await marcarMensaje(estado);
+
+        await guardar.click();
+        await expect.poll(() => mensajeEsNuevo(page), { timeout: 3000 }).toBe(true);
+        await expect(estado).toHaveText(texto);
     });
 
     test("borrador parcial se carga (?escenario=borrador) y Guardar muestra la hora", async ({ page }) => {
@@ -606,6 +666,25 @@ test.describe("iniciar preinscripción", () => {
         await page.waitForTimeout(1000);
         expect(destinos.filter((ruta) => ruta === "/estudiante/preinscripcion")).toHaveLength(1);
         expect(await claves()).toHaveLength(1);
+    });
+
+    test("si no se puede generar la clave del envío, el diálogo no queda en Enviando…", async ({ page }) => {
+        // Como en http://IP:puerto (un contexto no seguro), donde crypto.randomUUID no existe.
+        await page.addInitScript(() => {
+            Object.defineProperty(crypto, "randomUUID", { value: undefined, configurable: true });
+        });
+        await abrir(page, POSGRADO);
+        await llenarObligatoriosPosgrado(page);
+
+        await botonEnviar(page).click();
+        const dialogo = dialogoEnvio(page);
+        await dialogo.getByRole("button", { name: "Enviar", exact: true }).click();
+        await expect(dialogo.getByRole("alert")).toContainText("No fue posible enviar tu preinscripción.");
+        await expect(dialogo.getByRole("button", { name: "Reintentar" })).toBeEnabled();
+
+        await dialogo.getByRole("button", { name: "Volver a editar" }).click();
+        await expect(dialogo).toBeHidden();
+        await expect(page).toHaveURL(new RegExp(`${RUTA}\\?nivel=POSGRADO`));
     });
 
     // ── Salir con cambios sin guardar ───────────────────────────────────────────
