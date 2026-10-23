@@ -15,7 +15,13 @@
 // Tipos de dominio
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type NivelAcademico = "PREGRADO" | "POSGRADO";
+export {
+    DOCUMENTOS_POR_NIVEL,
+    DOCUMENTOS_REQUERIDOS,
+    type NivelAcademico,
+    type RequisitoDocumento,
+} from "../documentos-requeridos";
+import type { NivelAcademico } from "../documentos-requeridos";
 
 /** Estado de validación de un documento ya procesado */
 export type EstadoDocumento =
@@ -168,7 +174,12 @@ export async function obtenerNivelSimulado(): Promise<NivelAcademico> {
 export async function obtenerSolicitudActiva(): Promise<Solicitud | null> {
     await new Promise((r) => setTimeout(r, 100));
 
-    if (ESCENARIO_DEMO === "con_solicitud" || ESCENARIO_DEMO === "sin_notificaciones") {
+    const escenario =
+        (typeof window !== "undefined" &&
+            (window as unknown as { __CHECKU_ESCENARIO__?: string }).__CHECKU_ESCENARIO__) ||
+        ESCENARIO_DEMO;
+
+    if (escenario === "con_solicitud" || escenario === "sin_notificaciones") {
         return SOLICITUD_DEMO_PREGRADO;
     }
     return null;
@@ -202,22 +213,6 @@ export async function obtenerPoliticaReenvios(): Promise<PoliticaReenvios> {
 // Utilitarios de presentación (sin lógica de negocio)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Lista de documentos requeridos según el nivel. Solo la UI la necesita. */
-export const DOCUMENTOS_POR_NIVEL: Record<NivelAcademico, string[]> = {
-    PREGRADO: [
-        "Cédula de ciudadanía",
-        "Evaluación de Grado (Banner)",
-        "Paz y Salvo de Biblioteca",
-        "Estampilla Pro-Cultura",
-        "Resultados Saber Pro",
-    ],
-    POSGRADO: [
-        "Cédula de ciudadanía",
-        "Paz y Salvo de Biblioteca",
-        "Estampilla Pro-Cultura",
-    ],
-};
-
 /** Formatea una fecha ISO para mostrarla de forma legible. */
 export function formatearFecha(iso: string): string {
     const fecha = new Date(iso);
@@ -227,7 +222,6 @@ export function formatearFecha(iso: string): string {
 
     if (diffH < 1) return "Hace un momento";
     if (diffH < 24) {
-        const h = Math.floor(diffH);
         return `Hoy, ${fecha.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`;
     }
     if (diffH < 48) return "Ayer";
