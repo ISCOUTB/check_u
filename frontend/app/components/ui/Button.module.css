@@ -21,11 +21,13 @@
         transform var(--duracion-rapida) var(--ease-out);
 }
 
-.boton:active:not(:disabled) {
+.boton:active:not(:disabled, [aria-disabled="true"]) {
     transform: scale(0.97);
 }
 
-.boton:disabled {
+/* aria-disabled: ocupado sin perder el foco (prop conservarFoco). */
+.boton:disabled,
+.boton[aria-disabled="true"] {
     cursor: not-allowed;
     opacity: 0.65;
 }
@@ -54,11 +56,11 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .primario:hover:not(:disabled) {
+    .primario:hover:not(:disabled, [aria-disabled="true"]) {
         background: var(--color-accent-hover);
     }
 
-    .secundario:hover:not(:disabled) {
+    .secundario:hover:not(:disabled, [aria-disabled="true"]) {
         background: var(--color-accent-soft);
     }
 

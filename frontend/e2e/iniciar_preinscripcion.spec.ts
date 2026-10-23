@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { API, revisarPagina, sesionComo, TEMAS, USUARIOS } from "./soporte";
+import { API, revisarAxe, revisarPagina, sesionComo, TEMAS, USUARIOS } from "./soporte";
 
 // Página del formulario de preinscripción (Tarea 25). El borrador es simulado (api.ts); lo único
 // que se simula aquí con page.route es la sesión.
@@ -37,6 +37,71 @@ function anuncio(page: Page) {
 /** El resumen visible del índice: en escritorio es un texto y en celular, el botón que lo despliega. */
 function resumen(page: Page, texto: string) {
     return indice(page).getByText(texto).filter({ visible: true });
+}
+
+/** Un PDF de prueba: con la cabecera basta, porque el cliente no lee el contenido. */
+function pdf(nombre: string) {
+    return { name: nombre, mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n") };
+}
+
+/** La zona de carga de un documento, por su id (`DocumentoDelFormulario.id`). */
+function zona(page: Page, id: string) {
+    return page.locator("li", { has: page.locator(`#documento-${id}`) });
+}
+
+/** El contador de la sección Documentos ("N de M documentos cargados"). */
+function contador(page: Page) {
+    return page.locator("#seccion-documentos").getByText(/^\d+ de \d+ documentos cargados$/);
+}
+
+/** El resumen de errores del envío (role="alert"), por un texto que contiene. */
+function resumenErrores(page: Page, texto: string) {
+    return page.getByRole("alert").filter({ hasText: texto });
+}
+
+function botonEnviar(page: Page) {
+    return page.getByRole("button", { name: "Enviar preinscripción" });
+}
+
+function dialogoEnvio(page: Page) {
+    return page.getByRole("dialog", { name: "Revisa tu información antes de enviar" });
+}
+
+/** Llena lo obligatorio de posgrado, con sus 3 documentos: queda "Todo listo para enviar". */
+async function llenarObligatoriosPosgrado(page: Page): Promise<void> {
+    await page.getByLabel("Nombres (obligatorio)").fill("Ana");
+    await page.getByLabel("Apellidos (obligatorio)").fill("Prueba");
+    await page.getByLabel("Tipo de documento (obligatorio)").selectOption({ label: "Cédula de ciudadanía" });
+    await page.getByLabel("Número de documento (obligatorio)").fill("1234567890");
+    await page.getByLabel("Código estudiantil (obligatorio)").fill("T00012345");
+    await responder(page, "Modalidad (obligatorio)", "Presencial");
+    await page.getByLabel("Programa (obligatorio)").fill("Programa de ejemplo");
+    for (const id of ["identification", "paz_y_salvo_bib", "estampilla_pro_cultura"])
+        await page.locator(`#documento-${id}`).setInputFiles(pdf(`${id}.pdf`));
+}
+
+/** Anota cada clave que genera crypto.randomUUID (la de idempotencia), sin tocar el código de la página. */
+async function espiarClaves(page: Page): Promise<() => Promise<string[]>> {
+    await page.addInitScript(() => {
+        const original = crypto.randomUUID.bind(crypto);
+        const claves: string[] = [];
+        Object.assign(window, { __claves: claves });
+        crypto.randomUUID = () => {
+            const clave = original();
+            claves.push(clave);
+            return clave;
+        };
+    });
+    return () => page.evaluate(() => (window as unknown as { __claves: string[] }).__claves);
+}
+
+/** ¿El evento beforeunload pide confirmar la salida? (lo que hace el navegador al recargar o cerrar) */
+function avisaAlSalir(page: Page): Promise<boolean> {
+    return page.evaluate(() => {
+        const evento = new Event("beforeunload", { cancelable: true });
+        window.dispatchEvent(evento);
+        return evento.defaultPrevented;
+    });
 }
 
 test.describe("iniciar preinscripción", () => {
@@ -323,6 +388,290 @@ test.describe("iniciar preinscripción", () => {
             });
             expect(tapado).toBe(false);
         }
+    });
+
+    test("el foco no queda tapado por la barra de acciones", async ({ page }) => {
+        await page.setViewportSize({ width: 360, height: 640 });
+        await abrir(page, `${PREGRADO}&escenario=borrador`);
+        for (let i = 0; i < 70; i++) {
+            await page.keyboard.press("Tab");
+            // Bajando con Tab, lo enfocado no queda debajo de la barra fija: ni su borde de arriba ni el
+            // de abajo los tapa otra cosa. El input de un documento es invisible: se mide su botón.
+            const tapado = await page.evaluate(async () => {
+                await new Promise((listo) => requestAnimationFrame(() => requestAnimationFrame(listo)));
+                const foco = document.activeElement!;
+                const visible = foco instanceof HTMLInputElement && foco.type === "file" ? foco.parentElement! : foco;
+                const caja = visible.getBoundingClientRect();
+                if (foco === document.body || caja.bottom <= 0 || caja.top >= innerHeight) return false;
+                return [caja.top + 2, caja.bottom - 2].some((y) => {
+                    const encima = document.elementFromPoint(caja.left + caja.width / 2, y);
+                    return !encima || (!foco.contains(encima) && !encima.contains(foco));
+                });
+            });
+            expect(tapado).toBe(false);
+        }
+    });
+
+    // ── Documentos ──────────────────────────────────────────────────────────────
+
+    test("archivo que no es PDF se rechaza y no cuenta", async ({ page }) => {
+        await abrir(page, PREGRADO);
+        const entrada = page.locator("#documento-identification");
+
+        await entrada.setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: Buffer.from("png") });
+        await expect(zona(page, "identification")).toContainText("Solo se aceptan archivos PDF.");
+        await expect(entrada).toHaveAttribute("aria-invalid", "true");
+        await expect(entrada).toHaveAccessibleDescription(/Solo se aceptan archivos PDF\./);
+        await expect(zona(page, "identification").getByRole("button", { name: /^Quitar/ })).toHaveCount(0);
+
+        // Con extensión .pdf pero de otro tipo, tampoco.
+        await entrada.setInputFiles({ name: "foto.pdf", mimeType: "image/png", buffer: Buffer.from("png") });
+        await expect(zona(page, "identification")).toContainText("Solo se aceptan archivos PDF.");
+
+        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+        await expect(indice(page).getByRole("link", { name: /Documentos/ })).toContainText(
+            "0 de 5 documentos cargados",
+        );
+    });
+
+    test("PDF vacío se rechaza", async ({ page }) => {
+        await abrir(page, PREGRADO);
+        const entrada = page.locator("#documento-saber_pro");
+        await entrada.setInputFiles({ name: "vacio.pdf", mimeType: "application/pdf", buffer: Buffer.alloc(0) });
+        await expect(zona(page, "saber_pro")).toContainText("El archivo está vacío.");
+        await expect(entrada).toHaveAttribute("aria-invalid", "true");
+        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+    });
+
+    test("cargar y quitar actualiza el contador", async ({ page }) => {
+        await abrir(page, PREGRADO);
+        const entrada = page.locator("#documento-identification");
+        await expect(entrada).toHaveAttribute("type", "file");
+        await expect(entrada).toHaveAttribute("accept", "application/pdf,.pdf");
+        await expect(entrada).toHaveAccessibleName(/^Cédula de ciudadanía \(obligatorio\)/);
+        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+
+        await entrada.setInputFiles(pdf("cedula.pdf"));
+        const cedula = zona(page, "identification");
+        await expect(cedula).toContainText("cedula.pdf");
+        await expect(contador(page)).toHaveText("1 de 5 documentos cargados");
+        await expect(indice(page).getByRole("link", { name: /Documentos/ })).toContainText(
+            "1 de 5 documentos cargados",
+        );
+        await expect(resumen(page, "Te faltan 2 secciones y 4 documentos")).toBeVisible();
+
+        await cedula.getByRole("button", { name: /^Quitar/ }).click();
+        await expect(cedula).not.toContainText("cedula.pdf");
+        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+        // El foco no se pierde: vuelve a la carga del mismo documento.
+        await expect(entrada).toBeFocused();
+    });
+
+    test("segundo programa en pregrado pide la segunda estampilla", async ({ page }) => {
+        await abrir(page, PREGRADO);
+        const segunda = page.locator("#documento-estampilla_pro_cultura-2");
+        await expect(segunda).toHaveCount(0);
+
+        await responder(page, "¿Solicitas grado en un segundo programa?", "Sí");
+        await expect(segunda).toHaveAccessibleName(/^Estampilla Pro-Cultura \(segundo programa\) \(obligatorio\)/);
+        await expect(contador(page)).toHaveText("0 de 6 documentos cargados");
+        await expect(resumen(page, "Te faltan 2 secciones y 6 documentos")).toBeVisible();
+
+        await responder(page, "¿Solicitas grado en un segundo programa?", "No");
+        await expect(segunda).toHaveCount(0);
+        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+    });
+
+    // ── Guardar y enviar ────────────────────────────────────────────────────────
+
+    test("envío incompleto muestra el resumen, mueve el foco y el enlace lleva al campo", async ({ page }) => {
+        await abrir(page, PREGRADO);
+        await botonEnviar(page).click();
+
+        const resumenEnvio = resumenErrores(page, "Revisa estos campos antes de enviar");
+        await expect(resumenEnvio).toBeVisible();
+        await expect(resumenEnvio).toBeFocused();
+        await expect(dialogoEnvio(page)).toHaveCount(0);
+        // Un enlace por faltante: 7 campos y 5 documentos.
+        await expect(resumenEnvio.getByRole("link")).toHaveCount(12);
+
+        // Cada campo marca su error.
+        const nombres = page.locator("#campo-nombres");
+        await expect(nombres).toHaveAttribute("aria-invalid", "true");
+        await expect(nombres).toHaveAccessibleDescription("Completa este campo.");
+        await expect(page.locator("#documento-saber_pro")).toHaveAttribute("aria-invalid", "true");
+        await expect(page.locator("#documento-saber_pro")).toHaveAccessibleDescription(
+            /Carga este documento en PDF\./,
+        );
+
+        await resumenEnvio.getByRole("link", { name: /^Nombres/ }).click();
+        await expect(nombres).toBeFocused();
+        await expect(nombres).toBeInViewport();
+        await resumenEnvio.getByRole("link", { name: /^Resultados Saber Pro/ }).click();
+        await expect(page.locator("#documento-saber_pro")).toBeFocused();
+
+        // Al corregirlo, el campo deja de marcar el error.
+        await nombres.fill("Ana");
+        await expect(nombres).not.toHaveAttribute("aria-invalid", "true");
+    });
+
+    test("borrador parcial se carga (?escenario=borrador) y Guardar muestra la hora", async ({ page }) => {
+        await page.clock.setFixedTime(new Date("2026-10-22T20:40:00Z"));
+        const consola: string[] = [];
+        page.on("console", (mensaje) => consola.push(mensaje.text()));
+        await abrir(page, `${PREGRADO}&escenario=borrador`);
+
+        await expect(page.locator("#campo-nombres")).toHaveValue("Ana");
+        await expect(zona(page, "identification")).toContainText("documento-de-ejemplo.pdf");
+        await expect(contador(page)).toHaveText("1 de 5 documentos cargados");
+        const estado = page.getByRole("status").filter({ hasText: "Borrador guardado" });
+        await expect(estado).toHaveText(/^Borrador guardado el 20\/10\/2026, 10:30\sa\.\sm\.$/);
+        await expect(page.getByText("Simulación: el borrador no se conserva si recargas la página.")).toBeVisible();
+
+        await page.getByLabel("Número de documento (obligatorio)").fill("9876543210");
+        await page.getByRole("button", { name: "Guardar para continuar después" }).click();
+        await expect(page.getByRole("button", { name: "Guardando…" })).toBeDisabled();
+        await expect(estado).toHaveText(/^Borrador guardado el 22\/10\/2026, 3:40\sp\.\sm\.$/);
+        await expect(page.getByRole("button", { name: "Guardar para continuar después" })).toBeEnabled();
+
+        // Nada del borrador sale de la memoria de la página: ni al navegador, ni a la URL, ni a la consola.
+        const guardado = await page.evaluate(() => JSON.stringify([{ ...localStorage }, { ...sessionStorage }]));
+        for (const dato of ["9876543210", "Prueba", "documento-de-ejemplo"]) {
+            expect(guardado).not.toContain(dato);
+            expect(page.url()).not.toContain(dato);
+            expect(consola.join("\n")).not.toContain(dato);
+        }
+    });
+
+    test("envío rechazado muestra los motivos (?escenario=rechazo)", async ({ page }) => {
+        await abrir(page, `${PREGRADO}&escenario=rechazo`);
+        await expect(resumen(page, "Todo listo para enviar")).toBeVisible();
+
+        await botonEnviar(page).click();
+        await expect(dialogoEnvio(page)).toBeVisible();
+        await dialogoEnvio(page).getByRole("button", { name: "Enviar", exact: true }).click();
+
+        const motivos = resumenErrores(page, "El número de documento no coincide con el registrado en la universidad.");
+        await expect(motivos).toBeVisible();
+        await expect(motivos).toContainText("El programa indicado no coincide con el de tu código estudiantil.");
+        await expect(motivos).toBeFocused();
+        await expect(dialogoEnvio(page)).toHaveCount(0);
+        await expect(page).toHaveURL(/escenario=rechazo/);
+    });
+
+    test("envío completo abre el diálogo, envía y navega a /estudiante/preinscripcion", async ({ page }) => {
+        const claves = await espiarClaves(page);
+        await abrir(page, POSGRADO);
+        await llenarObligatoriosPosgrado(page);
+        await expect(resumen(page, "Todo listo para enviar")).toBeVisible();
+
+        await botonEnviar(page).click();
+        const dialogo = dialogoEnvio(page);
+        await expect(dialogo).toBeVisible();
+        await expect(dialogo).toContainText("Ana Prueba");
+        await expect(dialogo).toContainText("3 de 3 documentos cargados");
+
+        // "Volver a editar" cierra sin enviar y devuelve el foco al botón.
+        await dialogo.getByRole("button", { name: "Volver a editar" }).click();
+        await expect(dialogo).toHaveCount(0);
+        await expect(botonEnviar(page)).toBeFocused();
+        expect(await claves()).toHaveLength(0);
+
+        await botonEnviar(page).click();
+        await dialogo.getByRole("button", { name: "Enviar", exact: true }).click();
+        await expect(page).toHaveURL("/estudiante/preinscripcion");
+        // Una clave de idempotencia para el envío, con forma de UUID.
+        const usadas = await claves();
+        expect(usadas).toHaveLength(1);
+        expect(usadas[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    });
+
+    test("doble clic envía una vez", async ({ page }) => {
+        const claves = await espiarClaves(page);
+        await abrir(page, POSGRADO);
+        await llenarObligatoriosPosgrado(page);
+        const destinos: string[] = [];
+        page.on("framenavigated", (marco) => {
+            if (marco === page.mainFrame()) destinos.push(new URL(marco.url()).pathname);
+        });
+
+        await botonEnviar(page).click();
+        const dialogo = dialogoEnvio(page);
+        await dialogo.getByRole("button", { name: "Enviar", exact: true }).dblclick();
+        // Tras el primer clic el botón queda deshabilitado de inmediato.
+        await expect(dialogo.getByRole("button", { name: "Enviando…" })).toBeDisabled();
+
+        await expect(page).toHaveURL("/estudiante/preinscripcion");
+        // Un segundo envío llegaría unos 300 ms después del primero: se espera a que no llegue.
+        await page.waitForTimeout(1000);
+        expect(destinos.filter((ruta) => ruta === "/estudiante/preinscripcion")).toHaveLength(1);
+        expect(await claves()).toHaveLength(1);
+    });
+
+    // ── Salir con cambios sin guardar ───────────────────────────────────────────
+
+    test('cambios sin guardar: tocar el logo abre el diálogo y "Seguir aquí" se queda', async ({ page }) => {
+        await abrir(page, PREGRADO);
+        expect(await avisaAlSalir(page)).toBe(false);
+
+        await page.getByLabel("Nombres (obligatorio)").fill("Ana");
+        expect(await avisaAlSalir(page)).toBe(true);
+
+        const logo = page.getByRole("link", { name: /CheckU/ });
+        await logo.click();
+        const dialogo = page.getByRole("dialog", { name: "Tienes cambios sin guardar" });
+        await expect(dialogo).toBeVisible();
+        for (const boton of ["Guardar y salir", "Salir sin guardar", "Seguir aquí"])
+            await expect(dialogo.getByRole("button", { name: boton })).toBeVisible();
+
+        await dialogo.getByRole("button", { name: "Seguir aquí" }).click();
+        await expect(dialogo).toHaveCount(0);
+        await expect(page).toHaveURL(PREGRADO);
+        await expect(page.locator("#campo-nombres")).toHaveValue("Ana");
+        await expect(logo).toBeFocused();
+    });
+
+    test('cambios sin guardar: "Guardar y salir" guarda y sigue el enlace', async ({ page }) => {
+        await abrir(page, PREGRADO);
+        await page.getByLabel("Nombres (obligatorio)").fill("Ana");
+        await page.getByRole("navigation", { name: "Ruta" }).getByRole("link", { name: "Inicio" }).click();
+
+        const dialogo = page.getByRole("dialog", { name: "Tienes cambios sin guardar" });
+        await dialogo.getByRole("button", { name: "Guardar y salir" }).click();
+        await expect(page).toHaveURL("/estudiante/home");
+
+        // Volver (sin recargar) trae lo guardado: el borrador simulado sigue en la memoria de la página.
+        await page.goBack();
+        await page.locator('main#contenido:not([aria-busy="true"])').waitFor();
+        await expect(page.locator("#campo-nombres")).toHaveValue("Ana");
+        expect(await avisaAlSalir(page)).toBe(false);
+    });
+
+    test.describe("axe con el resumen de errores y con el diálogo abiertos (claro y oscuro)", () => {
+        for (const tema of TEMAS)
+            for (const ancho of [360, 1280])
+                test(`${tema}, ${ancho}px`, async ({ page }) => {
+                    await page.setViewportSize({ width: ancho, height: 900 });
+                    await page.emulateMedia({ colorScheme: tema, reducedMotion: "reduce" });
+                    await abrir(page, `${PREGRADO}&escenario=rechazo`);
+
+                    // El diálogo de envío (el borrador del escenario está completo).
+                    await botonEnviar(page).click();
+                    await expect(dialogoEnvio(page)).toBeVisible();
+                    await revisarAxe(page);
+                    await dialogoEnvio(page).getByRole("button", { name: "Volver a editar" }).click();
+
+                    // El resumen de errores, con un obligatorio vacío.
+                    await page.getByLabel("Nombres (obligatorio)").fill("");
+                    await botonEnviar(page).click();
+                    await expect(resumenErrores(page, "Revisa estos campos antes de enviar")).toBeFocused();
+                    await revisarAxe(page);
+
+                    // El diálogo de salida con cambios sin guardar.
+                    await page.getByRole("link", { name: /CheckU/ }).click();
+                    await expect(page.getByRole("dialog", { name: "Tienes cambios sin guardar" })).toBeVisible();
+                    await revisarAxe(page);
+                });
     });
 
     for (const [nombre, ruta] of [

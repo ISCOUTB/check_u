@@ -193,6 +193,81 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Las zonas de carga (ZonaDocumento.module.css), una por documento. */
+.zonas {
+    margin-top: var(--space-2);
+    list-style: none;
+}
+
+/* ── Diálogos de enviar y de salir ─────────────────────────────────────────── */
+
+.datosEnvio {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.datosEnvio > div {
+    display: grid;
+    grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
+    gap: var(--space-1) var(--space-4);
+}
+
+.datosEnvio dt {
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+.datosEnvio dd {
+    color: var(--color-title);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.notaDialogo {
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+.errorDialogo {
+    margin-top: var(--space-4);
+    color: var(--status-invalid-text);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.accionesDialogo {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+}
+
+/* Solas en el diálogo (el de salir), sin el espacio de arriba. */
+.accionesDialogo:first-child {
+    margin-top: 0;
+}
+
+/* Si no caben en una fila, cada botón ocupa el ancho entero. */
+.accionesDialogo > * {
+    flex: 1 1 auto;
+}
+
+@media (min-width: 600px) {
+    .accionesDialogo > * {
+        flex: 0 0 auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .datosEnvio > div {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 /*
  * Lo que aparece al responder "sí" (spec §3): entra en 180 ms con var(--ease-out), opacidad y 4 px;
  * al irse, desaparece sin animación (se desmonta). Con el teclado no se anima. Con movimiento

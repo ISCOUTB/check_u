@@ -1,0 +1,126 @@
+/*
+ * Barra de acciones fija abajo (position: sticky, dentro de la columna del formulario): se queda a
+ * la vista mientras se baja, y al final del formulario descansa en su sitio sin tapar nada.
+ */
+
+/*
+ * Lo fijo es una franja del color de la página con la tarjeta encima: lo que pasa por detrás no se
+ * asoma por debajo de la tarjeta.
+ */
+.barra {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    padding-bottom: var(--space-3);
+    background: var(--color-bg);
+}
+
+/* El foco no queda debajo de la barra: la página deja abajo su alto (lo mide BarraAcciones.tsx) y un margen. */
+:global(html):has(.barra) {
+    scroll-padding-bottom: calc(var(--alto-barra-acciones, 108px) + var(--space-4));
+}
+
+.tarjeta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-5);
+    padding: var(--space-4) var(--space-5);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-popover);
+}
+
+.textos {
+    display: flex;
+    flex: 1 1 240px;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.estado {
+    color: var(--color-title);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+/* La fecha y la hora no se parten ("3:40 / p. m."). */
+.fecha {
+    white-space: nowrap;
+}
+
+.error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-2);
+    color: var(--status-invalid-text);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.reintentar {
+    padding: 0 var(--space-2);
+}
+
+.nota {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+/*
+ * Con poco ancho los dos botones se reparten la fila y su texto pasa a dos líneas: apilados, la
+ * barra taparía casi un cuarto de la pantalla del celular.
+ */
+.botones {
+    display: flex;
+    flex: 1 1 100%;
+    gap: var(--space-3);
+}
+
+.botones > * {
+    flex: 1 1 0;
+    padding: var(--space-2) var(--space-3);
+}
+
+/* Escritorio: cada botón en una línea, a la derecha del estado. */
+@media (min-width: 1024px) {
+    .botones {
+        flex: 0 1 auto;
+        justify-content: flex-end;
+    }
+
+    .botones > * {
+        flex: 0 0 auto;
+        padding: 0 var(--space-5);
+    }
+}
+
+@media (max-width: 480px) {
+    .barra {
+        padding-bottom: var(--space-2);
+    }
+
+    .tarjeta {
+        gap: var(--space-2);
+        padding: var(--space-3);
+    }
+
+    .botones {
+        gap: var(--space-2);
+    }
+
+    .botones > * {
+        padding: var(--space-2);
+        font-size: 14px;
+    }
+
+    .nota {
+        font-size: 12px;
+    }
+}
