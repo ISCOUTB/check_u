@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "@/app/components/navbar/Navbar";
 import Button from "@/app/components/ui/Button";
-import Dialog from "@/app/components/ui/Dialog";
 import PageHeader from "@/app/components/ui/PageHeader";
 import type { Nivel } from "@/app/estudiante/documentos-requeridos";
 import { useSesion } from "@/app/lib/useSesion";
 import { cargarPreinscripcion, enviarPreinscripcion, escenarioDesde, guardarBorrador } from "./api";
 import BarraAcciones from "./BarraAcciones";
-import { MODALIDADES, TIPOS_DOCUMENTO, type Opcion } from "./constantes";
+import DialogoConfirmarEnvio from "./DialogoConfirmarEnvio";
+import DialogoSalida from "./DialogoSalida";
 import IndiceProgreso from "./IndiceProgreso";
 import ResumenErrores, { type ContenidoResumen } from "./ResumenErrores";
 import Academico from "./secciones/Academico";
@@ -20,9 +20,9 @@ import Documentos from "./secciones/Documentos";
 import EstudiosExperiencia from "./secciones/EstudiosExperiencia";
 import Identificacion from "./secciones/Identificacion";
 import SaberProVinculacion from "./secciones/SaberProVinculacion";
-import type { BorradorPreinscripcion, ProgramaSolicitud } from "./tipos";
+import type { BorradorPreinscripcion } from "./tipos";
 import { useCambiosSinGuardar } from "./useCambiosSinGuardar";
-import { progreso as calcularProgreso, faltantes, seccionesDelNivel, type Progreso } from "./validacion";
+import { progreso as calcularProgreso, faltantes, seccionesDelNivel } from "./validacion";
 import styles from "./iniciar_preinscripcion.module.css";
 
 const NOMBRE_NIVEL: Record<Nivel, string> = { PREGRADO: "Pregrado", POSGRADO: "Posgrado" };
@@ -31,26 +31,6 @@ const SIN_ERRORES: Record<string, string> = {};
 
 function nivelDesde(valor: string | undefined): Nivel | null {
     return valor === "PREGRADO" || valor === "POSGRADO" ? valor : null;
-}
-
-/** Lo que se va a enviar, en pocas líneas, para el diálogo de confirmación. */
-function datosDelEnvio(borrador: BorradorPreinscripcion, avance: Progreso): [string, string][] {
-    const etiqueta = (lista: readonly Opcion[], valor: string) =>
-        lista.find((opcion) => opcion.valor === valor)?.etiqueta ?? valor;
-    const programa = (solicitud: ProgramaSolicitud) =>
-        `${solicitud.programa.trim()} · ${etiqueta(MODALIDADES, solicitud.modalidad)}`;
-    const { perfil, programas } = borrador;
-
-    const datos: [string, string][] = [
-        ["Nombre", `${borrador.nombres.trim()} ${borrador.apellidos.trim()}`],
-        ["Documento", `${etiqueta(TIPOS_DOCUMENTO, perfil.tipoDocumento)} ${perfil.numeroDocumento}`],
-        ["Código estudiantil", borrador.codigoEstudiantil.trim()],
-        ["Programa", programa(programas[0])],
-    ];
-    if (borrador.segundoPrograma === true) datos.push(["Segundo programa", programa(programas[1])]);
-    const { cargados, requeridos } = avance.documentos;
-    datos.push(["Documentos", `${cargados} de ${requeridos} documentos cargados`]);
-    return datos;
 }
 
 /**
@@ -228,68 +208,23 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                  * Los diálogos van antes del formulario: al rechazarse el envío, el diálogo se cierra y
                  * devuelve el foco al botón, y después el resumen de errores (más abajo) lo toma.
                  */}
-                <Dialog
+                <DialogoConfirmarEnvio
                     abierto={confirmando}
+                    borrador={borrador}
+                    avance={avance}
+                    enviando={enviando}
+                    errorEnvio={errorEnvio}
                     alCerrar={cerrarConfirmacion}
-                    titulo="Revisa tu información antes de enviar"
-                    descripcion="Después de enviarla, tu preinscripción queda de solo consulta."
-                    compacto
-                >
-                    <dl className={styles.datosEnvio}>
-                        {borrador &&
-                            avance &&
-                            datosDelEnvio(borrador, avance).map(([dato, valor]) => (
-                                <div key={dato}>
-                                    <dt>{dato}</dt>
-                                    <dd>{valor}</dd>
-                                </div>
-                            ))}
-                    </dl>
-                    <p className={styles.notaDialogo}>
-                        CheckU prevalida tus documentos antes de la solicitud formal: enviarla no aprueba tu grado.
-                    </p>
-                    {errorEnvio && (
-                        <p role="alert" className={styles.errorDialogo}>
-                            No fue posible enviar tu preinscripción. Revisa tu conexión e inténtalo de nuevo.
-                        </p>
-                    )}
-                    <div className={styles.accionesDialogo}>
-                        <Button variante="secundario" disabled={enviando} onClick={cerrarConfirmacion}>
-                            Volver a editar
-                        </Button>
-                        <Button cargando={enviando} textoCargando="Enviando…" conservarFoco onClick={confirmarEnvio}>
-                            {errorEnvio ? "Reintentar" : "Enviar"}
-                        </Button>
-                    </div>
-                </Dialog>
-
-                <Dialog
+                    alEnviar={confirmarEnvio}
+                />
+                <DialogoSalida
                     abierto={salidaPendiente !== null}
-                    alCerrar={() => {
-                        // Mientras guarda no se cierra: al terminar, "Guardar y salir" sigue el enlace.
-                        if (!guardando) cancelarSalida();
-                    }}
-                    titulo="Tienes cambios sin guardar"
-                    descripcion="Si sales ahora, pierdes lo que cambiaste desde la última vez que guardaste."
-                    compacto
-                >
-                    {errorGuardado && (
-                        <p role="alert" className={styles.errorDialogo}>
-                            No fue posible guardar tu borrador. Inténtalo de nuevo.
-                        </p>
-                    )}
-                    <div className={styles.accionesDialogo}>
-                        <Button cargando={guardando} textoCargando="Guardando…" conservarFoco onClick={guardarYSalir}>
-                            Guardar y salir
-                        </Button>
-                        <Button variante="secundario" disabled={guardando} onClick={confirmarSalida}>
-                            Salir sin guardar
-                        </Button>
-                        <Button variante="secundario" disabled={guardando} onClick={cancelarSalida}>
-                            Seguir aquí
-                        </Button>
-                    </div>
-                </Dialog>
+                    guardando={guardando}
+                    errorGuardado={errorGuardado}
+                    alGuardarYSalir={guardarYSalir}
+                    alSalirSinGuardar={confirmarSalida}
+                    alSeguirAqui={cancelarSalida}
+                />
 
                 {errorCarga && (
                     <div className={styles.errorCarga}>
