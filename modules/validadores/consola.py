@@ -1,8 +1,9 @@
 """Comando de consola compartido para probar un validador con archivos propios.
 
-Lo usan `python -m modules.validadores.saber_pro` y `python -m modules.validadores.cedula`. Muestra
-la clasificación, los datos extraídos y cada regla; con --json, el resultado completo del contrato.
-Nada se guarda ni se envía (salvo lo que el validador consulte, como el RUI con --rui).
+Lo usan `python -m modules.validadores.saber_pro`, `…cedula` y `…estampilla`. Muestra la
+clasificación, los datos extraídos y cada regla; con --json, el resultado completo del contrato.
+Nada se guarda ni se envía (salvo lo que el validador consulte: el RUI con --rui, la Gobernación con
+--consultar).
 """
 
 import json

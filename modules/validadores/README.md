@@ -5,7 +5,7 @@ Cada validador recibe el archivo que subió el estudiante y devuelve un `Documen
 - la clasificación del documento (`valid`, `invalid` o `to_check`);
 - la acción que debe tomar el estudiante.
 
-Hoy existen el de **Saber Pro** (Tarea 08e) y el de **cédula** (Tarea 08a). Diseño: `docs/superpowers/specs/2026-10-17-validador-saber-pro-design.md`.
+Hoy existen el de **Saber Pro** (Tarea 08e), el de **cédula** (Tarea 08a) y el de **Estampilla Pro-Cultura** (Tarea 08d). Cada uno tiene su diseño en `docs/superpowers/specs/`.
 
 ## Archivos
 
@@ -24,6 +24,9 @@ Hoy existen el de **Saber Pro** (Tarea 08e) y el de **cédula** (Tarea 08a). Dis
 | `cedula/paginas.py`, `cedula/calidad.py` | PDF o imagen → páginas; resolución y nitidez de cada página. |
 | `cedula/extraccion.py` | Adapta lo que devuelve `leer_cedula` (modules/cedula) a datos con confianza; reconoce la versión de la cédula. |
 | `cedula/reglas.py` | Las 5 reglas de la cédula y `VERSION = "cedula@1.0.0"`. |
+| `estampilla/__init__.py` | `validar_estampilla(contenido, id_student=…, document_version=…, consultar_registro=…)`. |
+| `estampilla/extraccion.py` | Lee el certificado de pago con PyMuPDF: recibo, contribuyente, fecha de pago y la fila "Estampilla Pro-Cultura". |
+| `estampilla/reglas.py` | Las 5 reglas, la traducción de lo que devuelve el adaptador de la Tarea 22 (`modules/estampilla_pro`) y el cotejo con el registro oficial. `VERSION = "estampilla_pro_cultura@1.0.0"`. |
 
 ## Uso
 
@@ -62,6 +65,25 @@ venv/Scripts/python.exe -m modules.validadores.cedula "ruta/a/tu-cedula.png"
 ```
 
 Sin `--rui` **no** consulta el RUI, así que no envía el número de documento a ningún servicio externo. Con `--rui` sí lo consulta. Necesita Tesseract instalado.
+
+## Estampilla Pro-Cultura (Tarea 08d)
+
+`validar_estampilla(contenido, id_student=…, document_version=…)` recibe el certificado de pago (PDF) que se descarga de la Gobernación de Bolívar. El PDF no trae firma digital, así que lo que prueba el pago es la consulta oficial.
+- **Extrae** el recibo oficial, el documento y el nombre del contribuyente, la fecha de pago y el valor de la Estampilla Pro-Cultura. La Prodesarrollo, que viene en el mismo recibo, se ignora.
+- **Exige** que la fila Pro-Cultura diga "Pagado" y valga más de $0. El valor exacto no se inventa: queda pendiente.
+- **Consulta el recibo** en la Gobernación con el adaptador de la Tarea 22 (`modules/estampilla_pro`), como regla **obligatoria**:
+  - no encontrado, sin Pro-Cultura o sin pagar → no válido;
+  - servicio caído o sin consultar → `wait_for_external_validation`.
+- **Coteja** el PDF con el registro oficial (fecha, valor, dígitos visibles del documento y nombre). Si algo no coincide, queda por revisar.
+- Diseño: `docs/superpowers/specs/2026-10-23-validador-estampilla-design.md`.
+
+Para probarlo con un certificado propio:
+
+```bash
+venv/Scripts/python.exe -m modules.validadores.estampilla "ruta/al/certificado.pdf" --consultar
+```
+
+Sin `--consultar` **no** consulta a la Gobernación, así que no envía el número de recibo a ningún servicio externo, y el resultado queda esperando la validación externa.
 
 ## Instalar y probar
 
