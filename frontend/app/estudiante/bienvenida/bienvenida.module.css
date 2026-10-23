@@ -1,0 +1,148 @@
+.pagina {
+    width: 100%;
+    max-width: 1280px;
+    min-height: calc(100dvh - var(--altura-barra));
+    margin: 0 auto;
+    padding: var(--space-8) 6%;
+}
+
+.cargando {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    min-height: 100dvh;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: girar 0.8s linear infinite;
+}
+
+@keyframes girar {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Encabezado y presentación */
+
+.seccionBienvenida {
+    margin-bottom: var(--space-7);
+}
+
+/* Rejilla de bloques: igual peso visual por nivel */
+
+.bloques {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+    align-items: stretch;
+}
+
+.bloquesUnico {
+    display: grid;
+    grid-template-columns: minmax(0, 680px);
+    justify-content: center;
+    gap: var(--space-6);
+}
+
+/* Tarjeta de acción */
+
+.tarjetaNivel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.cuerpoNivel {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    gap: var(--space-4);
+}
+
+.accionBoton {
+    display: flex;
+}
+
+.botonNivel {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+    text-align: center;
+}
+
+.textoIndicacion {
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Lista ordenada semántica */
+
+.listaDocumentos {
+    margin: 0;
+    padding-left: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    color: var(--color-text);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.itemDocumento {
+    color: var(--color-text);
+}
+
+.nombreDocumento {
+    color: var(--color-text);
+    font-weight: 500;
+}
+
+.notaDocumento {
+    display: inline;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-weight: 400;
+}
+
+/* Adaptación responsive: 768 px y 480 px */
+
+@media (max-width: 768px) {
+    .bloques {
+        grid-template-columns: 1fr;
+    }
+
+    .bloquesUnico {
+        grid-template-columns: 1fr;
+    }
+
+    .pagina {
+        padding: var(--space-6) var(--space-4);
+    }
+}
+
+@media (max-width: 480px) {
+    .pagina {
+        padding: var(--space-5) var(--space-3);
+    }
+
+    .listaDocumentos {
+        padding-left: var(--space-4);
+        gap: var(--space-2);
+        font-size: 13px;
+    }
+
+    .textoIndicacion {
+        font-size: 13px;
+    }
+}
