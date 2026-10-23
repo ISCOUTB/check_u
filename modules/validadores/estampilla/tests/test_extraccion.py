@@ -86,6 +86,56 @@ def test_sin_fila_pro_cultura(texto_certificado):
     assert extraccion.datos["pro_cultura_amount"] == NULO
 
 
+def con_fila(texto_certificado, fila: str) -> str:
+    return texto_certificado.replace(FILA_PRO_CULTURA, fila)
+
+
+def fila_leida(extraccion):
+    return (extraccion.fila_pro_cultura, extraccion.datos["pro_cultura_amount"]["value"], extraccion.estado_pro_cultura)
+
+
+@pytest.mark.parametrize("etiqueta", ["Pro - Cultura", "Pro–Cultura", "Pro—Cultura", "Pro Cultura", "ProCultura"])
+def test_etiqueta_con_otros_guiones(texto_certificado, etiqueta):
+    texto = con_fila(texto_certificado, f"165 - Expedición Títulos Estampilla {etiqueta} $ 70.036 Pagado")
+    assert fila_leida(extraer_de_texto(texto)) == (True, 70036, "PAGADO")
+
+
+@pytest.mark.parametrize(
+    "fila",
+    [
+        "Estampilla Pro-Cultura 70.036 Pagado",
+        "Estampilla Pro-Cultura COP 70.036 Pagado",
+        "Estampilla Pro-Cultura $ 70.036 COP Pagado",
+        "Estampilla Pro-Cultura $ 70.036 pagado",
+    ],
+)
+def test_valor_y_estado_en_otros_formatos(texto_certificado, fila):
+    assert fila_leida(extraer_de_texto(con_fila(texto_certificado, fila))) == (True, 70036, "PAGADO")
+
+
+def test_etiqueta_en_dos_lineas(texto_certificado):
+    # Así queda en el texto cuando la celda del concepto parte la etiqueta en dos renglones.
+    fila = "165 - Expedición Títulos Estampilla Pro-       $ 70.036       Pagado\n                    Cultura"
+    assert fila_leida(extraer_de_texto(con_fila(texto_certificado, fila))) == (True, 70036, "PAGADO")
+
+
+@pytest.mark.parametrize("fila", ["Estampilla Pro-Cultura $ 70.036", "Estampilla Pro-Cultura $ 70.036 Procesando"])
+def test_estado_que_no_se_puede_leer(texto_certificado, fila):
+    # Sin estado en su fila (el "Pagado" del Total, en la línea siguiente, no cuenta) o con uno desconocido.
+    assert fila_leida(extraer_de_texto(con_fila(texto_certificado, fila))) == (True, 70036, None)
+
+
+def test_valor_que_no_se_puede_leer(texto_certificado):
+    texto = con_fila(texto_certificado, "Estampilla Pro-Cultura $ ---- Pagado")
+    assert fila_leida(extraer_de_texto(texto)) == (True, None, "PAGADO")
+
+
+def test_valor_enorme_no_lanza(texto_certificado):
+    # int() no acepta más de 4300 dígitos: un valor así queda sin leer, no lanza.
+    texto = con_fila(texto_certificado, "Estampilla Pro-Cultura $ " + "9" * 4400 + " Pagado")
+    assert fila_leida(extraer_de_texto(texto)) == (True, None, "PAGADO")
+
+
 def test_nombre_con_particulas(texto_certificado):
     texto = texto_certificado.replace("ANA MARIA PRUEBA NUÑEZ", "MARÍA DEL PILAR DE LA HOZ PRUEBA")
     assert extraer_de_texto(texto).datos["full_name"]["value"] == "MARÍA DEL PILAR DE LA HOZ PRUEBA"
@@ -114,16 +164,21 @@ def test_pdf_en_memoria(texto_certificado, crear_pdf):
 
 
 def test_lee_en_orden_visual(texto_certificado):
-    # Un PDF editado puede guardar el texto en otro orden: la línea del contribuyente se escribe de
-    # última, pero en la página va donde le toca.
+    # Un PDF puede guardar el texto en otro orden que el que se ve: aquí las celdas de la fila
+    # Pro-Cultura se escriben de derecha a izquierda. Sin leer en orden visual, la fila no aparece.
     lineas = texto_certificado.splitlines()
-    contribuyente = next(i for i, linea in enumerate(lineas) if linea.startswith("Contribuyente"))
+    fila = lineas.index(FILA_PRO_CULTURA)
     documento = pymupdf.open()
     pagina = documento.new_page()
-    orden = [i for i in range(len(lineas)) if i != contribuyente] + [contribuyente]
-    for i in orden:
-        pagina.insert_text((40, 60 + 14 * i), lineas[i], fontsize=9)
-    assert valores(extraer(documento.tobytes())) == ESPERADOS
+    for i, linea in enumerate(lineas):
+        if i != fila and linea:
+            pagina.insert_text((40, 60 + 14 * i), linea, fontsize=9)
+    y = 60 + 14 * fila
+    for x, celda in [(330, "Pagado"), (260, "$ 70.036"), (40, "165 - Expedición Títulos Estampilla Pro-Cultura")]:
+        pagina.insert_text((x, y), celda, fontsize=9)
+    extraccion = extraer(documento.tobytes())
+    assert valores(extraccion) == ESPERADOS
+    assert extraccion.estado_pro_cultura == "PAGADO"
 
 
 def test_no_es_pdf_es_danado(texto_certificado):

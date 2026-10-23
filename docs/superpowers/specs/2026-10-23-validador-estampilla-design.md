@@ -27,6 +27,7 @@ No tiene frontend. Aquí nunca se declara `inconsistent`: la correspondencia con
 | 11 | Consola | Solo consulta a la Gobernación con `--consultar`, como `--rui` en la cédula. |
 | 12 | Prodesarrollo | La línea de la Estampilla Prodesarrollo, que viene en el mismo recibo, se ignora. |
 | 13 | Doble programa | Cada comprobante se valida por separado. Que no sean el mismo comprobante dos veces es de la Tarea 09. |
+| 14 | Lectura de la fila Pro-Cultura (tras la revisión final) | La etiqueta se busca sola: con guion, raya o espacio, o partida en dos renglones. El valor (con o sin "$" o "COP", hasta 20 caracteres) y el estado se leen en su fila. Solo valen estados conocidos: "Pagado"/"Pagada" cumplen; "Pendiente", "Anulado", "Vencido" y "Reversado" no cumplen. Un estado que no se puede leer queda por revisar. Una respuesta de la consulta sin `resultado` falla cerrado (`source_unavailable`). |
 
 ## 3. Lo que hay hoy
 
@@ -91,7 +92,7 @@ Lo que no se encuentra va con valor y confianza nulos. Para la regla 3, la extra
 |---|---|---|---|
 | `payment_certificate_document` | El texto dice "CERTIFICADO DE PAGO", "BOLÍVAR" y "HACIENDA" | Hay texto (40 caracteres o más) de otro documento | Sin texto, vacío, dañado o protegido (`low_confidence`) |
 | `required_fields_present` | Están los 5 datos | — | Falta alguno (`low_confidence`) |
-| `pro_cultura_paid` | La fila Pro-Cultura existe, dice "Pagado" y su valor es mayor que 0 | No hay fila Pro-Cultura, no dice "Pagado" o vale $0 | No se encontró el valor (`low_confidence`) |
+| `pro_cultura_paid` | La fila Pro-Cultura existe, dice "Pagado" y su valor es mayor que 0 | No hay fila Pro-Cultura, su estado es otro conocido ("Pendiente", "Anulado"…) o vale $0 | No se pudo leer el valor o el estado (`low_confidence`) |
 | `official_record` | La Gobernación lo encuentra, pagado y con Pro-Cultura | No lo encuentra; o lo encuentra sin Pro-Cultura o sin pagar | Ver la sección 8 |
 | `official_record_matches` | Coinciden la fecha, el valor, el documento y el nombre (sección 8) | — | Algo no coincide, o la Gobernación no devolvió el dato (`low_confidence`) |
 

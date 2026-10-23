@@ -5,7 +5,7 @@ Cada validador recibe el archivo que subió el estudiante y devuelve un `Documen
 - la clasificación del documento (`valid`, `invalid` o `to_check`);
 - la acción que debe tomar el estudiante.
 
-Hoy existen el de **Saber Pro** (Tarea 08e) y el de **cédula** (Tarea 08a). Diseño: `docs/superpowers/specs/2026-10-17-validador-saber-pro-design.md`.
+Hoy existen el de **Saber Pro** (Tarea 08e), el de **cédula** (Tarea 08a) y el de **Estampilla Pro-Cultura** (Tarea 08d). Cada uno tiene su diseño en `docs/superpowers/specs/`.
 
 ## Archivos
 

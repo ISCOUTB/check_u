@@ -27,7 +27,17 @@ CONTRIBUYENTE = re.compile(r"\bCONTRIBUYENTE\s*:\s*(\d{5,15})\s*-\s*([^\n]+)")
 FECHA = re.compile(
     r"\bFECHA\s+DE\s+PAGO\s*:\s*(?:(\d{4})-(\d{2})-(\d{2})|(\d{1,2})\s+([A-Z]{3})[A-Z]*\.?\s+(\d{4}))"
 )
-FILA_PRO_CULTURA = re.compile(r"ESTAMPILLA\s+PRO-?\s*CULTURA\b[^\n$]*\$\s*([\d.,]+)\s+([A-Z]+)")
+# La etiqueta se busca sola: con guion, raya o espacio ("PRO-CULTURA", "PRO – CULTURA", "PROCULTURA"),
+# o partida en dos renglones de su celda ("…ESTAMPILLA PRO-   $ 70.036   PAGADO\n   CULTURA"). El valor
+# y el estado se leen después, en la región de la fila.
+ETIQUETA_PRO_CULTURA = re.compile(
+    r"ESTAMPILLA\s+PRO\s*[-–—]?\s*CULTURA\b|ESTAMPILLA\s+PRO\b\s*[-–—]?[^\n]*\n\s*CULTURA\b"
+)
+# Hasta 20 caracteres y no pegado a más dígitos: un número más largo no es un valor (y int() no
+# acepta más de 4300 dígitos).
+VALOR = re.compile(r"(?<![\d.,])(\d[\d.,]{0,19})(?![\d.,])")
+PAGADOS = {"PAGADO", "PAGADA"}
+ESTADOS = PAGADOS | {"PENDIENTE", "ANULADO", "ANULADA", "VENCIDO", "VENCIDA", "REVERSADO", "REVERSADA"}
 MESES = {
     "ENE": 1, "JAN": 1, "FEB": 2, "MAR": 3, "ABR": 4, "APR": 4, "MAY": 5, "JUN": 6, "JUL": 7,
     "AGO": 8, "AUG": 8, "SEP": 9, "SET": 9, "OCT": 10, "NOV": 11, "DIC": 12, "DEC": 12,
@@ -48,7 +58,7 @@ class ExtraccionEstampilla:
     # True: es un certificado de pago de Bolívar. False: hay texto de otro documento. None: sin texto.
     es_certificado: bool | None
     fila_pro_cultura: bool
-    # El estado de la fila Pro-Cultura, en mayúsculas y sin tildes ("PAGADO", "PENDIENTE"…).
+    # El estado de la fila Pro-Cultura, uno de ESTADOS ("PAGADO", "PENDIENTE"…), o None si no se leyó.
     estado_pro_cultura: str | None
     datos: dict[str, dict]
     errores: list[str]
@@ -99,6 +109,19 @@ def _pesos(texto: str) -> int:
     return int(re.sub(r"\D", "", DECIMALES.sub("", texto)) or 0)
 
 
+def _fila_pro_cultura(normal: str) -> tuple[bool, int | None, str | None]:
+    """(hay fila, valor, estado). Valor y estado se buscan desde la etiqueta hasta el fin del renglón
+    donde termina: así no se toma el estado del Total, que va en el renglón siguiente."""
+    etiqueta = ETIQUETA_PRO_CULTURA.search(normal)
+    if not etiqueta:
+        return False, None, None
+    fin = normal.find("\n", etiqueta.end())
+    region = normal[etiqueta.start() : fin if fin >= 0 else len(normal)]
+    valor = VALOR.search(region)
+    estado = next((palabra for palabra in re.findall(r"[A-Z]+", region) if palabra in ESTADOS), None)
+    return True, _pesos(valor.group(1)) if valor else None, estado
+
+
 def extraer_de_texto(texto: str) -> ExtraccionEstampilla:
     if not texto.strip():
         return _vacia([SIN_TEXTO])
@@ -116,16 +139,16 @@ def extraer_de_texto(texto: str) -> ExtraccionEstampilla:
         # Del texto original, para conservar las mayúsculas y tildes con que viene.
         nombre = _nombre(texto[contribuyente.start(2) : contribuyente.end(2)])
     fecha = FECHA.search(normal)
-    fila = FILA_PRO_CULTURA.search(normal)
+    hay_fila, valor, estado = _fila_pro_cultura(normal)
 
     datos = {
         "receipt_number": _dato(recibo.group(1) if recibo else None),
         "identification_number": _dato(contribuyente.group(1) if contribuyente else None),
         "full_name": _dato(nombre),
         "payment_date": _dato(_fecha(fecha) if fecha else None),
-        "pro_cultura_amount": _dato(_pesos(fila.group(1)) if fila else None),
+        "pro_cultura_amount": _dato(valor),
     }
-    return ExtraccionEstampilla(True, es_certificado, bool(fila), fila.group(2) if fila else None, datos, [])
+    return ExtraccionEstampilla(True, es_certificado, hay_fila, estado, datos, [])
 
 
 def extraer(contenido: bytes) -> ExtraccionEstampilla:

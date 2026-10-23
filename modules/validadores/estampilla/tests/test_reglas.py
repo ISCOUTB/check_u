@@ -101,6 +101,10 @@ def test_falta_un_dato(registro_oficial, campo):
         ({"estado": "PENDIENTE"}, ("no_cumple", None), NO_PAGADA),
         ({"pro_cultura_amount": 0}, ("no_cumple", None), VALOR_CERO),
         ({"pro_cultura_amount": None}, ("no_evaluable", "low_confidence"), None),
+        ({"estado": "ANULADO"}, ("no_cumple", None), NO_PAGADA),
+        ({"estado": "PAGADA"}, ("cumple", None), None),
+        # La fila está pero su estado no se pudo leer: por revisar, no "no figura pagada".
+        ({"estado": None}, ("no_evaluable", "low_confidence"), None),
     ],
 )
 def test_pro_cultura_paid(registro_oficial, cambios, esperado, mensaje):
@@ -132,6 +136,14 @@ def test_official_record(registro_oficial, cambios, esperado, mensaje):
     assert resultado(regla) == esperado
     if mensaje:
         assert regla["message"] == mensaje
+
+
+@pytest.mark.parametrize("registro", [{}, "texto", {"motivo": "source_unavailable"}])
+def test_registro_raro_falla_cerrado(registro):
+    # Una consulta inyectada que no devuelve lo que devuelve la Tarea 22: no lanza, queda no disponible.
+    reglas = por_regla(evaluar(extraccion(), registro, ahora=AHORA))
+    assert resultado(reglas["official_record"]) == ("no_evaluable", "source_unavailable")
+    assert resultado(reglas["official_record_matches"]) == ("no_evaluable", "missing_dependency")
 
 
 def test_no_consultado():

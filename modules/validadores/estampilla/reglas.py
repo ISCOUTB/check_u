@@ -13,7 +13,7 @@ from datetime import datetime
 from modules.estampilla_pro import MENSAJE_NO_VALIDO
 
 from ..resultado import evaluacion
-from .extraccion import ExtraccionEstampilla
+from .extraccion import PAGADOS, ExtraccionEstampilla
 
 # Si cambia una regla obligatoria, sube el número mayor; si se agrega una regla, el menor; si solo
 # cambia un mensaje, el parche.
@@ -108,7 +108,16 @@ def _regla_pagada(extraccion: ExtraccionEstampilla, ahora: datetime) -> dict:
     valor = _valor(extraccion, "pro_cultura_amount")
     if not extraccion.fila_pro_cultura:
         return _regla(nombre, "no_cumple", SIN_PRO_CULTURA, ahora)
-    if extraccion.estado_pro_cultura != "PAGADO":
+    if extraccion.estado_pro_cultura is None:
+        # La fila está pero su estado no se pudo leer: que lo vea una persona, no "no figura pagada".
+        return _regla(
+            nombre,
+            "no_evaluable",
+            "No se pudo leer el estado de la Estampilla Pro-Cultura; un funcionario lo revisará.",
+            ahora,
+            "low_confidence",
+        )
+    if extraccion.estado_pro_cultura not in PAGADOS:
         return _regla(nombre, "no_cumple", NO_PAGADA, ahora)
     if valor is None:
         return _regla(
@@ -132,7 +141,10 @@ def _regla_registro(extraccion: ExtraccionEstampilla, registro: dict | None, aho
         )
     if registro is None:
         return _regla(nombre, "no_evaluable", NO_CONSULTADO, ahora, "source_pending")
-    if registro["resultado"] == "cumple":
+    if not isinstance(registro, dict):
+        registro = {}  # una respuesta que no es la de la Tarea 22: falla cerrado, más abajo
+    resultado = registro.get("resultado")
+    if resultado == "cumple":
         return _regla(
             nombre,
             "cumple",
@@ -140,7 +152,7 @@ def _regla_registro(extraccion: ExtraccionEstampilla, registro: dict | None, aho
             "con la Estampilla Pro-Cultura pagada.",
             ahora,
         )
-    if registro["resultado"] == "no_cumple":
+    if resultado == "no_cumple":
         if registro.get("estado_consulta") == "no_encontrado":
             mensaje = NO_ENCONTRADO
         elif registro.get("etiqueta_exists") is False:
@@ -150,7 +162,7 @@ def _regla_registro(extraccion: ExtraccionEstampilla, registro: dict | None, aho
         else:
             mensaje = NO_ENCONTRADO
         return _regla(nombre, "no_cumple", mensaje, ahora)
-    if registro["resultado"] == "no_evaluable" and registro.get("motivo") in ("invalid_input", "low_confidence"):
+    if resultado == "no_evaluable" and registro.get("motivo") in ("invalid_input", "low_confidence"):
         return _regla(
             nombre,
             "no_evaluable",
