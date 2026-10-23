@@ -2,7 +2,8 @@
 
 Decisión 2 del spec (Héctor, 21/10/2026): solo se verifica la INTEGRIDAD y el NOMBRE del firmante;
 el certificado no se valida (el de la Biblioteca no está en el repositorio y la issue prohíbe
-subir certificados). Riesgo aceptado: un certificado propio cuyo nombre diga "Biblioteca" pasa.
+subir certificados). Por eso, desde el 23/10/2026, una firma "de la Biblioteca" no aprueba sola
+(ver reglas._regla_firma): un certificado propio con ese nombre podría ser falso.
 """
 
 import unicodedata

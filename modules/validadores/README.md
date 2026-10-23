@@ -73,10 +73,13 @@ Sin `--rui` **no** consulta el RUI, así que no envía el número de documento a
 `validar_paz_y_salvo(contenido, id_student=…, document_version=…)` recibe el PDF que generó la Biblioteca (con texto).
 - Extrae el nombre y el código del estudiante.
 - Revisa que diga "se encuentra paz y salvo" (con "no se encuentra paz y salvo" no cumple).
-- Verifica la firma con el `SignatureValidator` de `firma_electronica/`: sin firma o copia guardada de nuevo → por revisar; modificado después de firmar o firmado por otro → no válido.
+- Verifica la firma con el `SignatureValidator` de `firma_electronica/`. **Ninguna firma aprueba sola:**
+  - sin firma, copia guardada de nuevo o firmado a nombre de la Biblioteca → por revisar;
+  - modificado después de firmar o firmado por otro → no válido.
+- Lo que no es un PDF (un HTML renombrado, por ejemplo) o un PDF cortado se informa como dañado.
 - Diseño: `docs/superpowers/specs/2026-10-21-validador-paz-y-salvo-design.md`.
 
-⚠️ **Riesgo aceptado:** solo se verifica la integridad y que el firmante se llame "Biblioteca"; el certificado no se valida. Un certificado propio con ese nombre pasaría. El formato del texto es el de las muestras de `firma_electronica/test/samples/` (no hay un Paz y Salvo real de muestra): es provisional.
+Los Paz y Salvo reales **no traen firma digital**: la Biblioteca los genera con una plantilla y los imprime con Microsoft Print to PDF. Por eso hoy todo Paz y Salvo correcto queda por revisar. El formato del texto se confirmó con uno real; la muestra real no se sube al repositorio (tiene datos personales).
 
 ```bash
 venv/Scripts/python.exe -m modules.validadores.paz_y_salvo "firma_electronica/test/samples/PAZ Y SALVO BIBLIOTECA firmado.pdf"

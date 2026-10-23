@@ -30,11 +30,24 @@ def test_version():
     assert VERSION == "paz_y_salvo_bib@1.0.0"
 
 
-def test_todo_cumple():
+def test_texto_correcto_y_firma_de_la_biblioteca_queda_por_revisar():
+    # Decisión de Héctor (23/10/2026): ninguna firma aprueba sola. Los Paz y Salvo reales no traen
+    # firma digital y el certificado de la Biblioteca no se puede confirmar.
     reglas = evaluar(extraccion(), FIRMA_BUENA, ahora=AHORA)
     assert [r["rule"] for r in reglas] == ORDEN
     assert all(r["mandatory"] for r in reglas)
-    assert all(r["result"] == "cumple" for r in reglas)
+    assert [r["result"] for r in reglas] == ["cumple", "cumple", "cumple", "no_evaluable"]
+    resultado = armar_resultado(
+        id_student="T000000001",
+        type_document="paz_y_salvo_bib",
+        document_version=1,
+        extracted_data=extraccion().datos,
+        reglas=reglas,
+        errores=[],
+        validation_version=VERSION,
+        ahora=AHORA,
+    )
+    assert resultado["document_classification"] == "to_check"
 
 
 def test_no_es_paz_y_salvo():
@@ -77,7 +90,12 @@ def test_estado(estado, resultado, motivo):
 @pytest.mark.parametrize(
     ("firma", "resultado", "mensaje"),
     [
-        (FIRMA_BUENA, "cumple", None),
+        (
+            FIRMA_BUENA,
+            "no_evaluable",
+            "El Paz y Salvo tiene una firma a nombre de la Biblioteca (Biblioteca), pero su certificado no "
+            "se puede confirmar; un funcionario lo revisará.",
+        ),
         (
             FirmaBiblioteca("presente", False, "Biblioteca", True),
             "no_cumple",

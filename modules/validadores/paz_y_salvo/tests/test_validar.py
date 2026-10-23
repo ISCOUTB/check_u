@@ -28,11 +28,14 @@ def test_sin_firma_por_revisar(sin_firma, validar_esquema):
     }
 
 
-def test_firmado_valido(firmado, validar_esquema):
+def test_firmado_por_revisar(firmado, validar_esquema):
+    # Ninguna firma aprueba sola: la Biblioteca no firma digitalmente sus Paz y Salvo reales y su
+    # certificado no se puede confirmar, así que una firma "de la Biblioteca" podría ser falsa.
     resultado = validar(firmado)
     validar_esquema(resultado)
-    assert resultado["document_classification"] == "valid"
-    assert resultado["required_action"] == "none"
+    assert resultado["document_classification"] == "to_check"
+    assert resultado["required_action"] == "wait_for_review"
+    assert reglas(resultado)["library_signature_intact"]["result"] == "no_evaluable"
 
 
 def test_modificado_no_valido(modificado, validar_esquema):

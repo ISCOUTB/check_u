@@ -1,8 +1,9 @@
 """Extracción del Paz y Salvo. Los textos en memoria son inventados e imitan el de la muestra."""
 
+import pymupdf
 import pytest
 
-from modules.validadores.paz_y_salvo.extraccion import CAMPOS, extraer, extraer_de_texto
+from modules.validadores.paz_y_salvo.extraccion import CAMPOS, DANADO, SIN_TEXTO, extraer, extraer_de_texto
 
 NULO = {"value": None, "confidence": None}
 TEXTO = (
@@ -14,6 +15,15 @@ TEXTO = (
 
 def valores(extraccion):
     return {campo: dato["value"] for campo, dato in extraccion.datos.items()}
+
+
+def pdf_en_memoria(lineas: list[tuple[float, str]], *, comprimido: bool = False) -> bytes:
+    """Un PDF inventado: cada línea va a su altura (y) y se escribe en el orden de la lista."""
+    documento = pymupdf.open()
+    pagina = documento.new_page()
+    for y, linea in lineas:
+        pagina.insert_text((72, y), linea, fontsize=11)
+    return documento.tobytes(deflate=comprimido)
 
 
 def test_muestra_sin_firma(sin_firma):
@@ -61,6 +71,27 @@ def test_lo_que_no_parece_un_nombre_queda_nulo(fragmento):
     assert extraer_de_texto(texto).datos["full_name"] == NULO
 
 
+@pytest.mark.parametrize(
+    "nombre",
+    [
+        "MARÍA DEL PILAR DE LA HOZ PRUEBA",
+        "ANA MARÍA DE LOS ÁNGELES PRUEBA DE LA ESPRIELLA",
+        "PEDRO JOSÉ DE LAS AGUAS Y PRUEBA",
+    ],
+)
+def test_las_particulas_no_cuentan_para_el_tope(nombre):
+    # "de", "del", "la", "las", "los" e "y" no cuentan para el tope de 6 palabras (Héctor, 23/10/2026):
+    # en Colombia hay nombres completos de 7 o más palabras.
+    texto = TEXTO.replace("ANA MARIA PRUEBA NUÑEZ", nombre)
+    assert extraer_de_texto(texto).datos["full_name"]["value"] == nombre
+
+
+@pytest.mark.parametrize("nombre", ["ANA MARIA JOSEFA LUCIA PRUEBA NUÑEZ GOMEZ", "DE LA", "DE LOS PRUEBA"])
+def test_siete_palabras_propias_o_menos_de_dos_quedan_nulo(nombre):
+    texto = TEXTO.replace("ANA MARIA PRUEBA NUÑEZ", nombre)
+    assert extraer_de_texto(texto).datos["full_name"] == NULO
+
+
 def test_nombre_con_guion_y_apostrofo():
     texto = TEXTO.replace("ANA MARIA PRUEBA NUÑEZ", "ANA-MARIA D'ANGELO PRUEBA")
     assert extraer_de_texto(texto).datos["full_name"]["value"] == "ANA-MARIA D'ANGELO PRUEBA"
@@ -76,6 +107,44 @@ def test_campos_ausentes():
 def test_otro_documento():
     extraccion = extraer_de_texto("Reporte de resultados del examen Saber Pro. Puntaje global 150 de 300 puntos.")
     assert extraccion.es_paz_y_salvo is False
+
+
+def test_lee_en_el_orden_en_que_se_ve():
+    # Un PDF editado, o de otro generador, puede guardar el texto en otro orden: aquí el nombre se
+    # escribe de último, pero en la página va entre "el alumno" e "identificado".
+    contenido = pdf_en_memoria(
+        [
+            (72, "PAZ Y SALVO"),
+            (100, "El Sistema de Bibliotecas hace constar que el alumno"),
+            (128, "identificado con el código T000000001 se encuentra paz y salvo."),
+            (114, "ANA PRUEBA NUÑEZ"),
+        ]
+    )
+    assert valores(extraer(contenido)) == {"full_name": "ANA PRUEBA NUÑEZ", "code_student": "T000000001"}
+
+
+def test_lo_que_no_es_pdf_es_danado():
+    # PyMuPDF abre un HTML adivinando su formato, aunque se le pida un PDF.
+    html = (
+        b"<html><body>PAZ Y SALVO Biblioteca. El alumno ANA PRUEBA identificado con el codigo "
+        b"T000000001 se encuentra paz y salvo.</body></html>"
+    )
+    extraccion = extraer(html)
+    assert extraccion.errores == [DANADO]
+    assert extraccion.es_paz_y_salvo is None
+
+
+def test_truncado_sin_texto_es_danado():
+    completo = pdf_en_memoria(
+        [(100, "El Sistema de Bibliotecas hace constar que el alumno ANA PRUEBA se encuentra paz y salvo.")],
+        comprimido=True,
+    )
+    cortado = completo[: completo.index(b"stream") + 30]
+    assert extraer(cortado).errores == [DANADO]
+
+
+def test_un_pdf_sano_sin_texto_sigue_siendo_sin_texto():
+    assert extraer(pdf_en_memoria([])).errores == [SIN_TEXTO]
 
 
 @pytest.mark.parametrize("contenido", [b"", b"basura"])

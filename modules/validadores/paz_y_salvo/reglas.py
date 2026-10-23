@@ -32,6 +32,10 @@ NO_VERIFICABLE = (
     "La firma del Paz y Salvo no se puede verificar: el archivo fue guardado de nuevo después de "
     "recibirlo. Un funcionario lo revisará."
 )
+SIN_CONFIRMAR = (
+    "El Paz y Salvo tiene una firma a nombre de la Biblioteca ({firmante}), pero su certificado no se "
+    "puede confirmar; un funcionario lo revisará."
+)
 
 
 def _regla(nombre: str, resultado: str, mensaje: str, ahora: datetime, motivo: str | None = None, errores=None):
@@ -79,6 +83,10 @@ def _regla_estado(extraccion: ExtraccionPazYSalvo, ahora: datetime) -> dict:
 
 
 def _regla_firma(firma: FirmaBiblioteca, ahora: datetime) -> dict:
+    """Nunca cumple: ninguna firma aprueba sola (Héctor, 23/10/2026). Los Paz y Salvo reales no traen
+    firma digital (la Biblioteca los imprime con Microsoft Print to PDF) y el certificado de la
+    Biblioteca no se puede confirmar, así que una firma "de la Biblioteca" podría ser falsa. Lo que sí
+    se decide es lo negativo: una firma rota o de otra persona deja el documento no válido."""
     nombre = "library_signature_intact"
     if firma.presencia == "ausente":
         return _regla(nombre, "no_evaluable", SIN_FIRMA, ahora, "low_confidence")
@@ -89,12 +97,7 @@ def _regla_firma(firma: FirmaBiblioteca, ahora: datetime) -> dict:
     if not firma.firmante_es_biblioteca:
         mensaje = f"El Paz y Salvo no está firmado por la Biblioteca (firmante: {firma.firmante or 'desconocido'})."
         return _regla(nombre, "no_cumple", mensaje, ahora)
-    return _regla(
-        nombre,
-        "cumple",
-        f"El Paz y Salvo tiene la firma de la Biblioteca ({firma.firmante}) y no fue modificado después.",
-        ahora,
-    )
+    return _regla(nombre, "no_evaluable", SIN_CONFIRMAR.format(firmante=firma.firmante), ahora, "low_confidence")
 
 
 def _dependiente(nombre: str, ahora: datetime) -> dict:

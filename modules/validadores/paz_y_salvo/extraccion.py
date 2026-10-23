@@ -1,8 +1,10 @@
 """Extracción del Paz y Salvo de Biblioteca: solo lee, no juzga.
 
-Lee el texto del PDF con PyMuPDF (solo PDF con texto: un escaneo queda por revisar). El formato es
-el de las muestras de firma_electronica/test/samples y es PROVISIONAL hasta ver un Paz y Salvo real:
-"...hace constar que el alumno NOMBRE identificado con el código T... se encuentra paz y salvo."
+Lee el texto del PDF con PyMuPDF (solo PDF con texto: un escaneo queda por revisar). El formato se
+confirmó el 23/10/2026 con un Paz y Salvo real (la Biblioteca lo genera con una plantilla y lo imprime
+con Microsoft Print to PDF, sin firma digital):
+"El Sistema de Bibliotecas ... hace constar que el alumno NOMBRE identificado con el código T...
+se encuentra paz y salvo."
 """
 
 import re
@@ -27,6 +29,8 @@ NOMBRE = re.compile(r"\b(?:EL|LA)\s+(?:ALUMN[OA]|ESTUDIANTE)\s+(.+?)\s+IDENTIFIC
 CODIGO = re.compile(r"\bCODIGO\s*(?:NO\.?\s*)?(T\d{6,10})\b")
 PALABRA_DE_NOMBRE = re.compile(r"[^\W\d_]+(?:[-'’][^\W\d_]+)*")
 PALABRAS_MAXIMAS = 6
+# No cuentan para el tope: "MARÍA DEL PILAR DE LA HOZ PÉREZ" son 4 palabras propias, no 7.
+PARTICULAS = {"DE", "DEL", "LA", "LAS", "LOS", "Y"}
 
 Estado = Literal["paz_y_salvo", "no_paz_y_salvo"]
 
@@ -82,9 +86,11 @@ def extraer_de_texto(texto: str) -> ExtraccionPazYSalvo:
     if encontrado:
         # Del texto original, para conservar las mayúsculas y tildes con que viene.
         palabras = texto[encontrado.start(1) : encontrado.end(1)].split()
-        # Un nombre son de 2 a 6 palabras solo con letras (se admiten guion y apóstrofo): así no
-        # se toma como nombre un código ("con el código T…") ni un párrafo entero.
-        if 2 <= len(palabras) <= PALABRAS_MAXIMAS and all(PALABRA_DE_NOMBRE.fullmatch(p) for p in palabras):
+        # Un nombre son de 2 a 6 palabras propias solo con letras (se admiten guion y apóstrofo; las
+        # partículas como "de la" no cuentan): así no se toma como nombre un código ("con el código
+        # T…") ni un párrafo entero.
+        propias = [p for p in palabras if _normalizar(p) not in PARTICULAS]
+        if 2 <= len(propias) <= PALABRAS_MAXIMAS and all(PALABRA_DE_NOMBRE.fullmatch(p) for p in palabras):
             nombre = " ".join(palabras)
     codigo = CODIGO.search(normal)
 
@@ -98,9 +104,17 @@ def extraer(contenido: bytes) -> ExtraccionPazYSalvo:
         return _vacia([DANADO])
     try:
         with pymupdf.open(stream=contenido, filetype="pdf") as documento:
+            # PyMuPDF abre otros formatos (un HTML renombrado, por ejemplo) adivinando cuál es.
+            if not documento.is_pdf:
+                return _vacia([DANADO])
             if documento.needs_pass:
                 return _vacia([PROTEGIDO])
-            texto = "\n".join(pagina.get_text() for pagina in documento)
+            # En el orden en que se ve: un PDF editado puede guardar el texto en otro orden.
+            texto = "\n".join(pagina.get_text(sort=True) for pagina in documento)
+            reparado = documento.is_repaired
     except Exception:  # PyMuPDF lanza varios tipos según cómo esté dañado el archivo
+        return _vacia([DANADO])
+    # Un PDF que hubo que reparar y quedó sin texto está cortado o dañado, no es un escaneo.
+    if reparado and not texto.strip():
         return _vacia([DANADO])
     return extraer_de_texto(texto)
