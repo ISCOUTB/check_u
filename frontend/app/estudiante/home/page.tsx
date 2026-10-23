@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import Navbar from "@/app/components/navbar/Navbar";
 import Button from "@/app/components/ui/Button";
@@ -44,6 +45,7 @@ function documentosCargados(solicitud: Solicitud): number {
 }
 
 export default function Home() {
+    const router = useRouter();
     const { usuario, cargando } = useSesion("estudiante");
     const idListaNotificaciones = useId();
 
@@ -76,9 +78,16 @@ export default function Home() {
             .catch(() => setPolitica(null));
     }, [usuario]);
 
+    // Si el estudiante no tiene solicitud activa, redirigir a /estudiante/bienvenida
+    useEffect(() => {
+        if (!cargando && usuario && solicitud === null && !errorSolicitud) {
+            router.replace("/estudiante/bienvenida");
+        }
+    }, [cargando, usuario, solicitud, errorSolicitud, router]);
+
     const datosListos = solicitud !== undefined && notificaciones !== null;
 
-    if (cargando || !usuario) {
+    if (cargando || !usuario || (solicitud === null && !errorSolicitud)) {
         return (
             <main id="contenido" tabIndex={-1} className={styles.cargando} aria-busy="true">
                 <span className={styles.spinner} aria-hidden="true" />
@@ -90,7 +99,10 @@ export default function Home() {
     const nivelEfectivo: NivelAcademico = nivel ?? usuario.nivel ?? "PREGRADO";
     const nombreNivel = nivelEfectivo === "PREGRADO" ? "pregrado" : "posgrado";
     const listaDocs = DOCUMENTOS_POR_NIVEL[nivelEfectivo] || [];
-    const haySolicitud = solicitud !== null && solicitud !== undefined;
+
+    // TODO: Si la solicitud está en estado "borrador", dirigir a /estudiante/iniciar_preinscripcion.
+    // Actualmente el contrato/tipo Solicitud no distingue el estado "borrador", por lo que se dirige a /estudiante/preinscripcion.
+    const hrefContinuar = "/estudiante/preinscripcion";
 
     const tarjetaDocumentos = (
         <Card titulo={`Documentos de ${nombreNivel} · ${listaDocs.length}`}>
@@ -241,38 +253,28 @@ export default function Home() {
                         </span>
                         <div>
                             <h2 id="titulo-bienvenida" className={styles.bienvenidaTitulo}>
-                                {haySolicitud ? "Tu solicitud de grado está en curso" : "Tu proceso de grado, más sencillo"}
+                                Tu solicitud de grado está en curso
                             </h2>
                             <p className={styles.bienvenidaTexto}>
-                                {haySolicitud
-                                    ? "Sube los documentos que faltan y revisa si cumplen los requisitos antes de la inscripción formal."
-                                    : "CheckU prevalida los documentos de tu solicitud de grado, identifica inconsistencias y facilita su corrección antes de la inscripción formal. Tu nivel académico lo toma CheckU de tu registro institucional."}
+                                Sube los documentos que faltan y revisa si cumplen los requisitos antes de la inscripción formal.
                             </p>
                         </div>
                     </div>
-                    <Button href="/estudiante/preinscripcion" className={styles.bienvenidaAccion}>
-                        {haySolicitud ? "Continuar mi preinscripción" : `Iniciar preinscripción de ${nombreNivel}`}
+                    <Button href={hrefContinuar} className={styles.bienvenidaAccion}>
+                        Continuar mi preinscripción
                     </Button>
                 </section>
 
-                {haySolicitud ? (
-                    <div className={styles.rejillaConSolicitud}>
-                        <div className={styles.columna}>
-                            {tarjetaDocumentos}
-                            {tarjetaSolicitud()}
-                        </div>
-                        <div className={styles.columna}>
-                            {tarjetaAviso}
-                            {tarjetaNotificaciones}
-                        </div>
-                    </div>
-                ) : (
-                    <div className={styles.rejillaSinSolicitud}>
+                <div className={styles.rejillaConSolicitud}>
+                    <div className={styles.columna}>
                         {tarjetaDocumentos}
+                        {tarjetaSolicitud()}
+                    </div>
+                    <div className={styles.columna}>
                         {tarjetaAviso}
                         {tarjetaNotificaciones}
                     </div>
-                )}
+                </div>
             </main>
         </>
     );

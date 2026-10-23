@@ -1,7 +1,7 @@
 /**
  * api.ts — Contratos de tipos y datos simulados para la Home del estudiante.
  *
- * ⚠️  SIMULADO: Todas las funciones que no sean obtenerSesion() devuelven datos
+ * SIMULADO: Todas las funciones que no sean obtenerSesion() devuelven datos
  * de ejemplo. Cuando el backend exponga los endpoints reales, reemplaza el
  * cuerpo de cada función con la llamada real y elimina el comentario "SIMULADO".
  *
@@ -171,7 +171,12 @@ export async function obtenerNivelSimulado(): Promise<NivelAcademico> {
 export async function obtenerSolicitudActiva(): Promise<Solicitud | null> {
     await new Promise((r) => setTimeout(r, 100));
 
-    if (ESCENARIO_DEMO === "con_solicitud" || ESCENARIO_DEMO === "sin_notificaciones") {
+    const escenario =
+        (typeof window !== "undefined" &&
+            (window as unknown as { __CHECKU_ESCENARIO__?: string }).__CHECKU_ESCENARIO__) ||
+        ESCENARIO_DEMO;
+
+    if (escenario === "con_solicitud" || escenario === "sin_notificaciones") {
         return SOLICITUD_DEMO_PREGRADO;
     }
     return null;
@@ -223,7 +228,6 @@ export function formatearFecha(iso: string): string {
 
     if (diffH < 1) return "Hace un momento";
     if (diffH < 24) {
-        const h = Math.floor(diffH);
         return `Hoy, ${fecha.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`;
     }
     if (diffH < 48) return "Ayer";
