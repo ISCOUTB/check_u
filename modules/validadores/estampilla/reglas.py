@@ -10,7 +10,8 @@ import re
 import unicodedata
 from datetime import datetime
 
-from ...estampilla_pro import MENSAJE_NO_VALIDO
+from modules.estampilla_pro import MENSAJE_NO_VALIDO
+
 from ..resultado import evaluacion
 from .extraccion import ExtraccionEstampilla
 
