@@ -74,11 +74,29 @@ export const DOCUMENTOS_REQUERIDOS: Record<NivelAcademico, RequisitoDocumento[]>
 /**
  * Mapeo plano para componentes que requieran únicamente los nombres legibles (ej. home).
  */
+
+/**
+ * Mapeo plano para componentes que requieren únicamente los nombres visibles.
+ * Los documentos marcados como retirando no aparecen en la interfaz.
+ */
 export const DOCUMENTOS_POR_NIVEL: Record<NivelAcademico, string[]> = {
-    PREGRADO: DOCUMENTOS_REQUERIDOS.PREGRADO.map((doc) =>
-        doc.nota ? `${doc.nombre.replace(/\.$/, "")} ${doc.nota}` : doc.nombre.replace(/\.$/, ""),
-    ),
-    POSGRADO: DOCUMENTOS_REQUERIDOS.POSGRADO.map((doc) =>
-        doc.nota ? `${doc.nombre.replace(/\.$/, "")} ${doc.nota}` : doc.nombre.replace(/\.$/, ""),
-    ),
+    PREGRADO: DOCUMENTOS_REQUERIDOS.PREGRADO
+        .filter((doc) => !doc.retirando)
+        .map((doc) => {
+            const nombre = doc.nombre.replace(/\.$/, "");
+            return doc.nota ? `${nombre} ${doc.nota}` : nombre;
+        }),
+
+    POSGRADO: DOCUMENTOS_REQUERIDOS.POSGRADO
+        .filter((doc) => !doc.retirando)
+        .map((doc) => {
+            const nombre = doc.nombre.replace(/\.$/, "");
+            return doc.nota ? `${nombre} ${doc.nota}` : nombre;
+        }),
 };
+
+export interface DocumentoDelFormulario {
+    id: string;
+    etiqueta: string;
+    nota?: string;
+}

@@ -49,3 +49,36 @@
     font-size: 14px;
     font-weight: 500;
 }
+
+.obligatorio {
+    color: var(--color-text-secondary);
+    font-weight: 400;
+}
+
+.entrada[readonly] {
+    background: var(--color-surface-muted);
+    border-color: var(--color-border);
+}
+
+/* Lista de opciones: la flecha propia reemplaza la del navegador, igual en claro y oscuro. */
+
+.envoltorioLista {
+    position: relative;
+}
+
+.lista {
+    appearance: none;
+    padding-right: 44px;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.flecha {
+    position: absolute;
+    top: 50%;
+    right: var(--space-4);
+    display: flex;
+    color: var(--color-text-secondary);
+    pointer-events: none;
+    translate: 0 -50%;
+}

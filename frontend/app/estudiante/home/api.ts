@@ -1,7 +1,7 @@
 /**
  * api.ts — Contratos de tipos y datos simulados para la Home del estudiante.
  *
- * ⚠️  SIMULADO: Todas las funciones que no sean obtenerSesion() devuelven datos
+ * SIMULADO: Todas las funciones que no sean obtenerSesion() devuelven datos
  * de ejemplo. Cuando el backend exponga los endpoints reales, reemplaza el
  * cuerpo de cada función con la llamada real y elimina el comentario "SIMULADO".
  *
@@ -11,17 +11,14 @@
  * TODO:   GET ${API_URL}/politica-reenvios  → PoliticaReenvios
  */
 
+import { DOCUMENTOS_REQUERIDOS, type NivelAcademico as Nivel } from "../documentos-requeridos";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos de dominio
 // ─────────────────────────────────────────────────────────────────────────────
 
-export {
-    DOCUMENTOS_POR_NIVEL,
-    DOCUMENTOS_REQUERIDOS,
-    type NivelAcademico,
-    type RequisitoDocumento,
-} from "../documentos-requeridos";
-import type { NivelAcademico } from "../documentos-requeridos";
+/** Alias de `Nivel`, que vive junto a la lista única de documentos requeridos. */
+export type NivelAcademico = Nivel;
 
 /** Estado de validación de un documento ya procesado */
 export type EstadoDocumento =
@@ -212,6 +209,31 @@ export async function obtenerPoliticaReenvios(): Promise<PoliticaReenvios> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Utilitarios de presentación (sin lógica de negocio)
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Etiquetas de los documentos requeridos según el nivel. Solo la UI las necesita.
+ * Salen de la lista única de `../documentos-requeridos`, la misma del formulario.
+ */
+/**
+ * Etiquetas de los documentos requeridos según el nivel académico.
+ * Se generan desde la lista única de documentos requeridos.
+ * Los documentos marcados como retirando no se muestran en esta lista.
+ */
+export const DOCUMENTOS_POR_NIVEL: Record<NivelAcademico, string[]> = {
+    PREGRADO: DOCUMENTOS_REQUERIDOS.PREGRADO
+        .filter((doc) => !doc.retirando)
+        .map((doc) => {
+            const nombre = doc.nombre.replace(/\.$/, "");
+            return doc.nota ? `${nombre} ${doc.nota}` : nombre;
+        }),
+
+    POSGRADO: DOCUMENTOS_REQUERIDOS.POSGRADO
+        .filter((doc) => !doc.retirando)
+        .map((doc) => {
+            const nombre = doc.nombre.replace(/\.$/, "");
+            return doc.nota ? `${nombre} ${doc.nota}` : nombre;
+        }),
+};
 
 /** Formatea una fecha ISO para mostrarla de forma legible. */
 export function formatearFecha(iso: string): string {

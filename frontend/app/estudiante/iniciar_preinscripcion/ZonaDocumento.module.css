@@ -1,0 +1,160 @@
+/*
+ * La carga de un PDF: una fila con el ícono de estado, el nombre del documento (y del archivo) y
+ * las acciones. Las filas van separadas por una línea, como la lista de documentos de la home.
+ */
+
+.zona {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: var(--space-3) var(--space-4);
+    align-items: center;
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.zona:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+/* El estado también va en el texto ("Sin cargar", el nombre del archivo o el error): el ícono lo acompaña. */
+.icono {
+    display: flex;
+    align-self: start;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: var(--color-surface-muted);
+    border-radius: var(--radius-icon);
+    color: var(--color-text-secondary);
+}
+
+.zona[data-estado="cargado"] .icono {
+    background: var(--status-valid-bg);
+    color: var(--status-valid-text);
+}
+
+.zona[data-estado="error"] .icono {
+    background: var(--status-invalid-bg);
+    color: var(--status-invalid-text);
+}
+
+.texto {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.nombre {
+    color: var(--color-title);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.obligatorio {
+    color: var(--color-text-secondary);
+    font-weight: 400;
+}
+
+.estado {
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.archivo {
+    color: var(--color-text);
+    font-weight: 500;
+}
+
+.tamano {
+    font-variant-numeric: tabular-nums;
+}
+
+.error {
+    color: var(--status-invalid-text);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+.acciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+}
+
+/* El <label> que se ve como botón secundario; el input real va dentro, invisible pero enfocable. */
+.seleccionar {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-control);
+    border-radius: var(--radius-control);
+    color: var(--color-accent-text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    /* Como Button: responde al presionarlo (spec §3). */
+    transition: transform var(--duracion-rapida) var(--ease-out);
+}
+
+.seleccionar:active {
+    transform: scale(0.97);
+}
+
+.entrada {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/*
+ * El foco se dibuja en el botón. Con :focus y no :focus-visible: el resumen de errores enfoca el
+ * input desde un clic, y ese foco también tiene que verse.
+ */
+.seleccionar:has(.entrada:focus) {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.zona[data-estado="error"] .seleccionar {
+    border-color: var(--status-invalid-mark);
+}
+
+.quitar {
+    padding: 0 var(--space-2);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .seleccionar:hover {
+        background: var(--color-accent-soft);
+    }
+}
+
+/* Tarjeta angosta (celular y tablet): las acciones van debajo del nombre. */
+@container (max-width: 520px) {
+    .zona {
+        grid-template-columns: 40px minmax(0, 1fr);
+    }
+
+    .acciones {
+        grid-column: 2;
+        justify-content: flex-start;
+    }
+}

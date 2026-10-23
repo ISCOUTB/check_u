@@ -1,0 +1,209 @@
+/*
+ * Índice de las secciones con su progreso: en celular, una barra que despliega la lista; desde
+ * 768 px, una columna fija debajo de la barra superior. Las columnas de la página (.rejilla) van
+ * en iniciar_preinscripcion.module.css.
+ */
+
+.indice {
+    min-width: 0;
+}
+
+/* Celular: una barra con el resumen que despliega la lista (patrón de divulgación). */
+.indiceBoton {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 56px;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    color: var(--color-title);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: left;
+    cursor: pointer;
+}
+
+.indiceBoton[aria-expanded="true"] {
+    border-bottom-color: transparent;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    box-shadow: none;
+}
+
+.indiceBotonResumen,
+.indiceResumen {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.indiceBotonResumen[data-listo="true"],
+.indiceResumen[data-listo="true"] {
+    color: var(--status-valid-text);
+}
+
+/* Sin animación: el botón se usa con el teclado y el cambio debe ser inmediato. */
+.indiceFlecha {
+    display: flex;
+    flex-shrink: 0;
+    color: var(--color-text-secondary);
+}
+
+.indiceFlecha[data-abierto="true"] {
+    rotate: 180deg;
+}
+
+.indiceResumen {
+    display: none;
+}
+
+.indiceLista {
+    display: none;
+    list-style: none;
+}
+
+.indiceLista[data-abierta="true"] {
+    display: grid;
+    gap: var(--space-1);
+    padding: 0 var(--space-2) var(--space-2);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-top: 0;
+    border-radius: 0 0 var(--radius-card) var(--radius-card);
+}
+
+.indiceEnlace {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: var(--space-3);
+    align-items: start;
+    min-height: 44px;
+    padding: 10px var(--space-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+/*
+ * La sección actual cambia al desplazarse o al tabular: ese cambio no se anima (spec §3). Solo
+ * se animan las marcas de completitud (.indiceMarca y .indiceEstado), en 150 ms.
+ */
+
+.indiceEnlace[aria-current="location"] {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+}
+
+.indiceMarca {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-top: 1px;
+    border: 1.5px solid var(--color-border-control);
+    border-radius: 50%;
+    color: var(--status-valid-text);
+    /* Spec §3: las marcas del índice cambian de color en 150 ms. */
+    transition:
+        background-color 150ms var(--ease-out),
+        border-color 150ms var(--ease-out),
+        color 150ms var(--ease-out);
+}
+
+/* Opcional: ni completa ni pendiente; un anillo punteado, sin el color de completa. */
+.indiceEnlace[data-estado="opcional"] .indiceMarca {
+    border-style: dashed;
+}
+
+.indiceEnlace[data-estado="completa"] .indiceMarca {
+    background: var(--status-valid-bg);
+    border-color: var(--status-valid-mark);
+}
+
+.indiceTexto {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.indiceTitulo {
+    color: var(--color-title);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.indiceEnlace[aria-current="location"] .indiceTitulo {
+    color: var(--color-accent-text);
+}
+
+.indiceEstado {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+    /* Spec §3: las marcas del índice cambian de color en 150 ms. */
+    transition: color 150ms var(--ease-out);
+}
+
+.indiceEnlace[data-estado="completa"] .indiceEstado {
+    color: var(--status-valid-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .indiceBoton:hover {
+        border-color: var(--color-border-control);
+    }
+
+    .indiceEnlace:hover {
+        background: var(--color-surface);
+    }
+
+    .indiceEnlace:hover .indiceTitulo {
+        color: var(--color-accent-text);
+    }
+}
+
+/* Escritorio y tablet: el índice queda fijo debajo de la barra. */
+@media (min-width: 768px) {
+    .indice {
+        position: sticky;
+        top: calc(var(--altura-barra) + var(--space-6));
+        max-height: calc(100dvh - var(--altura-barra) - var(--space-6) * 2);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .indiceBoton {
+        display: none;
+    }
+
+    .indiceResumen {
+        display: flex;
+        margin-bottom: var(--space-3);
+        padding: 0 var(--space-3) var(--space-3);
+        border-bottom: 1px solid var(--color-border);
+        color: var(--color-title);
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.4;
+        text-wrap: balance;
+    }
+
+    .indiceLista,
+    .indiceLista[data-abierta] {
+        display: grid;
+        gap: var(--space-1);
+        padding: 0;
+        background: none;
+        border: 0;
+    }
+}

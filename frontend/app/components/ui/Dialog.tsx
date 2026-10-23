@@ -15,6 +15,8 @@ export interface DialogProps {
     descripcion?: string;
     /** Texto corto sobre el título. */
     etiqueta?: string;
+    /** Angosto y del alto de su contenido, también en el celular: para confirmar una acción. */
+    compacto?: boolean;
     children: ReactNode;
 }
 
@@ -22,7 +24,7 @@ export interface DialogProps {
  * Diálogo modal sobre <dialog> nativo (showModal): el navegador atrapa el foco y deja el fondo
  * inerte. Esc o un clic en el fondo llaman a alCerrar, y al cerrar el foco vuelve a donde estaba.
  */
-export default function Dialog({ abierto, alCerrar, titulo, descripcion, etiqueta, children }: DialogProps) {
+export default function Dialog({ abierto, alCerrar, titulo, descripcion, etiqueta, compacto, children }: DialogProps) {
     const ref = useRef<HTMLDialogElement>(null);
     const anterior = useRef<HTMLElement | null>(null);
     const idTitulo = useId();
@@ -44,7 +46,7 @@ export default function Dialog({ abierto, alCerrar, titulo, descripcion, etiquet
     return (
         <dialog
             ref={ref}
-            className={styles.dialogo}
+            className={compacto ? `${styles.dialogo} ${styles.compacto}` : styles.dialogo}
             aria-labelledby={idTitulo}
             aria-describedby={descripcion ? idDescripcion : undefined}
             onCancel={(evento) => {
