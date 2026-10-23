@@ -11,7 +11,7 @@
  * TODO:   GET ${API_URL}/politica-reenvios  → PoliticaReenvios
  */
 
-import { DOCUMENTOS_REQUERIDOS, type Nivel } from "../documentos-requeridos";
+import { DOCUMENTOS_REQUERIDOS, type NivelAcademico as Nivel } from "../documentos-requeridos";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos de dominio
@@ -214,9 +214,25 @@ export async function obtenerPoliticaReenvios(): Promise<PoliticaReenvios> {
  * Etiquetas de los documentos requeridos según el nivel. Solo la UI las necesita.
  * Salen de la lista única de `../documentos-requeridos`, la misma del formulario.
  */
+/**
+ * Etiquetas de los documentos requeridos según el nivel académico.
+ * Se generan desde la lista única de documentos requeridos.
+ * Los documentos marcados como retirando no se muestran en esta lista.
+ */
 export const DOCUMENTOS_POR_NIVEL: Record<NivelAcademico, string[]> = {
-    PREGRADO: DOCUMENTOS_REQUERIDOS.PREGRADO.map((d) => d.etiqueta),
-    POSGRADO: DOCUMENTOS_REQUERIDOS.POSGRADO.map((d) => d.etiqueta),
+    PREGRADO: DOCUMENTOS_REQUERIDOS.PREGRADO
+        .filter((doc) => !doc.retirando)
+        .map((doc) => {
+            const nombre = doc.nombre.replace(/\.$/, "");
+            return doc.nota ? `${nombre} ${doc.nota}` : nombre;
+        }),
+
+    POSGRADO: DOCUMENTOS_REQUERIDOS.POSGRADO
+        .filter((doc) => !doc.retirando)
+        .map((doc) => {
+            const nombre = doc.nombre.replace(/\.$/, "");
+            return doc.nota ? `${nombre} ${doc.nota}` : nombre;
+        }),
 };
 
 /** Formatea una fecha ISO para mostrarla de forma legible. */

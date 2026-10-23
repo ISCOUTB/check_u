@@ -1,7 +1,7 @@
 /**
  * api.ts — API simulada de la preinscripción (borrador y envío).
  *
- * ⚠️  SIMULADO: el backend aún no tiene endpoints de solicitudes, borradores ni archivos.
+ * SIMULADO: el backend aún no tiene endpoints de solicitudes, borradores ni archivos.
  * Todo vive en memoria, en este módulo: no sobrevive a recargar la página, y los archivos
  * no salen del navegador. Nada se guarda en localStorage, sessionStorage ni en la URL,
  * y nada de esto escribe datos personales en la consola.
@@ -10,7 +10,7 @@
  * Cuando existan los endpoints, se reemplaza el cuerpo de cada función y se quita el TODO.
  */
 
-import { documentosRequeridos, type Nivel } from "@/app/estudiante/documentos-requeridos";
+import { DOCUMENTOS_REQUERIDOS, type NivelAcademico as Nivel } from "@/app/estudiante/documentos-requeridos";
 import { borradorVacio, type BorradorPreinscripcion } from "./tipos";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +97,12 @@ function borradorParcial(nivel: Nivel, correo: string): BorradorPreinscripcion {
     return borrador;
 }
 
+function documentosRequeridos(nivel: Nivel, incluirRetirando: boolean) {
+    return DOCUMENTOS_REQUERIDOS[nivel].filter(
+        (documento) => incluirRetirando || !documento.retirando,
+    );
+}
+
 /**
  * Un borrador completo: todos los campos del nivel llenos y un PDF por cada documento
  * requerido (sin segundo programa). Se puede enviar de inmediato.
@@ -136,9 +142,15 @@ function borradorCompleto(nivel: Nivel, correo: string): BorradorPreinscripcion 
     }
 
     borrador.documentos = {};
-    for (const { id } of documentosRequeridos(nivel, false)) {
-        borrador.documentos[id] = { id, nombre: `${id}-prueba.pdf`, tamano: 1024 };
-    }
+    for (const documento of documentosRequeridos(nivel, false)) {
+    const id = documento.tipo;
+
+    borrador.documentos[id] = {
+        id,
+        nombre: `${id}-prueba.pdf`,
+        tamano: 1024,
+    };
+}
     return borrador;
 }
 

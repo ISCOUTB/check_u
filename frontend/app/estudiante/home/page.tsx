@@ -106,11 +106,15 @@ export default function Home() {
 
     const tarjetaDocumentos = (
         <Card titulo={`Documentos de ${nombreNivel} · ${listaDocs.length}`}>
-            <ul className={styles.listaRequisitos}>
-                {listaDocs.map((nombre) => (
-                    <li key={nombre}>{nombre}</li>
-                ))}
-            </ul>
+            {listaDocs.length > 0 ? (
+                <ul className={styles.listaRequisitos}>
+                    {listaDocs.map((nombre, index) => (
+                        <li key={`${nombre}-${index}`}>{nombre}</li>
+                    ))}
+                </ul>
+            ) : (
+                <p>No se encontraron documentos para el nivel {nivelEfectivo}.</p>
+            )}
         </Card>
     );
 
