@@ -19,6 +19,12 @@ import type {
   DocumentoSolicitud,
 } from "./types";
 
+import {
+  InformacionEstudiante,
+  DEMO_POSGRADO,
+} from "@/app/components/informacion_estudiante";
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos de sesión
 // ─────────────────────────────────────────────────────────────────────────────
@@ -177,15 +183,6 @@ function StatusBadge({ estado }: { estado: EstadoDocumento }) {
       <span className={styles.chipDot} aria-hidden="true" />
       {etiquetaEstado(estado)}
     </span>
-  );
-}
-
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={styles.field}>
-      <span className={styles.fieldLabel}>{label}</span>
-      <div className={styles.fieldValue}>{value}</div>
-    </div>
   );
 }
 
@@ -558,44 +555,23 @@ export default function PreinscripcionPage() {
             className={styles.panel}
           >
             <h2 className={styles.panelTitle}>Tu información</h2>
+
             <p className={styles.panelSubtitle}>
-              Información suministrada durante la inscripción. Es solo de consulta.
+              Información suministrada durante el proceso de preinscripción.
             </p>
 
-            <section className={styles.infoBlock}>
-              <h3>Información básica de identificación</h3>
-              <p className={styles.infoHint}>Datos de identificación registrados.</p>
-              <div className={styles.fieldsGrid}>
-                <ReadOnlyField label="Nombre completo" value={estudiante.nombre} />
-                <ReadOnlyField label="Tipo de documento" value={estudiante.tipoDocumento} />
-                <ReadOnlyField label="Número de documento" value={estudiante.numeroDocumento} />
-                <ReadOnlyField label="Fecha de nacimiento" value={estudiante.fechaNacimiento} />
-              </div>
-            </section>
-
-            <section className={styles.infoBlock}>
-              <h3>Información académica</h3>
-              <p className={styles.infoHint}>Datos académicos registrados.</p>
-              <div className={styles.fieldsGrid}>
-                <ReadOnlyField label="Código estudiantil" value={estudiante.codigo} />
-                <ReadOnlyField label="Programa académico" value={estudiante.programa} />
-                <ReadOnlyField label="Facultad" value={estudiante.facultad} />
-                <ReadOnlyField label="Nivel académico" value={estudiante.nivel} />
-              </div>
-            </section>
-
-            <section className={styles.infoBlock}>
-              <h3>Contacto y solicitud</h3>
-              <p className={styles.infoHint}>Datos de contacto y de la solicitud.</p>
-              <div className={styles.fieldsGrid}>
-                <ReadOnlyField label="Correo" value={estudiante.correo} />
-                <ReadOnlyField label="Teléfono" value={estudiante.telefono} />
-                <ReadOnlyField label="Ciudad" value={estudiante.ciudad} />
-                <ReadOnlyField label="Fecha de solicitud" value={estudiante.fechaSolicitud} />
-              </div>
-            </section>
+            {/*
+              SIMULADO: DEMO_PREGRADO hasta que exista endpoint de perfil.
+              TODO: mapear solicitud.estudiante → DatosInformacionEstudiante
+            */}
+            <InformacionEstudiante
+              nivel={estudiante.nivel === "POSGRADO" ? "POSGRADO" : "PREGRADO"}
+              datos={DEMO_POSGRADO}
+              variante="estudiante"
+            />
           </div>
         )}
+
 
         {/* ═══════════════ TUS DOCUMENTOS ═══════════════ */}
         {pestana === "documentos" && (

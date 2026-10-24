@@ -6,6 +6,7 @@
  */
 
 export type NivelAcademico = "PREGRADO" | "POSGRADO";
+export type Nivel = NivelAcademico; // alias usado por iniciar_preinscripcion
 
 export interface RequisitoDocumento {
     /** Clave documental interna o de contrato (ej. "identification", "paz_y_salvo_bib") */

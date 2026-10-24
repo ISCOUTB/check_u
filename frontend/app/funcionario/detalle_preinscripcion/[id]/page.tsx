@@ -12,6 +12,11 @@ import Tabs from "@/app/components/ui/Tabs";
 import { useSesion } from "@/app/lib/useSesion";
 import { type Documento, documentAnalysisMock, documentos, estudiante, informacionAdicional } from "./datos";
 import styles from "./detalle.module.css";
+import {
+  InformacionEstudiante,
+  DEMO_POSGRADO,
+} from "@/app/components/informacion_estudiante";
+
 
 const CON_PROBLEMAS = documentos.filter((d) => d.estado !== "valido");
 const VALIDOS = documentos.filter((d) => d.estado === "valido");
@@ -28,14 +33,6 @@ const INICIALES = estudiante.nombre
     .map((parte) => parte[0])
     .join("");
 
-function CampoLectura({ etiqueta, valor, ancho = false }: { etiqueta: string; valor: string; ancho?: boolean }) {
-    return (
-        <div className={ancho ? `${styles.campo} ${styles.campoAncho}` : styles.campo}>
-            <dt>{etiqueta}</dt>
-            <dd>{valor}</dd>
-        </div>
-    );
-}
 
 export default function DetallePreinscripcionPage() {
     const { usuario, cargando } = useSesion("funcionario");
@@ -143,38 +140,17 @@ export default function DetallePreinscripcionPage() {
     const informacion = (
         <div className={styles.seccion}>
             <div className={styles.seccionEncabezado}>
-                <h2>Información del estudiante</h2>
-                <p>Información suministrada durante el proceso de preinscripción.</p>
+            <h2>Información del estudiante</h2>
+            <p>Información suministrada durante el proceso de preinscripción.</p>
             </div>
-
-            <Card titulo="Datos personales" nivelTitulo={3}>
-                <p className={styles.textoSecundario}>Información básica de identificación.</p>
-                <dl className={styles.campos}>
-                    <CampoLectura etiqueta="Código estudiantil" valor={estudiante.codigo} />
-                    <CampoLectura etiqueta="Tipo de documento" valor={estudiante.tipoDocumento} />
-                    <CampoLectura etiqueta="Número de documento" valor={estudiante.numeroDocumento} />
-                    <CampoLectura etiqueta="Nombre completo" valor={estudiante.nombre} ancho />
-                </dl>
-            </Card>
-
-            <Card titulo="Información académica" nivelTitulo={3}>
-                <p className={styles.textoSecundario}>Datos relacionados con la solicitud de grado.</p>
-                <dl className={styles.campos}>
-                    <CampoLectura etiqueta="Carrera / programa" valor={estudiante.programa} ancho />
-                    {informacionAdicional.map((item) => (
-                        <CampoLectura key={item.label} etiqueta={item.label} valor={item.value} />
-                    ))}
-                </dl>
-            </Card>
-
-            <Card titulo="Información de contacto" nivelTitulo={3}>
-                <p className={styles.textoSecundario}>Datos de contacto registrados en la solicitud.</p>
-                <dl className={styles.campos}>
-                    <CampoLectura etiqueta="Dirección" valor={estudiante.direccion} ancho />
-                    <CampoLectura etiqueta="Número de teléfono" valor={estudiante.telefono} />
-                    <CampoLectura etiqueta="Correo electrónico" valor={estudiante.correo} />
-                </dl>
-            </Card>
+            {/*
+            SIMULADO: DEMO_PREGRADO. TODO: datos reales por id de solicitud.
+            */}
+            <InformacionEstudiante
+            nivel={estudiante.nivel === "POSGRADO" ? "POSGRADO" : "PREGRADO"}
+            datos={DEMO_POSGRADO}
+            variante="funcionario"
+            />
         </div>
     );
 
