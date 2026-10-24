@@ -34,6 +34,19 @@ export async function sesionComo(page: Page, rol: Rol | null, nombre?: string): 
             json: { status: "ok", service: "CheckU API", message: "Backend conectado correctamente" },
         }),
     );
+    await page.route(`${API}/estudiante/solicitud`, (ruta) =>
+        rol === "estudiante"
+            ? ruta.fulfill({
+                  status: 200,
+                  json: {
+                      tiene_solicitud: true,
+                      solicitud: { id_solicitud: 1, tipo_solicitud: "PREGRADO", estado: "BORRADOR" },
+                  },
+              })
+            : rol === "funcionario"
+              ? ruta.fulfill({ status: 403, json: { message: "Acceso restringido a estudiantes" } })
+              : ruta.fulfill({ status: 401, json: { message: "Sesión no válida o expirada" } }),
+    );
 }
 
 /** Revisa una página con axe (WCAG 2.2 A/AA) y que no tenga scroll horizontal. */
