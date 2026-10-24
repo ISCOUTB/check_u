@@ -1,11 +1,12 @@
 import {
+  HttpException,
   Injectable,
   Logger,
   OnModuleDestroy,
   OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { Pool, type QueryResult, type QueryResultRow } from 'pg';
+import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 
 @Injectable()
 export class DatabaseService
@@ -59,6 +60,33 @@ export class DatabaseService
     } catch (error) {
       this.logger.error('Error al ejecutar consulta en PostgreSQL', error);
       throw new ServiceUnavailableException('Error en el servicio de base de datos');
+    }
+  }
+
+  async transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
+    if (!this.pool) {
+      throw new ServiceUnavailableException('Base de datos no configurada o no disponible');
+    }
+
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await callback(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        this.logger.error('Error al hacer rollback en PostgreSQL', rollbackError);
+      }
+      this.logger.error('Error en transacción de PostgreSQL', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new ServiceUnavailableException('Error en el servicio de base de datos');
+    } finally {
+      client.release();
     }
   }
 }
