@@ -1,11 +1,11 @@
-
 import {
   Injectable,
   Logger,
   OnModuleDestroy,
   OnModuleInit,
+  ServiceUnavailableException,
 } from '@nestjs/common';
-import { Pool } from 'pg';
+import { Pool, type QueryResult, type QueryResultRow } from 'pg';
 
 @Injectable()
 export class DatabaseService
@@ -44,5 +44,21 @@ export class DatabaseService
 
   async onModuleDestroy(): Promise<void> {
     await this.pool?.end();
+  }
+
+  async query<R extends QueryResultRow = QueryResultRow>(
+    text: string,
+    params?: unknown[],
+  ): Promise<QueryResult<R>> {
+    if (!this.pool) {
+      throw new ServiceUnavailableException('Base de datos no configurada o no disponible');
+    }
+
+    try {
+      return await this.pool.query<R>(text, params);
+    } catch (error) {
+      this.logger.error('Error al ejecutar consulta en PostgreSQL', error);
+      throw new ServiceUnavailableException('Error en el servicio de base de datos');
+    }
   }
 }
