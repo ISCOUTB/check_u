@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { DOCUMENTOS_REQUERIDOS as documentosRequeridos, type DocumentoDelFormulario, type NivelAcademico } from "@/app/estudiante/documentos-requeridos";
+import { documentosRequeridos, type DocumentoDelFormulario } from "@/app/estudiante/documentos-requeridos";
 import { tamanoMaximoPdfBytes } from "../api";
 import type { DocumentoCargado } from "../tipos";
 import {
@@ -33,30 +33,7 @@ export default function Documentos({
             vez: anterior.vez + 1,
         }));
 
-    const nivel: NivelAcademico =
-        borrador.nivel.toUpperCase() as NivelAcademico;
-
-    const documentosBase: DocumentoDelFormulario[] =
-        documentosRequeridos[nivel]
-            .filter((documento) => !documento.retirando)
-            .map((documento) => ({
-                id: documento.tipo,
-                etiqueta: documento.nombre,
-                nota: documento.nota,
-            }));
-    // Un segundo programa requiere un segundo comprobante de estampilla.
-    const documentos =
-        borrador.nivel === "PREGRADO" &&
-            borrador.segundoPrograma === true
-            ? [
-                ...documentosBase,
-                {
-                    id: "estampilla2",
-                    etiqueta: "Segundo comprobante de la estampilla",
-                },
-            ]
-            : documentosBase;
-
+    const documentos = documentosRequeridos(borrador.nivel, borrador.segundoPrograma === true);
     const { cargados, requeridos } = progreso.documentos;
 
     // Evita aplicar el resultado de una selección anterior de archivo.
