@@ -21,6 +21,7 @@ import type {
 
 import {
   InformacionEstudiante,
+  DEMO_PREGRADO,
   DEMO_POSGRADO,
 } from "@/app/components/informacion_estudiante";
 
@@ -566,7 +567,7 @@ export default function PreinscripcionPage() {
             */}
             <InformacionEstudiante
               nivel={estudiante.nivel === "POSGRADO" ? "POSGRADO" : "PREGRADO"}
-              datos={DEMO_POSGRADO}
+              datos={estudiante.nivel === "POSGRADO" ? DEMO_POSGRADO : DEMO_PREGRADO}
               variante="estudiante"
             />
           </div>
