@@ -3,6 +3,7 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
 import { DatabaseModule } from './database/database.module.js';
+import { PeriodosModule } from './periodos/periodos.module.js';
 import { modulosDeObservabilidad } from './observabilidad.js';
 
 export { ObserveModule, ObserveInstrument } from './observabilidad.js';
@@ -13,6 +14,7 @@ export { ObserveModule, ObserveInstrument } from './observabilidad.js';
     ...modulosDeObservabilidad(),
     AuthModule,
     DatabaseModule,
+    PeriodosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
