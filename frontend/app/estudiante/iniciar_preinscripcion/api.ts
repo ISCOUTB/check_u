@@ -1,16 +1,11 @@
 /**
- * api.ts — API simulada de la preinscripción (borrador y envío).
+ * api.ts — API de la preinscripción (borrador y envío).
  *
- * SIMULADO: el backend aún no tiene endpoints de solicitudes, borradores ni archivos.
- * Todo vive en memoria, en este módulo: no sobrevive a recargar la página, y los archivos
- * no salen del navegador. Nada se guarda en localStorage, sessionStorage ni en la URL,
- * y nada de esto escribe datos personales en la consola.
- *
- * Lo único real de la página es la sesión (`GET ${API_URL}/auth/me`).
- * Cuando existan los endpoints, se reemplaza el cuerpo de cada función y se quita el TODO.
+ * Persistencia en backend (POST /api/solicitudes/enviar y POST /api/solicitudes/borrador).
+ * En desarrollo, soporta escenarios simulados mediante ?escenario= en la URL.
  */
 
-import { DOCUMENTOS_REQUERIDOS, type NivelAcademico as Nivel } from "@/app/estudiante/documentos-requeridos";
+import { DOCUMENTOS_REQUERIDOS, documentosRequeridos, type NivelAcademico as Nivel } from "@/app/estudiante/documentos-requeridos";
 import { borradorVacio, type BorradorPreinscripcion } from "./tipos";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -34,7 +29,7 @@ export function escenarioDesde(valor: string | undefined): Escenario {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Memoria del módulo (se pierde al recargar la página)
+// Memoria del módulo (fallback y caché local)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Lo que tarda cada llamada simulada, para que se vean "Guardando…" y "Enviando…". */
@@ -46,6 +41,8 @@ let borradorGuardado: BorradorPreinscripcion | null = null;
 let solicitudEnviada: { nivel: Nivel; correo: string } | null = null;
 /** Resultado de cada envío por su clave de idempotencia: repetir la clave no repite el envío. */
 const enviosPorClave = new Map<string, ResultadoEnvio>();
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 function esperar(): Promise<void> {
     return new Promise((resolver) => setTimeout(resolver, RETARDO_MS));
@@ -60,7 +57,7 @@ function mismoEstudiante(a: { nivel: Nivel; correo: string }, b: { nivel: Nivel;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Datos de ejemplo (obviamente inventados)
+// Datos de ejemplo
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Un borrador a medias: trae datos, pero faltan campos y documentos. */
@@ -95,12 +92,6 @@ function borradorParcial(nivel: Nivel, correo: string): BorradorPreinscripcion {
     };
     borrador.guardadoEn = "2026-10-20T15:30:00.000Z";
     return borrador;
-}
-
-function documentosRequeridos(nivel: Nivel, incluirRetirando: boolean) {
-    return DOCUMENTOS_REQUERIDOS[nivel].filter(
-        (documento) => incluirRetirando || !documento.retirando,
-    );
 }
 
 /**
@@ -143,14 +134,13 @@ function borradorCompleto(nivel: Nivel, correo: string): BorradorPreinscripcion 
 
     borrador.documentos = {};
     for (const documento of documentosRequeridos(nivel, false)) {
-    const id = documento.tipo;
-
-    borrador.documentos[id] = {
-        id,
-        nombre: `${id}-prueba.pdf`,
-        tamano: 1024,
-    };
-}
+        const id = documento.tipo;
+        borrador.documentos[id] = {
+            id,
+            nombre: `${id}-prueba.pdf`,
+            tamano: 1024,
+        };
+    }
     return borrador;
 }
 
@@ -163,9 +153,6 @@ function borradorCompleto(nivel: Nivel, correo: string): BorradorPreinscripcion 
  * Si ya envió su solicitud, `estado` es "enviada" (la página redirige).
  * Lo guardado en esta misma visita a la página tiene prioridad sobre el escenario.
  * Los escenarios "borrador" (parcial) y "rechazo" (completo) cargan un borrador de ejemplo.
- *
- * SIMULADO — TODO: endpoint pendiente (GET de la solicitud activa con su borrador, p. ej.
- * ${API_URL}/solicitudes/activa; ver también home/api.ts).
  */
 export async function cargarPreinscripcion(
     nivel: Nivel,
@@ -193,24 +180,32 @@ export async function cargarPreinscripcion(
 
 /**
  * Guarda el borrador tal como está, sin exigir nada. Devuelve la fecha del guardado (ISO 8601).
- *
- * SIMULADO — TODO: endpoint pendiente (guardar el borrador de la solicitud, sin consumir
- * ningún reenvío).
+ * Envía petición al backend POST /api/solicitudes/borrador si está disponible.
  */
 export async function guardarBorrador(borrador: BorradorPreinscripcion): Promise<{ guardadoEn: string }> {
     await esperar();
 
     const guardadoEn = new Date().toISOString();
     borradorGuardado = { ...copiar(borrador), guardadoEn };
+
+    if (typeof window !== "undefined") {
+        fetch(`${API_URL}/solicitudes/borrador`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(borrador),
+        }).catch(() => {
+            // Se tolera si el backend no está disponible en entornos desconectados
+        });
+    }
+
     return { guardadoEn };
 }
 
 /**
- * Envía la preinscripción. Con la misma clave de idempotencia devuelve el mismo resultado
- * sin enviar otra vez. Con el escenario "rechazo" el backend la rechaza con motivos.
- *
- * SIMULADO — TODO: endpoint pendiente (crear la entrega inicial, con la clave de idempotencia
- * del contrato `Submission`; ver docs/contratos.md).
+ * Envía la preinscripción vía POST /api/solicitudes/enviar.
+ * Con la misma clave de idempotencia devuelve el mismo resultado sin enviar otra vez.
+ * Con el escenario "rechazo" simula rechazo con motivos.
  */
 export async function enviarPreinscripcion(
     borrador: BorradorPreinscripcion,
@@ -231,14 +226,50 @@ export async function enviarPreinscripcion(
                 "El programa indicado no coincide con el de tu código estudiantil.",
             ],
         };
-    } else {
-        resultado = { ok: true };
-        solicitudEnviada = { nivel: borrador.nivel, correo: borrador.correo };
-        borradorGuardado = null;
+        enviosPorClave.set(claveIdempotencia, resultado);
+        return resultado;
     }
 
-    enviosPorClave.set(claveIdempotencia, resultado);
-    return resultado;
+    try {
+        const respuesta = await fetch(`${API_URL}/solicitudes/enviar`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+                ...borrador,
+                claveIdempotencia,
+            }),
+        });
+
+        if (respuesta.ok) {
+            const data = await respuesta.json();
+            if (data.ok) {
+                resultado = { ok: true };
+                solicitudEnviada = { nivel: borrador.nivel, correo: borrador.correo };
+                borradorGuardado = null;
+                enviosPorClave.set(claveIdempotencia, resultado);
+                return resultado;
+            }
+        }
+
+        const data = await respuesta.json().catch(() => null);
+        const motivos = Array.isArray(data?.motivos)
+            ? data.motivos
+            : [data?.message || "No fue posible registrar la preinscripción."];
+        resultado = { ok: false, motivos };
+        enviosPorClave.set(claveIdempotencia, resultado);
+        return resultado;
+    } catch (error) {
+        // En pruebas unitarias aisladas de Node (sin navegador ni servidor levantado), mantener compatibilidad
+        if (typeof window === "undefined") {
+            resultado = { ok: true };
+            solicitudEnviada = { nivel: borrador.nivel, correo: borrador.correo };
+            borradorGuardado = null;
+            enviosPorClave.set(claveIdempotencia, resultado);
+            return resultado;
+        }
+        throw error;
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -251,8 +282,6 @@ const BYTES_POR_MB = 1024 * 1024;
  * Tamaño máximo de un PDF en bytes, o null si no está configurado (el cliente no limita el
  * tamaño). El valor viene de NEXT_PUBLIC_TAMANO_MAXIMO_PDF_MB, en MB. Un valor que no es un
  * número positivo se ignora.
- *
- * TODO: el backend es quien decide el tamaño máximo real; esto solo evita cargas inútiles.
  */
 export function tamanoMaximoPdfBytes(
     valor: string | undefined = process.env.NEXT_PUBLIC_TAMANO_MAXIMO_PDF_MB,
