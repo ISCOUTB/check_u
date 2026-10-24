@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { MotorOcrClient } from './motor-ocr.client.js';
 import { validarDatos, validarDocumentos } from './validar-solicitud.js';
 
 export interface ArchivoSubido {
@@ -17,15 +18,12 @@ export interface SolicitudAnalisis {
 
 @Injectable()
 export class AnalisisDocumentalService {
+  constructor(private readonly motorOcrClient: MotorOcrClient) {}
+
   async analizar(solicitud: SolicitudAnalisis) {
     const datos = validarDatos(solicitud.datosTexto);
     const documentos = validarDocumentos(solicitud.nivel, solicitud.archivos);
 
-    return {
-      estado: 'PENDIENTE_IMPLEMENTACION',
-      nivel: solicitud.nivel,
-      datosRecibidos: datos,
-      documentosRecibidos: documentos.map((archivo) => archivo.fieldname),
-    };
+    return this.motorOcrClient.analizar(solicitud.nivel, datos, documentos);
   }
 }
