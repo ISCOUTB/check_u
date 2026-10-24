@@ -3,6 +3,7 @@ import {
   Controller,
   Post,
   UploadedFiles,
+  UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
@@ -10,8 +11,10 @@ import {
   AnalisisDocumentalService,
   type ArchivoSubido,
 } from './analisis-documental.service.js';
+import { FiltroErroresAnalisis } from './filtro-errores-analisis.filter.js';
 
 @Controller('documentos')
+@UseFilters(FiltroErroresAnalisis)
 export class DocumentosController {
   constructor(
     private readonly analisisDocumentalService: AnalisisDocumentalService,

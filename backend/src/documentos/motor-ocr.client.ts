@@ -2,6 +2,7 @@ import {
   Injectable,
   Logger,
   ServiceUnavailableException,
+  BadGatewayException,
 } from '@nestjs/common';
 import type { ArchivoSubido } from './analisis-documental.service.js';
 
@@ -46,17 +47,33 @@ export class MotorOcrClient {
         signal: controlador.signal,
       });
 
-      if (!respuesta.ok) {
-        this.logger.error(`El motor OCR respondió ${respuesta.status}`);
+      if (respuesta.status === 503 || respuesta.status === 504) {
         throw new ServiceUnavailableException(
-          'El motor OCR no pudo procesar la solicitud',
+          'El motor OCR no está disponible',
         );
       }
 
-      const cuerpo = await respuesta.json();
+      if (!respuesta.ok) {
+        this.logger.error(`El motor OCR respondió ${respuesta.status}`);
+        throw new BadGatewayException(
+          'El motor OCR devolvió una respuesta inválida',
+        );
+      }
+
+      const cuerpo: unknown = await respuesta.json();
+
+      if (!cuerpo || typeof cuerpo !== 'object' || Array.isArray(cuerpo)) {
+        throw new BadGatewayException(
+          'El motor OCR devolvió una respuesta inválida',
+        );
+      }
+
       return cuerpo as Record<string, unknown>;
     } catch (error) {
-      if (error instanceof ServiceUnavailableException) {
+      if (
+        error instanceof ServiceUnavailableException ||
+        error instanceof BadGatewayException
+      ) {
         throw error;
       }
 
