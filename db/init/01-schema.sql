@@ -51,9 +51,9 @@ CREATE TABLE IF NOT EXISTS entregas (
     numero_entrega INTEGER NOT NULL DEFAULT 1,
     tipo_entrega VARCHAR(20) NOT NULL DEFAULT 'INICIAL',
     fecha_entrega TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fecha_entrega_bogota DATE GENERATED ALWAYS AS (
+    fecha_entrega_bogota DATE NOT NULL DEFAULT (
         (CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::DATE
-    ) STORED,
+    ),
     observacion_estudiante TEXT,
     CONSTRAINT pk_entregas PRIMARY KEY (id_entrega),
     CONSTRAINT fk_entrega_solicitud FOREIGN KEY (id_solicitud)
@@ -290,7 +290,7 @@ BEGIN
         FROM entregas
         WHERE id_solicitud = NEW.id_solicitud
           AND tipo_entrega = 'CORRECCION'
-          AND fecha_entrega_bogota = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::DATE;
+          AND fecha_entrega_bogota = NEW.fecha_entrega_bogota;
 
         IF reenvios_hoy >= 3 THEN
             RAISE EXCEPTION 'Ha alcanzado el límite máximo de 3 reenvíos por día. Intente nuevamente mañana.'

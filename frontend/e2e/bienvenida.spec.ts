@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ANCHOS, API, revisarAxe, revisarPagina, sesionComo, TEMAS, USUARIOS } from "./soporte";
+import { ANCHOS, API, revisarPagina, sesionComo, TEMAS, USUARIOS } from "./soporte";
 
 const RUTA_BIENVENIDA = "/estudiante/bienvenida";
 
@@ -111,6 +111,12 @@ test.describe("página de bienvenida para estudiante sin preinscripciones", () =
 
     test("home sin solicitud redirige a bienvenida", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await page.route(`${API}/estudiante/solicitud`, (ruta) =>
+            ruta.fulfill({
+                status: 200,
+                json: { tiene_solicitud: false, solicitud: null },
+            }),
+        );
         // Inyectar escenario sin_solicitud en la ventana
         await page.addInitScript(() => {
             (window as unknown as { __CHECKU_ESCENARIO__: string }).__CHECKU_ESCENARIO__ = "sin_solicitud";
