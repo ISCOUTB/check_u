@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import Navbar from "@/app/components/navbar/Navbar";
+import { useRequiereSolicitud } from "@/app/lib/useSolicitudActiva";
 import DocumentAnalysis, {
   type DocumentAnalysisData,
 } from "@/app/components/document_analysis/DocumentAnalysis";
@@ -206,6 +207,13 @@ export default function PreinscripcionPage() {
   const [errorDatos, setErrorDatos] = useState(false);
   const [pestana, setPestana] = useState<Pestana>("documentos");
 
+  const {
+    cargando: cargandoSolicitud,
+    error: errorSolicitud,
+    tiene_solicitud,
+    reintentar: reintentarSolicitud,
+  } = useRequiereSolicitud(Boolean(usuario));
+
   // Análisis automático
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [analysisData, setAnalysisData] = useState<DocumentAnalysisData | null>(null);
@@ -247,25 +255,27 @@ export default function PreinscripcionPage() {
 
   // Datos
   useEffect(() => {
-    if (!usuario) return;
+    if (!usuario || tiene_solicitud !== true) return;
     obtenerSolicitudDetalle()
       .then(setSolicitud)
       .catch(() => {
         setSolicitud(null);
         setErrorDatos(true);
       });
-  }, [usuario]);
+  }, [usuario, tiene_solicitud]);
 
-  if (cargandoSesion || !usuario) {
+  const cargando = cargandoSesion || cargandoSolicitud;
+
+  if (cargando || !usuario || (!errorSolicitud && tiene_solicitud === false)) {
     return (
       <div className={styles.cargando} aria-live="polite">
         <span className={styles.spinner} aria-hidden="true" />
-        <p>Verificando sesión...</p>
+        <p>Verificando sesión y preinscripción...</p>
       </div>
     );
   }
 
-  if (errorDatos || !solicitud) {
+  if (errorSolicitud || errorDatos || !solicitud) {
     return (
       <>
         <Navbar tipoUsuario={usuario.role} nombreUsuario={usuario.name} />
@@ -273,6 +283,24 @@ export default function PreinscripcionPage() {
           <p className={styles.textoError}>
             No fue posible cargar la preinscripción. Intenta recargar la página.
           </p>
+          <div style={{ marginTop: "1rem" }}>
+            <button
+              type="button"
+              className={styles.btnSecundario}
+              onClick={() => {
+                setErrorDatos(false);
+                void reintentarSolicitud();
+                obtenerSolicitudDetalle()
+                  .then(setSolicitud)
+                  .catch(() => {
+                    setSolicitud(null);
+                    setErrorDatos(true);
+                  });
+              }}
+            >
+              Reintentar
+            </button>
+          </div>
         </main>
       </>
     );
