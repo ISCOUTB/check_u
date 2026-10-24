@@ -300,3 +300,23 @@ a una implementación del frontend o del backend.
 
 - PostgreSQL 14, CREATE TRIGGER: https://www.postgresql.org/docs/14/sql-createtrigger.html
 - PGlite Socket, conexión mediante psql: https://pglite.dev/docs/pglite-socket
+
+
+## Periodos de grado (dashboard del funcionario)
+
+Cada registro contiene nombre, fecha de apertura/cierre de recepción, fecha de graduación y estado.
+`ABIERTO` indica que el periodo acepta solicitudes; `CERRADO` indica que no debe aceptar nuevas solicitudes.
+
+Bajo el prefijo `/api`, el backend NestJS expone:
+
+- `GET /periodos-grado`: consulta todos los periodos para el selector y la administración.
+- `GET /periodos-grado?estado=ABIERTO`: consulta solo los periodos abiertos.
+- `GET /periodos-grado?estado=CERRADO`: consulta solo los periodos cerrados.
+- `POST /periodos-grado`: registra un periodo.
+- `PATCH /periodos-grado/:id`: actualiza un periodo existente, incluido su estado.
+
+El cuerpo de creación/edición usa `nombre`, `fechaInicio`, `fechaFin`, `fechaGraduacion` y `estado`.
+`estado` acepta únicamente `ABIERTO` o `CERRADO` y, si se omite en la creación, queda `ABIERTO`.
+Las operaciones requieren una sesión autenticada de funcionario.
+
+**Limitación conocida:** el repositorio todavía no contiene una entidad ni endpoints reales para solicitudes de grado. Por ello el dashboard sigue utilizando datos de demostración; el listado de solicitudes todavía no se relaciona por clave foránea con `periodos_grado`. Antes de aceptar solicitudes reales, el endpoint que las cree deberá validar que el periodo esté `ABIERTO` y dentro de las fechas permitidas, y guardar `periodo_id` en la solicitud. El estado por sí solo no bloquea solicitudes hasta que esa validación se implemente en el flujo de creación de solicitudes.
