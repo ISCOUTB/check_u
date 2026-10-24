@@ -1,0 +1,125 @@
+CHECKU TAREA 2 - VERIFICACION
+PostgreSQL 18.6 (PGlite 0.5.11) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.74 (1092ec30a3fb1d46b1782ff1b4db5094d3d06ae5), 32-bit
+
+PRIMERA EJECUCION - BASE SIN TABLAS DE APLICACION
+BEGIN
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+COMMIT
+BEGIN
+INSERT 0 1
+INSERT 0 1
+COMMIT
+BEGIN
+CREATE FUNCTION
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/tests/aceptacion.sql:130: NOTICE:  ACEPTACION CORRECTA: 12 tablas, solo Lisandro y Rosa, restricciones y auditoria verificadas
+DO
+ROLLBACK
+
+SEGUNDA EJECUCION - MISMA BASE
+BEGIN
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:31: NOTICE:  relation "usuarios" already exists, skipping
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:48: NOTICE:  relation "solicitud_grado" already exists, skipping
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:71: NOTICE:  relation "documentos" already exists, skipping
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:84: NOTICE:  relation "rutas" already exists, skipping
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:105: NOTICE:  relation "validaciones" already exists, skipping
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:124: NOTICE:  relation "historial_validaciones" already exists, skipping
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:142: NOTICE:  relation "revisiones" already exists, skipping
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:145: NOTICE:  relation "idx_solicitud_estudiante" already exists, skipping
+CREATE INDEX
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:146: NOTICE:  relation "idx_solicitud_estado" already exists, skipping
+CREATE INDEX
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:147: NOTICE:  relation "idx_documento_tipo" already exists, skipping
+CREATE INDEX
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:148: NOTICE:  relation "idx_ruta_documento" already exists, skipping
+CREATE INDEX
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:149: NOTICE:  relation "idx_validacion_documento" already exists, skipping
+CREATE INDEX
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:150: NOTICE:  relation "idx_validacion_resultado" already exists, skipping
+CREATE INDEX
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:151: NOTICE:  relation "idx_historial_validacion" already exists, skipping
+CREATE INDEX
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:152: NOTICE:  relation "idx_revision_solicitud" already exists, skipping
+CREATE INDEX
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:153: NOTICE:  relation "idx_revision_funcionario" already exists, skipping
+CREATE INDEX
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:196: NOTICE:  relation "perfil_estudiante" already exists, skipping
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:216: NOTICE:  relation "solicitud_programa" already exists, skipping
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:243: NOTICE:  relation "informacion_pregrado" already exists, skipping
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:256: NOTICE:  relation "informacion_posgrado" already exists, skipping
+CREATE TABLE
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/init/01-schema.sql:273: NOTICE:  relation "experiencia_laboral" already exists, skipping
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE TRIGGER
+COMMIT
+BEGIN
+INSERT 0 0
+INSERT 0 0
+COMMIT
+BEGIN
+CREATE FUNCTION
+psql:/workspace/scratch/ec19ae55d19f/output/checku_parte2/db/tests/aceptacion.sql:130: NOTICE:  ACEPTACION CORRECTA: 12 tablas, solo Lisandro y Rosa, restricciones y auditoria verificadas
+DO
+ROLLBACK
+
+OK: ambas ejecuciones terminaron con ON_ERROR_STOP=1.
+OK: todos los datos de las 12 tablas se conservaron sin duplicados.
+SHA256 del estado de filas: 9af0eee50c64480a20ebc5d45e8bc2e8b1170443db9db1843c59647f8e9d28b4
