@@ -1,0 +1,10 @@
+{
+  "analysis_id": "analisis-prueba-001",
+  "level": "pregrado",
+  "status": "failed",
+  "documents": [],
+  "cross_validations": [],
+  "warnings": [],
+  "errors": ["No fue posible procesar los documentos"],
+  "generated_at": "2026-10-24T15:30:00-05:00"
+}

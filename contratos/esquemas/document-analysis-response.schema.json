@@ -1,0 +1,696 @@
+{
+  "$id": "https://checku.iscoutb.dev/contratos/document-analysis-response.schema.json",
+  "title": "DocumentAnalysisResponse",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "analysis_id": {
+      "type": "string",
+      "pattern": "^\\S(?:.*\\S)?$"
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "pregrado",
+        "posgrado"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "partial",
+        "failed"
+      ]
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id_student": {
+                "type": "string",
+                "pattern": "^\\S(?:.*\\S)?$"
+              },
+              "type_document": {
+                "type": "string",
+                "enum": [
+                  "identification",
+                  "academic_evaluation",
+                  "paz_y_salvo_bib",
+                  "estampilla_pro_cultura",
+                  "saber_pro"
+                ]
+              },
+              "document_version": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "extracted_data": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "null"
+                        },
+                        "confidence": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "confidence"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean"
+                          ]
+                        },
+                        "confidence": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "confidence"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "rule": {
+                          "type": "string",
+                          "pattern": "^\\S(?:.*\\S)?$"
+                        },
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "cumple",
+                            "no_cumple"
+                          ]
+                        },
+                        "no_evaluable_reason": {
+                          "type": "null"
+                        },
+                        "mandatory": {
+                          "type": "boolean"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "rule",
+                        "result",
+                        "no_evaluable_reason",
+                        "mandatory",
+                        "message",
+                        "timestamp",
+                        "errors"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "rule": {
+                          "type": "string",
+                          "pattern": "^\\S(?:.*\\S)?$"
+                        },
+                        "result": {
+                          "type": "string",
+                          "const": "no_evaluable"
+                        },
+                        "no_evaluable_reason": {
+                          "type": "string",
+                          "enum": [
+                            "low_confidence",
+                            "source_unavailable",
+                            "source_pending",
+                            "missing_dependency"
+                          ]
+                        },
+                        "mandatory": {
+                          "type": "boolean"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "rule",
+                        "result",
+                        "no_evaluable_reason",
+                        "mandatory",
+                        "message",
+                        "timestamp",
+                        "errors"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "document_classification": {
+                "type": "string",
+                "enum": [
+                  "valid",
+                  "invalid",
+                  "inconsistent",
+                  "to_check"
+                ]
+              },
+              "validation_status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "processing",
+                  "completed",
+                  "failed"
+                ]
+              },
+              "validation_version": {
+                "type": "string",
+                "pattern": "^\\S(?:.*\\S)?$"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "resubmission_allowed": {
+                "type": "boolean",
+                "const": true
+              },
+              "required_action": {
+                "type": "string",
+                "const": "upload_new_version"
+              },
+              "resubmission_reason": {
+                "type": "string",
+                "pattern": "\\S"
+              }
+            },
+            "required": [
+              "id_student",
+              "type_document",
+              "document_version",
+              "extracted_data",
+              "rules",
+              "errors",
+              "document_classification",
+              "validation_status",
+              "validation_version",
+              "timestamp",
+              "resubmission_allowed",
+              "required_action",
+              "resubmission_reason"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id_student": {
+                "type": "string",
+                "pattern": "^\\S(?:.*\\S)?$"
+              },
+              "type_document": {
+                "type": "string",
+                "enum": [
+                  "identification",
+                  "academic_evaluation",
+                  "paz_y_salvo_bib",
+                  "estampilla_pro_cultura",
+                  "saber_pro"
+                ]
+              },
+              "document_version": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "extracted_data": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "null"
+                        },
+                        "confidence": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "confidence"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean"
+                          ]
+                        },
+                        "confidence": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        }
+                      },
+                      "required": [
+                        "value",
+                        "confidence"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "rule": {
+                          "type": "string",
+                          "pattern": "^\\S(?:.*\\S)?$"
+                        },
+                        "result": {
+                          "type": "string",
+                          "enum": [
+                            "cumple",
+                            "no_cumple"
+                          ]
+                        },
+                        "no_evaluable_reason": {
+                          "type": "null"
+                        },
+                        "mandatory": {
+                          "type": "boolean"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "rule",
+                        "result",
+                        "no_evaluable_reason",
+                        "mandatory",
+                        "message",
+                        "timestamp",
+                        "errors"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "rule": {
+                          "type": "string",
+                          "pattern": "^\\S(?:.*\\S)?$"
+                        },
+                        "result": {
+                          "type": "string",
+                          "const": "no_evaluable"
+                        },
+                        "no_evaluable_reason": {
+                          "type": "string",
+                          "enum": [
+                            "low_confidence",
+                            "source_unavailable",
+                            "source_pending",
+                            "missing_dependency"
+                          ]
+                        },
+                        "mandatory": {
+                          "type": "boolean"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "timestamp": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "errors": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "rule",
+                        "result",
+                        "no_evaluable_reason",
+                        "mandatory",
+                        "message",
+                        "timestamp",
+                        "errors"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "document_classification": {
+                "type": "string",
+                "enum": [
+                  "valid",
+                  "invalid",
+                  "inconsistent",
+                  "to_check"
+                ]
+              },
+              "validation_status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "processing",
+                  "completed",
+                  "failed"
+                ]
+              },
+              "validation_version": {
+                "type": "string",
+                "pattern": "^\\S(?:.*\\S)?$"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "resubmission_allowed": {
+                "type": "boolean",
+                "const": false
+              },
+              "required_action": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "wait_for_review",
+                  "wait_for_external_validation",
+                  "wait_for_processing",
+                  "correct_data",
+                  "contact_administration"
+                ]
+              },
+              "resubmission_reason": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "id_student",
+              "type_document",
+              "document_version",
+              "extracted_data",
+              "rules",
+              "errors",
+              "document_classification",
+              "validation_status",
+              "validation_version",
+              "timestamp",
+              "resubmission_allowed",
+              "required_action",
+              "resubmission_reason"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "cross_validations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule": {
+            "type": "string",
+            "pattern": "^\\S(?:.*\\S)?$"
+          },
+          "rule_version": {
+            "type": "string",
+            "pattern": "^\\S(?:.*\\S)?$"
+          },
+          "sources": {
+            "minItems": 2,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "identification",
+                "academic_evaluation",
+                "paz_y_salvo_bib",
+                "estampilla_pro_cultura",
+                "saber_pro",
+                "application_data",
+                "banner",
+                "rui"
+              ]
+            },
+            "uniqueItems": true
+          },
+          "fields": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\S(?:.*\\S)?$"
+            }
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "confirmed_match",
+              "confirmed_mismatch",
+              "insufficient_information",
+              "source_pending",
+              "source_unavailable",
+              "manual_review_required"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "identification",
+                    "academic_evaluation",
+                    "paz_y_salvo_bib",
+                    "estampilla_pro_cultura",
+                    "saber_pro",
+                    "application_data",
+                    "banner",
+                    "rui"
+                  ]
+                },
+                "field": {
+                  "type": "string",
+                  "pattern": "^\\S(?:.*\\S)?$"
+                },
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "normalized_value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "document_version": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "source",
+                "field",
+                "value",
+                "normalized_value",
+                "document_version"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "evaluated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          }
+        },
+        "required": [
+          "rule",
+          "rule_version",
+          "sources",
+          "fields",
+          "outcome",
+          "evidence",
+          "similarity",
+          "threshold",
+          "reason",
+          "evaluated_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    }
+  },
+  "required": [
+    "analysis_id",
+    "level",
+    "status",
+    "documents",
+    "cross_validations",
+    "warnings",
+    "errors",
+    "generated_at"
+  ],
+  "additionalProperties": false
+}
