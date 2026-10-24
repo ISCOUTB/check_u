@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Dashboard de preinscripciones" };
+export const metadata: Metadata = { title: "Dashboard de solicitudes de grado" };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     return children;
