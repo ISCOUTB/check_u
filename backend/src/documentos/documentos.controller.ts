@@ -5,7 +5,7 @@ import {
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import {
   AnalisisDocumentalService,
   type ArchivoSubido,
@@ -18,16 +18,25 @@ export class DocumentosController {
   ) {}
 
   @Post('analizar')
-  @UseInterceptors(FilesInterceptor('documentos'))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'cedula', maxCount: 1 },
+      { name: 'evaluacion_grado', maxCount: 1 },
+      { name: 'paz_y_salvo', maxCount: 1 },
+      { name: 'estampilla', maxCount: 1 },
+      { name: 'saber_pro', maxCount: 1 },
+    ]),
+  )
   async analizar(
     @Body('datos') datos: string,
     @Body('nivel') nivel: string,
-    @UploadedFiles() documentos: ArchivoSubido[],
+    @UploadedFiles()
+    archivos: Record<string, ArchivoSubido[] | undefined>,
   ) {
     return this.analisisDocumentalService.analizar({
-      datos: JSON.parse(datos),
+      datosTexto: datos,
       nivel,
-      documentos: documentos ?? [],
+      archivos: archivos ?? {},
     });
   }
 }

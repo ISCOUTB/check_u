@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { validarDatos, validarDocumentos } from './validar-solicitud.js';
 
 export interface ArchivoSubido {
   fieldname: string;
@@ -9,25 +10,22 @@ export interface ArchivoSubido {
 }
 
 export interface SolicitudAnalisis {
-  datos: Record<string, unknown>;
+  datosTexto: string;
   nivel: string;
-  documentos: ArchivoSubido[];
+  archivos: Record<string, ArchivoSubido[] | undefined>;
 }
 
 @Injectable()
 export class AnalisisDocumentalService {
   async analizar(solicitud: SolicitudAnalisis) {
-    if (!solicitud.datos || typeof solicitud.datos !== 'object') {
-      throw new BadRequestException('Datos del estudiante inválidos');
-    }
-
-    if (solicitud.nivel !== 'PREGRADO' && solicitud.nivel !== 'POSGRADO') {
-      throw new BadRequestException('Nivel académico no soportado');
-    }
+    const datos = validarDatos(solicitud.datosTexto);
+    const documentos = validarDocumentos(solicitud.nivel, solicitud.archivos);
 
     return {
       estado: 'PENDIENTE_IMPLEMENTACION',
       nivel: solicitud.nivel,
+      datosRecibidos: datos,
+      documentosRecibidos: documentos.map((archivo) => archivo.fieldname),
     };
   }
 }
