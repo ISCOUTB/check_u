@@ -1,0 +1,98 @@
+.contenedor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6, 1.5rem);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-6, 1.5rem);
+}
+
+.titulo {
+  margin: 0;
+  color: var(--color-title);
+}
+
+.descripcion {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.tarjeta {
+  padding: var(--space-4, 1rem);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card, 12px);
+}
+
+.subtitulo {
+  margin: 0 0 var(--space-3, 0.75rem);
+  color: var(--color-title);
+}
+
+.selector,
+.json,
+.boton {
+  width: 100%;
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.selector,
+.boton {
+  padding: 0.55rem 0.75rem;
+}
+
+.json {
+  padding: 0.75rem;
+  font-family: monospace;
+  resize: vertical;
+}
+
+.archivos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.archivo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.etiqueta {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.boton {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.boton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.jsonResultado {
+  margin: 0;
+  padding: 0.75rem;
+  overflow: auto;
+  font-family: monospace;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
