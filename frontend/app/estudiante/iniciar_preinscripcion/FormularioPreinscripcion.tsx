@@ -207,7 +207,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                 <PageHeader
                     ruta={[{ texto: "Inicio", href: "/estudiante/home" }, { texto: "Iniciar preinscripción" }]}
                     titulo={titulo}
-                    descripcion="Completa tus datos y carga tus documentos en PDF. Puedes guardar un borrador y seguir después."
+                    descripcion="Completa todos los campos obligatorios y adjunta los documentos requeridos en formato PDF. Puedes dejar vacíos los campos opcionales y guardar tu borrador para continuar más tarde. Recuerda enviar tu preinscripción antes de la fecha límite."
                 />
 
                 {/*
