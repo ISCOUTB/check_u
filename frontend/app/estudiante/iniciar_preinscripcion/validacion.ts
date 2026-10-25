@@ -6,7 +6,11 @@
  * No modifican el borrador ni reescriben lo que escribió el estudiante.
  */
 
-import { DOCUMENTOS_REQUERIDOS, type NivelAcademico as Nivel, type RequisitoDocumento } from "@/app/estudiante/documentos-requeridos";
+import {
+    documentosRequeridos,
+    type DocumentoDelFormulario,
+    type NivelAcademico as Nivel,
+} from "@/app/estudiante/documentos-requeridos";
 import { borradorVacio, type BorradorPreinscripcion } from "./tipos";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -17,22 +21,8 @@ import { borradorVacio, type BorradorPreinscripcion } from "./tipos";
  * Devuelve los documentos que debe cargar el estudiante.
  * Incluye el Paz y Salvo y agrega una segunda estampilla cuando corresponde.
  */
-function obtenerDocumentosRequeridos(nivel: Nivel, segundoPrograma: boolean): RequisitoDocumento[] {
-    const documentos = [...DOCUMENTOS_REQUERIDOS[nivel]];
-
-    if (nivel === "PREGRADO" && segundoPrograma) {
-        const estampilla = documentos.find((documento) => documento.tipo === "estampilla_pro_cultura");
-
-        if (estampilla) {
-            documentos.push({
-                ...estampilla,
-                tipo: "estampilla2",
-                nombre: "Segundo comprobante de la estampilla",
-            });
-        }
-    }
-
-    return documentos;
+function obtenerDocumentosRequeridos(nivel: Nivel, segundoPrograma: boolean): DocumentoDelFormulario[] {
+    return documentosRequeridos(nivel, segundoPrograma);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -143,7 +133,10 @@ function estaVacio(texto: string | undefined): boolean {
 }
 
 function documentoCargado(borrador: BorradorPreinscripcion, id: string): boolean {
-    return Boolean(borrador.documentos[id]);
+    if (borrador.documentos[id]) return true;
+    if (id === "estampilla_pro_cultura-2" && borrador.documentos["estampilla2"]) return true;
+    if (id === "estampilla2" && borrador.documentos["estampilla_pro_cultura-2"]) return true;
+    return false;
 }
 
 /**
@@ -179,11 +172,11 @@ export function faltantes(borrador: BorradorPreinscripcion): CampoFaltante[] {
     const documentos = obtenerDocumentosRequeridos(borrador.nivel, borrador.segundoPrograma === true);
 
     for (const documento of documentos) {
-        if (!documentoCargado(borrador, documento.tipo)) {
+        if (!documentoCargado(borrador, documento.id)) {
             resultado.push({
-                id: idDocumento(documento.tipo),
+                id: idDocumento(documento.id),
                 seccion: "documentos",
-                etiqueta: documento.nombre,
+                etiqueta: documento.etiqueta,
                 mensaje: MENSAJE_DOCUMENTO,
             });
         }
@@ -233,7 +226,7 @@ export function progreso(borrador: BorradorPreinscripcion): Progreso {
     const pendientes = faltantes(borrador);
     const requeridos = obtenerDocumentosRequeridos(borrador.nivel, borrador.segundoPrograma === true);
 
-    const cargados = requeridos.filter((documento) => documentoCargado(borrador, documento.tipo)).length;
+    const cargados = requeridos.filter((documento) => documentoCargado(borrador, documento.id)).length;
     const conObligatorios = seccionesConObligatorios(borrador.nivel);
 
     const secciones = seccionesDelNivel(borrador.nivel).map((id) => ({

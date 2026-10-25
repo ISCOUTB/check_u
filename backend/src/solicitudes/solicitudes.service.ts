@@ -31,7 +31,7 @@ const DOCUMENTOS_REQUERIDOS_POSGRADO = [
 
 function normalizarTipoDocumento(tipo: string): string {
   const limpio = tipo.trim().toLowerCase();
-  if (limpio === 'estampilla2') return 'estampilla_pro_cultura';
+  if (limpio === 'estampilla2' || limpio === 'estampilla_pro_cultura-2') return 'estampilla_pro_cultura';
   return TIPO_DOCUMENTO_LEGADO[limpio] ?? limpio;
 }
 
@@ -386,7 +386,15 @@ export class SolicitudesService {
         : Object.values(payload.documentos);
 
       for (const doc of docsArray) {
-        const idTipo = doc.id || doc.tipo;
+        let idTipo = doc.tipo || doc.id;
+        let orden = 1;
+        if (doc.id && (doc.id.endsWith('-2') || doc.id === 'estampilla2')) {
+          idTipo = 'estampilla_pro_cultura';
+          orden = 2;
+        } else if (idTipo && (idTipo.endsWith('-2') || idTipo === 'estampilla2')) {
+          idTipo = 'estampilla_pro_cultura';
+          orden = 2;
+        }
         if (!idTipo) continue;
         const nombre = doc.nombre || `${idTipo}.pdf`;
         const tamano = doc.tamano && doc.tamano > 0 ? doc.tamano : 1024;
@@ -395,9 +403,12 @@ export class SolicitudesService {
           `INSERT INTO documentos (
              id_solicitud, tipo_documento, orden, nombre_original,
              mime_type, tamano_bytes, version, estado
-           ) VALUES ($1, $2, 1, $3, 'application/pdf', $4, 1, 'CARGADO')
-           ON CONFLICT (id_solicitud, tipo_documento, orden, version) DO NOTHING;`,
-          [idSolicitud, idTipo, nombre, tamano],
+           ) VALUES ($1, $2, $3, $4, 'application/pdf', $5, 1, 'CARGADO')
+           ON CONFLICT (id_solicitud, tipo_documento, orden, version) DO UPDATE SET
+             nombre_original = EXCLUDED.nombre_original,
+             tamano_bytes = EXCLUDED.tamano_bytes,
+             estado = 'CARGADO';`,
+          [idSolicitud, idTipo, orden, nombre, tamano],
         );
       }
     }

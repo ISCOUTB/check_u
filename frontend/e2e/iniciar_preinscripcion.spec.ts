@@ -461,6 +461,18 @@ test.describe("iniciar preinscripción", () => {
         await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
     });
 
+    test("segundo programa en pregrado permite cargar la segunda estampilla y actualiza el contador", async ({ page }) => {
+        await abrir(page, PREGRADO);
+        await responder(page, "¿Solicitas grado en un segundo programa?", "Sí");
+        const segunda = page.locator("#documento-estampilla_pro_cultura-2");
+        await expect(segunda).toBeVisible();
+        await expect(contador(page)).toHaveText("0 de 6 documentos cargados");
+
+        await segunda.setInputFiles({ name: "estampilla2.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 prueba") });
+        await expect(contador(page)).toHaveText("1 de 6 documentos cargados");
+        await expect(resumen(page, "Te faltan 2 secciones y 5 documentos")).toBeVisible();
+    });
+
     test("el mismo archivo rechazado dos veces se vuelve a anunciar", async ({ page }) => {
         await abrir(page, PREGRADO);
         const entrada = page.locator("#documento-identification");
