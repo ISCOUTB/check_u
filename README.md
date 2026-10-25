@@ -248,6 +248,16 @@ cd C:\check_u\frontend
 npm run dev -- -p 3001
 ```
 
+Motor OCR y validación documental (Python):
+
+```powershell
+cd C:\check_u
+.\venv\Scripts\Activate.ps1
+python -m modules.api.app
+```
+
+El motor quedará escuchando en `http://127.0.0.1:5001` y atenderá las solicitudes de análisis y validación enviadas por el backend.
+
 En este modo, PostgreSQL debe estar iniciado previamente.
 
 **Importante:** el script `levantar.ps1` tiene un comportamiento diferente: reconstruye la base de datos a partir de los SQL del proyecto antes de iniciar las aplicaciones. Consulta la sección [Arranque y reconstrucción local](#arranque-y-reconstrucción-local).
@@ -269,6 +279,7 @@ Entre las variables utilizadas en la configuración actual se encuentran:
 | `SESSION_SECRET` | Secreto de configuración de las sesiones. |
 | `OBSERVE_APP_KEY` | Clave de la integración de observabilidad, cuando se utilice. |
 | `OBSERVE_APP_SECRET` | Secreto de la integración de observabilidad, cuando se utilice. |
+| `MOTOR_URL` | URL del servicio HTTP del motor OCR/validación (por defecto `http://127.0.0.1:5001`). |
 
 Para el entorno local descrito, los valores de conexión de PostgreSQL deben coincidir con el archivo Compose y con las credenciales configuradas en el contenedor.
 
@@ -595,6 +606,53 @@ Un documento debe quedar pendiente de revisión cuando:
 - No se pueda comprobar una condición exigida con suficiente confianza.
 
 El sistema no debe inventar información faltante ni aprobar automáticamente un caso cuando no dispone de evidencia suficiente.
+
+### Ejecución y puesta en marcha del motor OCR
+
+El motor de extracción y validación documental se expone como un microservicio HTTP desarrollado en Flask sobre Python 3.11+, el cual es consumido por el backend de NestJS mediante el endpoint `/analizar`.
+
+#### 1. Requisitos previos
+- **Python 3.11 o superior** instalado y configurado en el `PATH`.
+- **Tesseract OCR** con el paquete de idioma en español (`spa.traineddata`).
+  - Instalación en Windows mediante `winget`:
+    ```powershell
+    winget install -e --id UB-Mannheim.TesseractOCR
+    ```
+  - Comprueba que la carpeta de instalación (por ejemplo, `C:\Program Files\Tesseract-OCR`) esté agregada a la variable `PATH` del sistema.
+
+#### 2. Entorno virtual e instalación de dependencias
+Desde la raíz del repositorio (`check_u/`):
+
+```powershell
+# Crear el entorno virtual si aún no existe
+python -m venv venv
+
+# Activar el entorno virtual (PowerShell)
+.\venv\Scripts\Activate.ps1
+
+# Instalar las dependencias de procesamiento documental
+pip install flask pytesseract opencv-python pillow pymupdf zxing-cpp rapidfuzz requests
+```
+
+#### 3. Iniciar el servicio HTTP del motor
+Ejecuta desde la raíz del proyecto con el entorno virtual activo:
+
+```powershell
+python -m modules.api.app
+```
+*(Alternativamente: `flask --app modules.api.app run --port 5001`)*
+
+El servicio quedará disponible en `http://127.0.0.1:5001` con los endpoints:
+- `GET /salud`: Verifica el estado operativo y lista los validadores soportados.
+- `POST /analizar`: Recibe los archivos (`multipart/form-data`) y datos del estudiante para la ejecución de las reglas de validación documental.
+
+#### 4. Integración con el Backend
+El backend de NestJS se conecta a este servicio a través de la variable de entorno `MOTOR_URL` en `backend/.env`:
+
+```env
+MOTOR_URL=http://127.0.0.1:5001
+```
+Si el motor no está en ejecución al procesar una solicitud de análisis, el backend responderá con error `503 Service Unavailable`.
 
 ## Frontend
 

@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { Confianza, conReglaDeReenvio, FechaHora, Identificador } from './comunes.js';
+import {
+  Confianza,
+  conReglaDeReenvio,
+  FechaHora,
+  Identificador,
+} from './comunes.js';
 import {
   DocumentClassification,
   NoEvaluableReason,
@@ -8,7 +13,10 @@ import {
   ValidationStatus,
 } from './enums.js';
 
-function evaluacion<R extends z.ZodType, M extends z.ZodType>(result: R, motivo: M) {
+function evaluacion<R extends z.ZodType, M extends z.ZodType>(
+  result: R,
+  motivo: M,
+) {
   return z.strictObject({
     rule: Identificador,
     result,
@@ -35,9 +43,16 @@ export type RuleEvaluation = z.infer<typeof RuleEvaluation>;
  * Un dato extraído con su confianza. Lo que no se pudo extraer va con value y confidence en null:
  * nunca se inventa un valor, y no hay valor sin confianza ni confianza sin valor.
  */
+
 export const ExtractedValue = z.union([
-  z.strictObject({ value: z.null(), confidence: z.null() }),
-  z.strictObject({ value: z.union([z.string(), z.number(), z.boolean()]), confidence: Confianza }),
+  z.strictObject({
+    value: z.null(),
+    confidence: z.null(),
+  }),
+  z.strictObject({
+    value: z.union([z.string(), z.number(), z.boolean()]),
+    confidence: Confianza.nullable(),
+  }),
 ]);
 export type ExtractedValue = z.infer<typeof ExtractedValue>;
 
