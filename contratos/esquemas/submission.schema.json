@@ -53,6 +53,11 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 9007199254740991
+              },
+              "document_order": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2
               }
             },
             "required": [
@@ -68,6 +73,46 @@
                 "properties": {
                   "type_document": {
                     "const": "identification"
+                  },
+                  "document_order": {
+                    "const": 1
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "identification"
+                  },
+                  "document_order": {
+                    "const": 2
+                  }
+                },
+                "required": [
+                  "type_document",
+                  "document_order"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "academic_evaluation"
+                  },
+                  "document_order": {
+                    "const": 1
                   }
                 },
                 "required": [
@@ -83,6 +128,28 @@
                 "properties": {
                   "type_document": {
                     "const": "academic_evaluation"
+                  },
+                  "document_order": {
+                    "const": 2
+                  }
+                },
+                "required": [
+                  "type_document",
+                  "document_order"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "paz_y_salvo_bib"
+                  },
+                  "document_order": {
+                    "const": 1
                   }
                 },
                 "required": [
@@ -98,6 +165,28 @@
                 "properties": {
                   "type_document": {
                     "const": "paz_y_salvo_bib"
+                  },
+                  "document_order": {
+                    "const": 2
+                  }
+                },
+                "required": [
+                  "type_document",
+                  "document_order"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "estampilla_pro_cultura"
+                  },
+                  "document_order": {
+                    "const": 1
                   }
                 },
                 "required": [
@@ -113,6 +202,28 @@
                 "properties": {
                   "type_document": {
                     "const": "estampilla_pro_cultura"
+                  },
+                  "document_order": {
+                    "const": 2
+                  }
+                },
+                "required": [
+                  "type_document",
+                  "document_order"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "saber_pro"
+                  },
+                  "document_order": {
+                    "const": 1
                   }
                 },
                 "required": [
@@ -128,10 +239,14 @@
                 "properties": {
                   "type_document": {
                     "const": "saber_pro"
+                  },
+                  "document_order": {
+                    "const": 2
                   }
                 },
                 "required": [
-                  "type_document"
+                  "type_document",
+                  "document_order"
                 ]
               },
               "minContains": 0,
@@ -211,6 +326,11 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 9007199254740991
+              },
+              "document_order": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2
               }
             },
             "required": [
@@ -226,6 +346,46 @@
                 "properties": {
                   "type_document": {
                     "const": "identification"
+                  },
+                  "document_order": {
+                    "const": 1
+                  }
+                },
+                "required": [
+                  "type_document"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "identification"
+                  },
+                  "document_order": {
+                    "const": 2
+                  }
+                },
+                "required": [
+                  "type_document",
+                  "document_order"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "academic_evaluation"
+                  },
+                  "document_order": {
+                    "const": 1
                   }
                 },
                 "required": [
@@ -241,6 +401,28 @@
                 "properties": {
                   "type_document": {
                     "const": "academic_evaluation"
+                  },
+                  "document_order": {
+                    "const": 2
+                  }
+                },
+                "required": [
+                  "type_document",
+                  "document_order"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "paz_y_salvo_bib"
+                  },
+                  "document_order": {
+                    "const": 1
                   }
                 },
                 "required": [
@@ -256,6 +438,28 @@
                 "properties": {
                   "type_document": {
                     "const": "paz_y_salvo_bib"
+                  },
+                  "document_order": {
+                    "const": 2
+                  }
+                },
+                "required": [
+                  "type_document",
+                  "document_order"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "estampilla_pro_cultura"
+                  },
+                  "document_order": {
+                    "const": 1
                   }
                 },
                 "required": [
@@ -271,6 +475,28 @@
                 "properties": {
                   "type_document": {
                     "const": "estampilla_pro_cultura"
+                  },
+                  "document_order": {
+                    "const": 2
+                  }
+                },
+                "required": [
+                  "type_document",
+                  "document_order"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "properties": {
+                  "type_document": {
+                    "const": "saber_pro"
+                  },
+                  "document_order": {
+                    "const": 1
                   }
                 },
                 "required": [
@@ -286,10 +512,14 @@
                 "properties": {
                   "type_document": {
                     "const": "saber_pro"
+                  },
+                  "document_order": {
+                    "const": 2
                   }
                 },
                 "required": [
-                  "type_document"
+                  "type_document",
+                  "document_order"
                 ]
               },
               "minContains": 0,

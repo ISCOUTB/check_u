@@ -24,7 +24,7 @@ Hoy existen el de **Saber Pro** (Tarea 08e), el de **cédula** (Tarea 08a) y el 
 | `cedula/paginas.py`, `cedula/calidad.py` | PDF o imagen → páginas; resolución y nitidez de cada página. |
 | `cedula/extraccion.py` | Adapta lo que devuelve `leer_cedula` (modules/cedula) a datos con confianza; reconoce la versión de la cédula. |
 | `cedula/reglas.py` | Las 5 reglas de la cédula y `VERSION = "cedula@1.0.0"`. |
-| `estampilla/__init__.py` | `validar_estampilla(contenido, id_student=…, document_version=…, consultar_registro=…)`. |
+| `estampilla/__init__.py` | `validar_estampilla(contenido, id_student=…, document_version=…, consultar_registro=…, document_order=1)` y `validar_estampillas([…], …)` para las dos del doble programa. |
 | `estampilla/extraccion.py` | Lee el certificado de pago con PyMuPDF: recibo, contribuyente, fecha de pago y la fila "Estampilla Pro-Cultura". |
 | `estampilla/reglas.py` | Las 5 reglas, la traducción de lo que devuelve el adaptador de la Tarea 22 (`modules/estampilla_pro`) y el cotejo con el registro oficial. `VERSION = "estampilla_pro_cultura@1.0.0"`. |
 
@@ -75,6 +75,7 @@ Sin `--rui` **no** consulta el RUI, así que no envía el número de documento a
   - no encontrado, sin Pro-Cultura o sin pagar → no válido;
   - servicio caído o sin consultar → `wait_for_external_validation`.
 - **Coteja** el PDF con el registro oficial (fecha, valor, dígitos visibles del documento y nombre). Si algo no coincide, queda por revisar.
+- **Doble programa (pregrado):** `validar_estampillas([pdf_programa_1, pdf_programa_2], …)` devuelve un resultado por estampilla, cada uno con su `document_order` (1 o 2). El de la segunda lleva además `distinct_receipt`: si es el mismo recibo que el de la primera, queda por revisar, porque un funcionario decide si ese recibo cubre los dos títulos.
 - Diseño: `docs/superpowers/specs/2026-10-23-validador-estampilla-design.md`.
 
 Para probarlo con un certificado propio:

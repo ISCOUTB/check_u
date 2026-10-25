@@ -25,6 +25,11 @@
           "minimum": 1,
           "maximum": 9007199254740991
         },
+        "document_order": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        },
         "extracted_data": {
           "type": "object",
           "propertyNames": {
@@ -267,6 +272,11 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 9007199254740991
+        },
+        "document_order": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
         },
         "extracted_data": {
           "type": "object",

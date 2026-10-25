@@ -189,6 +189,18 @@ Ejemplo (`contratos/ejemplos/document-validation-result/validos/reenvio-permitid
 }
 ```
 
-### Sin tipos repetidos en una entrega
+### Sin documentos repetidos en una entrega
 
-`Submission.documents` no admite dos documentos con el mismo `type_document`. `uniqueItems` no sirve, porque los elementos difieren en la versión. Por eso el JSON Schema lleva una cláusula por cada uno de los 5 tipos: a lo sumo un documento con ese tipo (`contains` + `maxContains: 1`). Zod y el JSON Schema rechazan lo mismo; la prueba de paridad no tiene excepciones.
+`Submission.documents` no admite dos documentos con la misma pareja (`type_document`, `document_order`). Un documento sin `document_order` cuenta como orden 1.
+
+Así caben las dos estampillas Pro-Cultura de un estudiante de pregrado con doble programa: una con orden 1 y otra con orden 2. Cualquier otro tipo repetido sigue rechazándose.
+
+`uniqueItems` no sirve, porque los elementos difieren en la versión. Por eso el JSON Schema lleva dos cláusulas por cada uno de los 5 tipos, las dos con `contains` + `maxContains: 1`:
+- a lo sumo uno con orden 1 o sin orden;
+- a lo sumo uno con orden 2.
+
+Zod y el JSON Schema rechazan lo mismo; la prueba de paridad no tiene excepciones.
+
+### Orden del documento (`document_order`)
+
+`document_order` es opcional y vale 1 o 2. Lo usan `DocumentValidationResult` y cada documento de `Submission`. Distingue la estampilla del primer programa (1) de la del segundo (2) en el doble programa de pregrado. Solo lo llena la estampilla; los demás documentos no lo traen.
