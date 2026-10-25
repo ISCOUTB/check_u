@@ -49,6 +49,12 @@ export const DocumentValidationResult = conReglaDeReenvio({
   id_student: Identificador,
   type_document: TypeDocument,
   document_version: z.number().int().min(1),
+  /**
+   * Qué documento de ese tipo es, cuando el estudiante sube más de uno: la estampilla Pro-Cultura en
+   * pregrado con doble programa (1 = primer programa, 2 = segundo). Solo lo llena la estampilla; los
+   * demás documentos no lo traen.
+   */
+  document_order: z.number().int().min(1).max(2).optional(),
   extracted_data: z.record(z.string().min(1), ExtractedValue),
   rules: z.array(RuleEvaluation),
   errors: z.array(z.string()),
