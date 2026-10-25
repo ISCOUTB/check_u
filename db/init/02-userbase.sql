@@ -1,7 +1,11 @@
 -- CHECKU | Usuarios iniciales indicados por el equipo.
--- Codigo de Lisandro confirmado para esta configuracion: T00000001.
--- No se agregan usuarios de ejemplo, perfiles ni solicitudes ficticias.
--- No elimina usuarios que ya existan en una base desplegada.
+-- Configuración confirmada:
+--   Lisandro Zapata: ESTUDIANTE, código T00000001.
+--   Rosa Marriaga: FUNCIONARIO.
+-- No se crean usuarios de ejemplo, perfiles ni solicitudes ficticias.
+-- No se eliminan ni modifican usuarios que ya existan en una base desplegada.
+-- El rol BIBLIOTECA no se utiliza; las funciones administrativas corresponden a FUNCIONARIO.
+
 BEGIN;
 
 INSERT INTO usuarios (nombres, apellidos, correo, rol, codigo_estudiante)
