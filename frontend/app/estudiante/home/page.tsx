@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import Navbar from "@/app/components/navbar/Navbar";
 import Button from "@/app/components/ui/Button";
@@ -8,6 +7,7 @@ import Card from "@/app/components/ui/Card";
 import Icono from "@/app/components/ui/Icono";
 import PageHeader from "@/app/components/ui/PageHeader";
 import StatusBadge from "@/app/components/ui/StatusBadge";
+import { useRequiereSolicitud } from "@/app/lib/useSolicitudActiva";
 import { useSesion } from "@/app/lib/useSesion";
 import styles from "./home.module.css";
 import {
@@ -45,27 +45,30 @@ function documentosCargados(solicitud: Solicitud): number {
 }
 
 export default function Home() {
-    const router = useRouter();
-    const { usuario, cargando } = useSesion("estudiante");
+    const { usuario, cargando: cargandoSesion } = useSesion("estudiante");
+    const {
+        cargando: cargandoSolicitud,
+        error: errorSolicitud,
+        tiene_solicitud,
+        reintentar: reintentarSolicitud,
+    } = useRequiereSolicitud(Boolean(usuario));
     const idListaNotificaciones = useId();
 
     const [nivel, setNivel] = useState<NivelAcademico | null>(null);
     const [solicitud, setSolicitud] = useState<Solicitud | null | undefined>(undefined);
-    const [errorSolicitud, setErrorSolicitud] = useState(false);
     const [notificaciones, setNotificaciones] = useState<Notificacion[] | null>(null);
     const [errorNotificaciones, setErrorNotificaciones] = useState(false);
     const [politica, setPolitica] = useState<PoliticaReenvios | null>(null);
     const [verTodas, setVerTodas] = useState(false);
 
     useEffect(() => {
-        if (!usuario) return;
+        if (!usuario || tiene_solicitud !== true) return;
 
         obtenerNivelSimulado().then(setNivel);
         obtenerSolicitudActiva()
             .then(setSolicitud)
             .catch(() => {
                 setSolicitud(null);
-                setErrorSolicitud(true);
             });
         obtenerNotificaciones()
             .then(setNotificaciones)
@@ -76,18 +79,12 @@ export default function Home() {
         obtenerPoliticaReenvios()
             .then(setPolitica)
             .catch(() => setPolitica(null));
-    }, [usuario]);
+    }, [usuario, tiene_solicitud]);
 
-    // Si el estudiante no tiene solicitud activa, redirigir a /estudiante/bienvenida
-    useEffect(() => {
-        if (!cargando && usuario && solicitud === null && !errorSolicitud) {
-            router.replace("/estudiante/bienvenida");
-        }
-    }, [cargando, usuario, solicitud, errorSolicitud, router]);
-
+    const cargando = cargandoSesion || cargandoSolicitud;
     const datosListos = solicitud !== undefined && notificaciones !== null;
 
-    if (cargando || !usuario || (solicitud === null && !errorSolicitud)) {
+    if (cargando || !usuario || (!errorSolicitud && tiene_solicitud === false)) {
         return (
             <main id="contenido" tabIndex={-1} className={styles.cargando} aria-busy="true">
                 <span className={styles.spinner} aria-hidden="true" />
@@ -201,7 +198,7 @@ export default function Home() {
     );
 
     const tarjetaSolicitud = () => {
-        if (solicitud === undefined) {
+        if (solicitud === undefined && !errorSolicitud) {
             return (
                 <Card titulo="Mi solicitud de grado" id="mi-solicitud">
                     <p className={styles.textoSecundario}>Cargando solicitud...</p>
@@ -212,6 +209,11 @@ export default function Home() {
             return (
                 <Card titulo="Mi solicitud de grado" id="mi-solicitud">
                     <p className={styles.textoError}>No fue posible cargar la solicitud. Intenta recargar la página.</p>
+                    <div style={{ marginTop: "1rem" }}>
+                        <Button onClick={() => void reintentarSolicitud()} variante="secundario">
+                            Reintentar
+                        </Button>
+                    </div>
                 </Card>
             );
         }

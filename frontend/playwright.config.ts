@@ -6,7 +6,7 @@ export default defineConfig({
     testDir: "e2e",
     expect: { timeout: 10_000 },
     use: { baseURL: "http://localhost:3001" },
-    projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+    projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], channel: "chrome" } }],
     webServer: {
         command: "npm run dev",
         url: "http://localhost:3001",

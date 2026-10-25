@@ -348,7 +348,7 @@ BEGIN
         FROM entregas
         WHERE id_solicitud = NEW.id_solicitud
           AND tipo_entrega = 'CORRECCION'
-          AND fecha_entrega_bogota = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::DATE;
+          AND fecha_entrega_bogota = NEW.fecha_entrega_bogota;
 
         IF reenvios_hoy >= 3 THEN
             RAISE EXCEPTION 'Ha alcanzado el límite máximo de 3 reenvíos por día. Intente nuevamente mañana.'

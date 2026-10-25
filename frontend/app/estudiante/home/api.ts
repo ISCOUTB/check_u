@@ -220,19 +220,8 @@ export async function obtenerPoliticaReenvios(): Promise<PoliticaReenvios> {
  * Los documentos marcados como retirando no se muestran en esta lista.
  */
 export const DOCUMENTOS_POR_NIVEL: Record<NivelAcademico, string[]> = {
-    PREGRADO: DOCUMENTOS_REQUERIDOS.PREGRADO
-        .filter((doc) => !doc.retirando)
-        .map((doc) => {
-            const nombre = doc.nombre.replace(/\.$/, "");
-            return doc.nota ? `${nombre} ${doc.nota}` : nombre;
-        }),
-
-    POSGRADO: DOCUMENTOS_REQUERIDOS.POSGRADO
-        .filter((doc) => !doc.retirando)
-        .map((doc) => {
-            const nombre = doc.nombre.replace(/\.$/, "");
-            return doc.nota ? `${nombre} ${doc.nota}` : nombre;
-        }),
+    PREGRADO: DOCUMENTOS_REQUERIDOS.PREGRADO.map((doc) => doc.etiqueta),
+    POSGRADO: DOCUMENTOS_REQUERIDOS.POSGRADO.map((doc) => doc.etiqueta),
 };
 
 /** Formatea una fecha ISO para mostrarla de forma legible. */

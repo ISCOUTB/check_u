@@ -645,6 +645,42 @@ test.describe("iniciar preinscripción", () => {
         expect(usadas).toHaveLength(1);
         expect(usadas[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     });
+    test("envío de preinscripción llama a POST /api/solicitudes/enviar y redirige a /estudiante/preinscripcion", async ({ page }) => {
+        await abrir(page, POSGRADO);
+
+        let envioLlamado = false;
+        let cuerpoEnvio: any = null;
+
+        await page.route(`${API}/solicitudes/enviar`, async (ruta) => {
+            envioLlamado = true;
+            cuerpoEnvio = ruta.request().postDataJSON();
+            await ruta.fulfill({
+                status: 201,
+                json: {
+                    ok: true,
+                    id_solicitud: 102,
+                    id_entrega: 1,
+                    estado: "EN_PROCESO",
+                    mensaje: "Preinscripción registrada correctamente. Pendiente de análisis.",
+                },
+            });
+        });
+
+        await llenarObligatoriosPosgrado(page);
+
+        await botonEnviar(page).click();
+        const dialogo = dialogoEnvio(page);
+        await expect(dialogo).toBeVisible();
+
+        await dialogo.getByRole("button", { name: "Enviar", exact: true }).click();
+        await expect(page).toHaveURL("/estudiante/preinscripcion");
+
+        expect(envioLlamado).toBe(true);
+        expect(cuerpoEnvio).not.toBeNull();
+        expect(cuerpoEnvio.nivel).toBe("POSGRADO");
+        expect(cuerpoEnvio.claveIdempotencia).toMatch(/^[0-9a-f-]{36}$/);
+    });
+
 
     test("doble clic envía una vez", async ({ page }) => {
         const claves = await espiarClaves(page);

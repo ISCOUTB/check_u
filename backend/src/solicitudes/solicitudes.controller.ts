@@ -1,0 +1,70 @@
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Post,
+  Req,
+  UnauthorizedException,
+} from '@nestjs/common';
+import type { Request } from 'express';
+import { AuthService } from '../auth/auth.service.js';
+import { readSessionId } from '../auth/session.js';
+import { SolicitudesService } from './solicitudes.service.js';
+import type {
+  DatosEnvioPreinscripcion,
+  RespuestaEnvioPreinscripcion,
+  RespuestaGuardarBorrador,
+  RespuestaSolicitudEstudiante,
+} from './solicitudes.types.js';
+
+@Controller()
+export class SolicitudesController {
+  constructor(
+    private readonly solicitudesService: SolicitudesService,
+    private readonly authService: AuthService,
+  ) {}
+
+  @Get('estudiante/solicitud')
+  async obtenerSolicitud(
+    @Req() req: Request,
+  ): Promise<RespuestaSolicitudEstudiante> {
+    const user = this.obtenerEstudianteAutenticado(req);
+    // El identificador del estudiante proviene estrictamente de la sesión.
+    // Ignora cualquier identificador enviado por el cliente en query, params o body.
+    return this.solicitudesService.obtenerSolicitudEstudiante(user.id);
+  }
+
+  @Post('solicitudes/enviar')
+  async enviarPreinscripcion(
+    @Req() req: Request,
+    @Body() body?: DatosEnvioPreinscripcion,
+  ): Promise<RespuestaEnvioPreinscripcion> {
+    const user = this.obtenerEstudianteAutenticado(req);
+    return this.solicitudesService.enviarPreinscripcion(user.id, body);
+  }
+
+  @Post('solicitudes/borrador')
+  async guardarBorrador(
+    @Req() req: Request,
+    @Body() body?: DatosEnvioPreinscripcion,
+  ): Promise<RespuestaGuardarBorrador> {
+    const user = this.obtenerEstudianteAutenticado(req);
+    return this.solicitudesService.guardarBorrador(user.id, body);
+  }
+
+  private obtenerEstudianteAutenticado(req: Request) {
+    const sessionId = readSessionId(req);
+    const user = sessionId ? this.authService.getUser(sessionId) : null;
+
+    if (!user) {
+      throw new UnauthorizedException('Sesión no válida o expirada');
+    }
+
+    if (user.role !== 'estudiante') {
+      throw new ForbiddenException('Acceso restringido a estudiantes');
+    }
+
+    return user;
+  }
+}
