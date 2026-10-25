@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import Navbar from "@/app/components/navbar/Navbar";
+import { useRequiereSolicitud } from "@/app/lib/useSolicitudActiva";
 import DocumentAnalysis, {
   type DocumentAnalysisData,
 } from "@/app/components/document_analysis/DocumentAnalysis";
@@ -18,6 +19,13 @@ import type {
   TipoDocumento,
   DocumentoSolicitud,
 } from "./types";
+
+import {
+  InformacionEstudiante,
+  DEMO_PREGRADO,
+  DEMO_POSGRADO,
+} from "@/app/components/informacion_estudiante";
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos de sesión
@@ -180,15 +188,6 @@ function StatusBadge({ estado }: { estado: EstadoDocumento }) {
   );
 }
 
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={styles.field}>
-      <span className={styles.fieldLabel}>{label}</span>
-      <div className={styles.fieldValue}>{value}</div>
-    </div>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Página
 // ─────────────────────────────────────────────────────────────────────────────
@@ -205,6 +204,13 @@ export default function PreinscripcionPage() {
   const [solicitud, setSolicitud] = useState<SolicitudDetalle | null>(null);
   const [errorDatos, setErrorDatos] = useState(false);
   const [pestana, setPestana] = useState<Pestana>("documentos");
+
+  const {
+    cargando: cargandoSolicitud,
+    error: errorSolicitud,
+    tiene_solicitud,
+    reintentar: reintentarSolicitud,
+  } = useRequiereSolicitud(Boolean(usuario));
 
   // Análisis automático
   const [analysisOpen, setAnalysisOpen] = useState(false);
@@ -247,25 +253,27 @@ export default function PreinscripcionPage() {
 
   // Datos
   useEffect(() => {
-    if (!usuario) return;
+    if (!usuario || tiene_solicitud !== true) return;
     obtenerSolicitudDetalle()
       .then(setSolicitud)
       .catch(() => {
         setSolicitud(null);
         setErrorDatos(true);
       });
-  }, [usuario]);
+  }, [usuario, tiene_solicitud]);
 
-  if (cargandoSesion || !usuario) {
+  const cargando = cargandoSesion || cargandoSolicitud;
+
+  if (cargando || !usuario || (!errorSolicitud && tiene_solicitud === false)) {
     return (
       <div className={styles.cargando} aria-live="polite">
         <span className={styles.spinner} aria-hidden="true" />
-        <p>Verificando sesión...</p>
+        <p>Verificando sesión y preinscripción...</p>
       </div>
     );
   }
 
-  if (errorDatos || !solicitud) {
+  if (errorSolicitud || errorDatos || !solicitud) {
     return (
       <>
         <Navbar tipoUsuario={usuario.role} nombreUsuario={usuario.name} />
@@ -273,6 +281,24 @@ export default function PreinscripcionPage() {
           <p className={styles.textoError}>
             No fue posible cargar la preinscripción. Intenta recargar la página.
           </p>
+          <div style={{ marginTop: "1rem" }}>
+            <button
+              type="button"
+              className={styles.btnSecundario}
+              onClick={() => {
+                setErrorDatos(false);
+                void reintentarSolicitud();
+                obtenerSolicitudDetalle()
+                  .then(setSolicitud)
+                  .catch(() => {
+                    setSolicitud(null);
+                    setErrorDatos(true);
+                  });
+              }}
+            >
+              Reintentar
+            </button>
+          </div>
         </main>
       </>
     );
@@ -558,44 +584,23 @@ export default function PreinscripcionPage() {
             className={styles.panel}
           >
             <h2 className={styles.panelTitle}>Tu información</h2>
+
             <p className={styles.panelSubtitle}>
-              Información suministrada durante la inscripción. Es solo de consulta.
+              Información suministrada durante el proceso de preinscripción.
             </p>
 
-            <section className={styles.infoBlock}>
-              <h3>Información básica de identificación</h3>
-              <p className={styles.infoHint}>Datos de identificación registrados.</p>
-              <div className={styles.fieldsGrid}>
-                <ReadOnlyField label="Nombre completo" value={estudiante.nombre} />
-                <ReadOnlyField label="Tipo de documento" value={estudiante.tipoDocumento} />
-                <ReadOnlyField label="Número de documento" value={estudiante.numeroDocumento} />
-                <ReadOnlyField label="Fecha de nacimiento" value={estudiante.fechaNacimiento} />
-              </div>
-            </section>
-
-            <section className={styles.infoBlock}>
-              <h3>Información académica</h3>
-              <p className={styles.infoHint}>Datos académicos registrados.</p>
-              <div className={styles.fieldsGrid}>
-                <ReadOnlyField label="Código estudiantil" value={estudiante.codigo} />
-                <ReadOnlyField label="Programa académico" value={estudiante.programa} />
-                <ReadOnlyField label="Facultad" value={estudiante.facultad} />
-                <ReadOnlyField label="Nivel académico" value={estudiante.nivel} />
-              </div>
-            </section>
-
-            <section className={styles.infoBlock}>
-              <h3>Contacto y solicitud</h3>
-              <p className={styles.infoHint}>Datos de contacto y de la solicitud.</p>
-              <div className={styles.fieldsGrid}>
-                <ReadOnlyField label="Correo" value={estudiante.correo} />
-                <ReadOnlyField label="Teléfono" value={estudiante.telefono} />
-                <ReadOnlyField label="Ciudad" value={estudiante.ciudad} />
-                <ReadOnlyField label="Fecha de solicitud" value={estudiante.fechaSolicitud} />
-              </div>
-            </section>
+            {/*
+              SIMULADO: DEMO_PREGRADO hasta que exista endpoint de perfil.
+              TODO: mapear solicitud.estudiante → DatosInformacionEstudiante
+            */}
+            <InformacionEstudiante
+              nivel={estudiante.nivel === "POSGRADO" ? "POSGRADO" : "PREGRADO"}
+              datos={estudiante.nivel === "POSGRADO" ? DEMO_POSGRADO : DEMO_PREGRADO}
+              variante="estudiante"
+            />
           </div>
         )}
+
 
         {/* ═══════════════ TUS DOCUMENTOS ═══════════════ */}
         {pestana === "documentos" && (

@@ -1,0 +1,35 @@
+{
+  "id_student": "9900112233",
+  "type_document": "estampilla_pro_cultura",
+  "document_version": 1,
+  "document_order": 2,
+  "extracted_data": {
+    "receipt_number": {
+      "value": "000000000002",
+      "confidence": 1.0
+    },
+    "pro_cultura_amount": {
+      "value": 70036,
+      "confidence": 1.0
+    }
+  },
+  "rules": [
+    {
+      "rule": "official_record",
+      "result": "cumple",
+      "no_evaluable_reason": null,
+      "mandatory": true,
+      "message": "El comprobante está en los registros oficiales de la Gobernación de Bolívar.",
+      "timestamp": "2026-10-14T09:30:00-05:00",
+      "errors": []
+    }
+  ],
+  "errors": [],
+  "document_classification": "valid",
+  "validation_status": "completed",
+  "resubmission_allowed": false,
+  "resubmission_reason": null,
+  "required_action": "none",
+  "validation_version": "estampilla_pro_cultura@1.1.0",
+  "timestamp": "2026-10-14T09:30:00-05:00"
+}

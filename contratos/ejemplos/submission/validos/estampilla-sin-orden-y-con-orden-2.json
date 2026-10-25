@@ -1,0 +1,29 @@
+{
+  "idempotency_key": "entrega-sintetica-0001",
+  "id_student": "9900112233",
+  "request_id": "solicitud-sintetica-0001",
+  "submission_type": "initial",
+  "submission_number": 1,
+  "resubmission_number": 0,
+  "local_submission_date": "2026-10-14",
+  "submitted_at": "2026-10-14T09:00:00-05:00",
+  "documents": [
+    {
+      "type_document": "identification",
+      "document_version": 1
+    },
+    {
+      "type_document": "saber_pro",
+      "document_version": 1
+    },
+    {
+      "type_document": "estampilla_pro_cultura",
+      "document_version": 1
+    },
+    {
+      "type_document": "estampilla_pro_cultura",
+      "document_version": 1,
+      "document_order": 2
+    }
+  ]
+}

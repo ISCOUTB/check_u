@@ -6,30 +6,50 @@ import { TypeDocument } from './enums.js';
 export const SubmittedDocument = z.strictObject({
   type_document: TypeDocument,
   document_version: z.number().int().min(1),
+  /**
+   * Qué documento de ese tipo es, cuando hay más de uno: la estampilla Pro-Cultura en pregrado con
+   * doble programa (1 = primer programa, 2 = segundo). Sin él, cuenta como 1.
+   */
+  document_order: z.number().int().min(1).max(2).optional(),
 });
 export type SubmittedDocument = z.infer<typeof SubmittedDocument>;
 
 /**
- * Sin tipos repetidos. uniqueItems no sirve (los documentos difieren en la versión), así que en el
- * JSON Schema va una cláusula por tipo: a lo sumo un documento con ese type_document.
+ * Sin la misma pareja (type_document, document_order) dos veces: así caben las dos estampillas del
+ * doble programa (orden 1 y orden 2). uniqueItems no sirve (los documentos difieren en la versión),
+ * así que en el JSON Schema van dos cláusulas por tipo: a lo sumo uno con orden 1 (o sin orden) y a
+ * lo sumo uno con orden 2.
  */
 const DocumentosEntregados = z
   .array(SubmittedDocument)
   .min(1)
   .refine(
-    (documentos) => new Set(documentos.map((d) => d.type_document)).size === documentos.length,
-    { message: 'Un tipo de documento no puede repetirse en una entrega' },
+    (documentos) =>
+      new Set(documentos.map((d) => `${d.type_document}#${d.document_order ?? 1}`)).size === documentos.length,
+    { message: 'Un documento (tipo y orden) no puede repetirse en una entrega' },
   )
   .meta({
-    allOf: TypeDocument.options.map((tipo) => ({
-      contains: {
-        type: 'object',
-        properties: { type_document: { const: tipo } },
-        required: ['type_document'],
+    allOf: TypeDocument.options.flatMap((tipo) => [
+      {
+        // Orden 1, o sin orden: las propiedades ausentes no se revisan.
+        contains: {
+          type: 'object',
+          properties: { type_document: { const: tipo }, document_order: { const: 1 } },
+          required: ['type_document'],
+        },
+        minContains: 0,
+        maxContains: 1,
       },
-      minContains: 0,
-      maxContains: 1,
-    })),
+      {
+        contains: {
+          type: 'object',
+          properties: { type_document: { const: tipo }, document_order: { const: 2 } },
+          required: ['type_document', 'document_order'],
+        },
+        minContains: 0,
+        maxContains: 1,
+      },
+    ]),
   });
 
 const campos = {

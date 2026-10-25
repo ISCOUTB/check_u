@@ -71,7 +71,7 @@ def test_danado_por_revisar(contenido, validar_esquema):
 def test_tipo_version_y_entradas_invalidas():
     resultado = validar(b"", None)
     assert resultado["type_document"] == "estampilla_pro_cultura"
-    assert resultado["validation_version"] == "estampilla_pro_cultura@1.0.0"
+    assert resultado["validation_version"] == "estampilla_pro_cultura@1.1.0"
     for id_student, version in [("", 1), (" T1", 1), ("T1", 0)]:
         with pytest.raises(ValueError):
             validar_estampilla(b"", id_student=id_student, document_version=version, consultar_registro=None)

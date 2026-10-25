@@ -56,7 +56,7 @@ def resultado(regla):
 
 
 def test_version_y_orden(registro_oficial):
-    assert VERSION == "estampilla_pro_cultura@1.0.0"
+    assert VERSION == "estampilla_pro_cultura@1.1.0"
     assert ORDEN == [
         "payment_certificate_document",
         "required_fields_present",

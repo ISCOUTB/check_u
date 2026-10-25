@@ -4,21 +4,34 @@ import { ESQUEMAS_SIN_REPETIDOS } from './comunes.js';
 import { DOCUMENTOS_POR_NIVEL } from './documentos.js';
 import { ResubmissionPolicy, Submission } from './entrega.js';
 import * as enums from './enums.js';
-import { CLASIFICACION_LEGADA, ETIQUETAS_CLASIFICACION, TIPO_DOCUMENTO_LEGADO } from './mapeo.js';
+import {
+  CLASIFICACION_LEGADA,
+  ETIQUETAS_CLASIFICACION,
+  TIPO_DOCUMENTO_LEGADO,
+} from './mapeo.js';
 import { RequestResultResponse } from './respuesta-frontend.js';
-import { DocumentValidationResult, RuleEvaluation } from './resultado-documento.js';
-import { TRANSICIONES_SOLICITUD, TRANSICIONES_TRABAJO } from './transiciones.js';
+import {
+  DocumentValidationResult,
+  RuleEvaluation,
+} from './resultado-documento.js';
+import {
+  TRANSICIONES_SOLICITUD,
+  TRANSICIONES_TRABAJO,
+} from './transiciones.js';
 import { CrossValidationResult } from './validacion-cruzada.js';
+import { DocumentAnalysisResponse } from './analisis-documental.js';
 
 /** Esquemas que se exportan a JSON Schema; la clave es también la carpeta de sus ejemplos. */
-export const ESQUEMAS_CONTRATO: Readonly<Record<string, z.ZodType>> = Object.freeze({
-  'rule-evaluation': RuleEvaluation,
-  'document-validation-result': DocumentValidationResult,
-  'cross-validation-result': CrossValidationResult,
-  submission: Submission,
-  'resubmission-policy': ResubmissionPolicy,
-  'request-result-response': RequestResultResponse,
-});
+export const ESQUEMAS_CONTRATO: Readonly<Record<string, z.ZodType>> =
+  Object.freeze({
+    'rule-evaluation': RuleEvaluation,
+    'document-validation-result': DocumentValidationResult,
+    'cross-validation-result': CrossValidationResult,
+    submission: Submission,
+    'resubmission-policy': ResubmissionPolicy,
+    'request-result-response': RequestResultResponse,
+    'document-analysis-response': DocumentAnalysisResponse,
+  });
 
 const TITULOS: Readonly<Record<string, string>> = {
   'rule-evaluation': 'RuleEvaluation',
@@ -27,6 +40,7 @@ const TITULOS: Readonly<Record<string, string>> = {
   submission: 'Submission',
   'resubmission-policy': 'ResubmissionPolicy',
   'request-result-response': 'RequestResultResponse',
+  'document-analysis-response': 'DocumentAnalysisResponse',
 };
 
 const URL_BASE = 'https://checku.iscoutb.dev/contratos/';
@@ -37,7 +51,9 @@ const URL_BASE = 'https://checku.iscoutb.dev/contratos/';
  * script borra los archivos que no reconoce.
  */
 export function carpetaEsquemas(): string {
-  return fileURLToPath(new URL('../../../contratos/esquemas/', import.meta.url));
+  return fileURLToPath(
+    new URL('../../../contratos/esquemas/', import.meta.url),
+  );
 }
 
 /**
@@ -65,10 +81,16 @@ export function generarEsquemas(): Record<string, unknown> {
   }
 
   archivos['enums.json'] = Object.fromEntries(
-    Object.entries(enums).map(([nombre, enumeracion]) => [nombre, enumeracion.options]),
+    Object.entries(enums).map(([nombre, enumeracion]) => [
+      nombre,
+      enumeracion.options,
+    ]),
   );
   archivos['documentos-requeridos.json'] = DOCUMENTOS_POR_NIVEL;
-  archivos['transiciones.json'] = { solicitud: TRANSICIONES_SOLICITUD, trabajo: TRANSICIONES_TRABAJO };
+  archivos['transiciones.json'] = {
+    solicitud: TRANSICIONES_SOLICITUD,
+    trabajo: TRANSICIONES_TRABAJO,
+  };
   archivos['mapeo.json'] = {
     etiquetas_clasificacion: ETIQUETAS_CLASIFICACION,
     clasificacion_legada: CLASIFICACION_LEGADA,
