@@ -461,6 +461,18 @@ test.describe("iniciar preinscripción", () => {
         await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
     });
 
+    test("segundo programa en pregrado permite cargar la segunda estampilla y actualiza el contador", async ({ page }) => {
+        await abrir(page, PREGRADO);
+        await responder(page, "¿Solicitas grado en un segundo programa?", "Sí");
+        const segunda = page.locator("#documento-estampilla_pro_cultura-2");
+        await expect(segunda).toBeVisible();
+        await expect(contador(page)).toHaveText("0 de 6 documentos cargados");
+
+        await segunda.setInputFiles({ name: "estampilla2.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 prueba") });
+        await expect(contador(page)).toHaveText("1 de 6 documentos cargados");
+        await expect(resumen(page, "Te faltan 2 secciones y 5 documentos")).toBeVisible();
+    });
+
     test("el mismo archivo rechazado dos veces se vuelve a anunciar", async ({ page }) => {
         await abrir(page, PREGRADO);
         const entrada = page.locator("#documento-identification");
@@ -645,6 +657,42 @@ test.describe("iniciar preinscripción", () => {
         expect(usadas).toHaveLength(1);
         expect(usadas[0]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     });
+    test("envío de preinscripción llama a POST /api/solicitudes/enviar y redirige a /estudiante/preinscripcion", async ({ page }) => {
+        await abrir(page, POSGRADO);
+
+        let envioLlamado = false;
+        let cuerpoEnvio: any = null;
+
+        await page.route(`${API}/solicitudes/enviar`, async (ruta) => {
+            envioLlamado = true;
+            cuerpoEnvio = ruta.request().postDataJSON();
+            await ruta.fulfill({
+                status: 201,
+                json: {
+                    ok: true,
+                    id_solicitud: 102,
+                    id_entrega: 1,
+                    estado: "EN_PROCESO",
+                    mensaje: "Preinscripción registrada correctamente. Pendiente de análisis.",
+                },
+            });
+        });
+
+        await llenarObligatoriosPosgrado(page);
+
+        await botonEnviar(page).click();
+        const dialogo = dialogoEnvio(page);
+        await expect(dialogo).toBeVisible();
+
+        await dialogo.getByRole("button", { name: "Enviar", exact: true }).click();
+        await expect(page).toHaveURL("/estudiante/preinscripcion");
+
+        expect(envioLlamado).toBe(true);
+        expect(cuerpoEnvio).not.toBeNull();
+        expect(cuerpoEnvio.nivel).toBe("POSGRADO");
+        expect(cuerpoEnvio.claveIdempotencia).toMatch(/^[0-9a-f-]{36}$/);
+    });
+
 
     test("doble clic envía una vez", async ({ page }) => {
         const claves = await espiarClaves(page);

@@ -1,48 +1,37 @@
 import type { EstadoVisible } from "@/app/components/ui/StatusBadge";
 
 /**
- * ⚠️ SIMULADO: preinscripciones de ejemplo para el dashboard. Se reemplazan por la API de
- * solicitudes cuando exista (tareas 05 y 12).
+ * Datos locales de demostración. El dashboard todavía no consume solicitudes reales del backend.
+ * periodId es una asociación explícita de prueba; no se calcula a partir de la fecha.
  */
-
 export type EstadoSolicitud = Extract<EstadoVisible, "valido" | "no_valido" | "inconsistente" | "por_revisar">;
+export type NivelAcademico = "PREGRADO" | "POSGRADO";
 
 export interface SolicitudResumen {
     numero: string;
     fecha: string;
+    fechaRegistro: string;
     estudiante: string;
+    nivel: NivelAcademico;
     estado: EstadoSolicitud;
+    periodId: string;
 }
 
 export const SOLICITUDES: SolicitudResumen[] = [
-    { numero: "GR-2026-001", fecha: "04/10/2026 08:30", estudiante: "Juan David Pérez", estado: "valido" },
-    { numero: "GR-2026-002", fecha: "04/10/2026 09:10", estudiante: "María Fernanda López", estado: "no_valido" },
-    { numero: "GR-2026-003", fecha: "04/10/2026 09:45", estudiante: "Carlos Andrés Martínez", estado: "inconsistente" },
-    { numero: "GR-2026-004", fecha: "04/10/2026 10:05", estudiante: "Laura Sofía Rodríguez", estado: "por_revisar" },
-    { numero: "GR-2026-005", fecha: "04/10/2026 10:20", estudiante: "Daniel José Gómez", estado: "valido" },
+    { numero: "GR-2026-001", fecha: "04/10/2026 08:30", fechaRegistro: "2026-10-04T08:30:00", estudiante: "Juan David Pérez", nivel: "PREGRADO", estado: "valido", periodId: "periodo-2026-1" },
+    { numero: "GR-2026-002", fecha: "04/10/2026 09:10", fechaRegistro: "2026-10-04T09:10:00", estudiante: "María Fernanda López", nivel: "PREGRADO", estado: "no_valido", periodId: "periodo-2026-1" },
+    { numero: "GR-2026-003", fecha: "04/10/2026 09:45", fechaRegistro: "2026-10-04T09:45:00", estudiante: "Carlos Andrés Martínez", nivel: "POSGRADO", estado: "inconsistente", periodId: "periodo-2026-1" },
+    { numero: "GR-2026-004", fecha: "04/10/2026 10:05", fechaRegistro: "2026-10-04T10:05:00", estudiante: "Laura Sofía Rodríguez", nivel: "PREGRADO", estado: "por_revisar", periodId: "periodo-2026-1" },
+    { numero: "GR-2026-005", fecha: "04/10/2026 10:20", fechaRegistro: "2026-10-04T10:20:00", estudiante: "Daniel José Gómez", nivel: "POSGRADO", estado: "valido", periodId: "periodo-2026-1" },
 ];
 
 export const ESTADOS_SOLICITUD: EstadoSolicitud[] = ["valido", "no_valido", "inconsistente", "por_revisar"];
-
-/** Una solicitud (femenino): "Válida", "No válida"… */
 export const ETIQUETA_SOLICITUD: Record<EstadoSolicitud, string> = {
-    valido: "Válida",
-    no_valido: "No válida",
-    inconsistente: "Inconsistente",
-    por_revisar: "Por revisar",
+    valido: "Válida", no_valido: "No válida", inconsistente: "Inconsistente", por_revisar: "Por revisar",
 };
-
-/** Varias solicitudes, para filtros, contadores y gráficos. */
 export const ETIQUETA_PLURAL: Record<EstadoSolicitud, string> = {
-    valido: "Válidas",
-    no_valido: "No válidas",
-    inconsistente: "Inconsistentes",
-    por_revisar: "Por revisar",
+    valido: "Válidas", no_valido: "No válidas", inconsistente: "Inconsistentes", por_revisar: "Por revisar",
 };
-
 export const DESCRIPCION_CONTADOR: Record<EstadoSolicitud, string> = {
-    valido: "Preinscripciones válidas",
-    no_valido: "Preinscripciones no válidas",
-    inconsistente: "Preinscripciones inconsistentes",
-    por_revisar: "Preinscripciones pendientes",
+    valido: "Solicitudes válidas", no_valido: "Solicitudes no válidas", inconsistente: "Solicitudes inconsistentes", por_revisar: "Solicitudes pendientes de revisión",
 };
