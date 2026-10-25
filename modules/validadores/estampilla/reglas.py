@@ -17,7 +17,7 @@ from .extraccion import PAGADOS, ExtraccionEstampilla
 
 # Si cambia una regla obligatoria, sube el número mayor; si se agrega una regla, el menor; si solo
 # cambia un mensaje, el parche.
-VERSION = "estampilla_pro_cultura@1.0.0"
+VERSION = "estampilla_pro_cultura@1.1.0"  # 1.1: distinct_receipt, en el doble programa
 
 ORDEN = [
     "payment_certificate_document",
@@ -55,6 +55,10 @@ NO_DISPONIBLE = "No fue posible consultar el comprobante en la Gobernación de B
 NO_CONSULTADO = "El comprobante todavía no se ha consultado en la Gobernación de Bolívar."
 NO_COINCIDE = (
     "Los datos del comprobante no coinciden con los registros oficiales ({campos}); un funcionario lo revisará."
+)
+
+MISMO_RECIBO = (
+    "Subiste el mismo comprobante para los dos programas; un funcionario revisará si cubre los dos títulos."
 )
 
 FUENTE_EXTERNA = {"source_unavailable", "source_pending"}
@@ -246,6 +250,27 @@ def evaluar(extraccion: ExtraccionEstampilla, registro: dict | None, *, ahora: d
         oficial,
         _regla_cotejo(extraccion, registro, oficial, ahora),
     ]
+
+
+def regla_recibo_distinto(primera: ExtraccionEstampilla, segunda: ExtraccionEstampilla, *, ahora: datetime) -> dict:
+    """Doble programa: la estampilla del segundo programa no es el mismo recibo que la del primero.
+
+    Si lo es, queda por revisar (no no válido): no se sabe si la Gobernación cobra alguna vez las dos
+    estampillas en un solo recibo, y un funcionario decide si ese recibo cubre los dos títulos.
+    """
+    nombre = "distinct_receipt"
+    recibos = (_valor(primera, "receipt_number"), _valor(segunda, "receipt_number"))
+    if None in recibos:
+        return _regla(
+            nombre,
+            "no_evaluable",
+            "No se compara porque no se encontró el número de recibo de alguno de los dos comprobantes.",
+            ahora,
+            "missing_dependency",
+        )
+    if recibos[0] == recibos[1]:
+        return _regla(nombre, "no_evaluable", MISMO_RECIBO, ahora, "low_confidence")
+    return _regla(nombre, "cumple", "Los dos comprobantes son distintos: uno por cada programa.", ahora)
 
 
 def accion_por_revisar(reglas: list[dict]) -> str:
