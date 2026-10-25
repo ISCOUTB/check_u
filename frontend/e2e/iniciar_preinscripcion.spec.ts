@@ -198,7 +198,7 @@ test.describe("iniciar preinscripción", () => {
 
     test("escribir puntos en el número de documento no los deja y avisa", async ({ page }) => {
         await abrir(page, PREGRADO);
-        const campo = page.locator("#campo-numero-documento");
+        const campo = page.getByLabel("Número de documento (obligatorio)");
         await expect(campo).not.toHaveAttribute("aria-invalid", "true");
 
         await expect(anuncio(page)).toHaveText("");
@@ -206,7 +206,7 @@ test.describe("iniciar preinscripción", () => {
         await campo.pressSequentially("1.043 640-743");
         await expect(campo).toHaveValue("1043640743");
         await expect(campo).toHaveAttribute("aria-invalid", "true");
-        await expect(page.locator("#campo-numero-documento-error")).toHaveText(AVISO_NUMERO);
+        await expect(page.locator("#campo-numeroDocumento-error")).toHaveText(AVISO_NUMERO);
         await expect(campo).toHaveAccessibleDescription(AVISO_NUMERO);
         await expect(anuncio(page)).toHaveText(AVISO_NUMERO);
     });
@@ -214,14 +214,14 @@ test.describe("iniciar preinscripción", () => {
     test("pegar con puntos deja solo dígitos", async ({ page, context }) => {
         await context.grantPermissions(["clipboard-read", "clipboard-write"]);
         await abrir(page, PREGRADO);
-        const campo = page.locator("#campo-numero-documento");
+        const campo = page.getByLabel("Número de documento (obligatorio)");
         await page.evaluate(() => navigator.clipboard.writeText("1.043.640.743"));
         await expect(anuncio(page)).toHaveText("");
         await campo.focus();
         await page.keyboard.press("ControlOrMeta+V");
         await expect(campo).toHaveValue("1043640743");
         // Se ve una sola vez, en el error del campo, y se anuncia en la región viva (que ya existía).
-        await expect(page.locator("#campo-numero-documento-error")).toHaveText(AVISO_NUMERO);
+        await expect(page.locator("#campo-numeroDocumento-error")).toHaveText(AVISO_NUMERO);
         await expect(campo).toHaveAccessibleDescription(AVISO_NUMERO);
         await expect(anuncio(page)).toHaveText(AVISO_NUMERO);
     });
@@ -369,7 +369,7 @@ test.describe("iniciar preinscripción", () => {
             "#campo-nombres",
             "#campo-apellidos",
             "#campo-tipo-documento",
-            "#campo-numero-documento",
+            "#campo-numeroDocumento",
             "#campo-codigo-estudiantil",
             "#campo-programa-1",
         ]) {
@@ -598,7 +598,7 @@ test.describe("iniciar preinscripción", () => {
         await expect(contador(page)).toHaveText("1 de 5 documentos cargados");
         const estado = page.getByRole("status").filter({ hasText: "Borrador guardado" });
         await expect(estado).toHaveText(/^Borrador guardado el 20\/10\/2026, 10:30\sa\.\sm\.$/);
-        await expect(page.getByText("Simulación: el borrador no se conserva si recargas la página.")).toBeVisible();
+        await expect(page.getByText("Puedes guardar y retomar tu borrador más adelante.")).toBeVisible();
 
         await page.getByLabel("Número de documento (obligatorio)").fill("9876543210");
         await page.getByRole("button", { name: "Guardar para continuar después" }).click();
@@ -811,4 +811,38 @@ test.describe("iniciar preinscripción", () => {
                     await sesionComo(page, "estudiante");
                     await revisarPagina(page, ruta, tema, ancho);
                 });
+});
+
+
+test("Tarea 28: guarda sin documentos y restaura desde GET después de F5", async ({ page }) => {
+    await abrir(page, PREGRADO);
+    await page.locator("#campo-nombres").fill("Lisandro");
+    const peticion = page.waitForRequest(r => r.url() === `${API}/solicitudes/borrador` && r.method() === "POST");
+    await page.getByRole("button", { name: "Guardar para continuar después" }).click();
+    const enviado = (await peticion).postDataJSON();
+    expect(enviado.documentos).toEqual({});
+    expect(enviado.perfil.numeroDocumento).toBe("");
+    await expect(page.getByRole("status").filter({ hasText: "Borrador guardado" })).toBeVisible();
+    await page.reload();
+    await expect(page.locator("#campo-nombres")).toHaveValue("Lisandro");
+    await expect(page.getByLabel("Número de documento (obligatorio)")).toHaveValue("");
+    const almacenamiento = await page.evaluate(() => JSON.stringify([{ ...localStorage }, { ...sessionStorage }]));
+    expect(almacenamiento).not.toContain("Lisandro");
+    // El ID devuelto queda en el estado React y acompaña el siguiente guardado.
+    const segunda = page.waitForRequest(r => r.url() === `${API}/solicitudes/borrador` && r.method() === "POST");
+    await page.getByRole("button", { name: "Guardar para continuar después" }).click();
+    expect((await segunda).postDataJSON().id_solicitud).toBe(1);
+    await expect(page.getByRole("button", { name: "Guardar para continuar después" })).toBeEnabled();
+});
+
+test("Tarea 28: un error del backend no anuncia guardado exitoso y permite reintentar", async ({ page }) => {
+    await abrir(page, PREGRADO);
+    await page.route(`${API}/solicitudes/borrador`, r => r.fulfill({ status: 503, json: { message: "Sin conexión" } }));
+    await page.locator("#campo-nombres").fill("Lisandro");
+    await page.getByRole("button", { name: "Guardar para continuar después" }).click();
+    await expect(
+    page.getByRole("alert").filter({ hasText: "No fue posible guardar tu borrador" })
+).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "Borrador guardado" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Guardar para continuar después" })).toBeEnabled();
 });

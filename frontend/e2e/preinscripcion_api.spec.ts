@@ -11,8 +11,22 @@ import { documentosRequeridos } from "@/app/estudiante/documentos-requeridos";
 import { GENEROS, MODALIDADES, TIPOS_DOCUMENTO } from "@/app/estudiante/iniciar_preinscripcion/constantes";
 import { borradorVacio } from "@/app/estudiante/iniciar_preinscripcion/tipos";
 
-// Lógica pura de la API simulada: no necesita navegador ni servidor. El borrador vive en
-// memoria dentro del módulo, así que cada prueba usa su propio correo para no tocar a las demás.
+// Pruebas del cliente HTTP y escenarios de demostración; no necesitan navegador.
+
+// Simula HTTP; cada prueba tiene un servidor nuevo.
+const fetchOriginal = globalThis.fetch;
+test.beforeEach(() => {
+    let borrador: Record<string, unknown> | null = null;
+    globalThis.fetch = async (_entrada, opciones) => {
+        if (opciones?.method === "POST") {
+            const guardadoEn = new Date().toISOString();
+            borrador = { ...JSON.parse(String(opciones.body)), guardadoEn };
+            return Response.json({ ok: true, id_solicitud: 42, estado: "BORRADOR", guardadoEn });
+        }
+        return Response.json({ ok: true, id_solicitud: borrador ? 42 : null, estado: borrador ? "BORRADOR" : null, borrador });
+    };
+});
+test.afterEach(() => { globalThis.fetch = fetchOriginal; });
 
 test("escenarioDesde reconoce borrador, rechazo y enviada", () => {
     expect(escenarioDesde("borrador")).toBe("borrador");
@@ -170,7 +184,7 @@ test("guardarBorrador devuelve una fecha ISO", async () => {
     expect(new Date(guardadoEn).toISOString()).toBe(guardadoEn);
 });
 
-test("lo guardado se recupera mientras no se recargue, solo para el mismo correo y nivel", async () => {
+test("lo guardado se recupera desde el servidor, sin compartir el objeto mutable", async () => {
     const borrador = borradorVacio("PREGRADO", "memoria@utb.edu.co");
     borrador.nombres = "Ana";
     const { guardadoEn } = await guardarBorrador(borrador);
@@ -185,10 +199,9 @@ test("lo guardado se recupera mientras no se recargue, solo para el mismo correo
     const otraVez = await cargarPreinscripcion("PREGRADO", "memoria@utb.edu.co", "ninguno");
     expect(otraVez.borrador.nombres).toBe("Ana");
 
+    // El estudiante se selecciona mediante la cookie de sesión, no mediante el correo del cliente.
     const otroCorreo = await cargarPreinscripcion("PREGRADO", "otro-correo@utb.edu.co", "ninguno");
-    expect(otroCorreo.estado).toBe("sin_borrador");
-    const otroNivel = await cargarPreinscripcion("POSGRADO", "memoria@utb.edu.co", "ninguno");
-    expect(otroNivel.estado).toBe("sin_borrador");
+    expect(otroCorreo.borrador.nombres).toBe("Ana");
 });
 
 test("enviarPreinscripcion con rechazo da ok false y al menos un motivo", async () => {
@@ -253,4 +266,22 @@ test("formatearGuardado cambia de día según la hora de Bogotá, no la de UTC",
     const texto = formatearGuardado("2026-10-23T02:30:00Z");
     expect(texto).toContain("22/10/2026");
     expect(texto).toContain("9:30");
+});
+
+test('guardarBorrador propaga errores HTTP y de red', async () => {
+    const borrador = borradorVacio('PREGRADO', 'prueba@utb.edu.co');
+    globalThis.fetch = async () => Response.json({ message: 'Error' }, { status: 503 });
+    await expect(guardarBorrador(borrador)).rejects.toThrow('No fue posible guardar');
+    globalThis.fetch = async () => { throw new Error('Sin conexión'); };
+    await expect(guardarBorrador(borrador)).rejects.toThrow('Sin conexión');
+});
+
+test('cargarPreinscripcion consulta el backend con cookie y sin caché', async () => {
+    let opciones: RequestInit | undefined;
+    globalThis.fetch = async (_entrada, init) => {
+        opciones = init;
+        return Response.json({ ok: true, estado: null, borrador: null });
+    };
+    await cargarPreinscripcion('PREGRADO', 'prueba@utb.edu.co', 'ninguno');
+    expect(opciones).toMatchObject({ credentials: 'include', cache: 'no-store' });
 });

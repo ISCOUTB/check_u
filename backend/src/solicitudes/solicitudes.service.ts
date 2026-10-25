@@ -4,6 +4,8 @@ import {
   Injectable,
 } from '@nestjs/common';
 import type { PoolClient } from 'pg';
+import { TypeDocument } from '../contratos/enums.js';
+import { validarBorrador, proyeccion, PERFIL, PREGRADO, POSGRADO, PROGRAMA, EXPERIENCIA } from './borrador.js';
 import { DatabaseService } from '../database/database.service.js';
 import { TIPO_DOCUMENTO_LEGADO } from '../contratos/mapeo.js';
 import type {
@@ -11,6 +13,7 @@ import type {
   DocumentoCargadoDTO,
   RespuestaEnvioPreinscripcion,
   RespuestaGuardarBorrador,
+  RespuestaObtenerBorrador,
   RespuestaSolicitudEstudiante,
   SolicitudResumen,
 } from './solicitudes.types.js';
@@ -166,55 +169,341 @@ export class SolicitudesService {
     });
   }
 
+  async obtenerBorrador(
+    idEstudiante: number,
+  ): Promise<RespuestaObtenerBorrador> {
+    return this.databaseService.transaction(async (client) => {
+      // Un único snapshot para evitar mezclar campos de dos guardados concurrentes.
+      await client.query(
+        'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY',
+      );
+      const res = await client.query<
+        SolicitudResumen & {
+          segundo_programa: boolean | null;
+          fecha_actualizacion: Date;
+        }
+      >(
+        `SELECT id_solicitud, tipo_solicitud, estado, segundo_programa, fecha_actualizacion
+         FROM solicitud_grado WHERE id_estudiante = $1 ORDER BY id_solicitud DESC LIMIT 1`,
+        [idEstudiante],
+      );
+      const solicitud = res.rows[0];
+      if (!solicitud || solicitud.estado !== 'BORRADOR') {
+        return {
+          ok: true,
+          id_solicitud: solicitud?.id_solicitud ?? null,
+          estado: solicitud?.estado ?? null,
+          borrador: null,
+        };
+      }
+      const id = solicitud.id_solicitud;
+      const usuario = await client.query(
+        `SELECT nombres, apellidos, codigo_estudiante AS "codigoEstudiantil"
+        FROM usuarios WHERE id_usuario = $1`,
+        [idEstudiante],
+      );
+      const perfil = await client.query(
+        `SELECT ${proyeccion(PERFIL)} FROM perfil_estudiante WHERE id_usuario = $1`,
+        [idEstudiante],
+      );
+      const programas = await client.query(
+        `SELECT ${proyeccion(PROGRAMA)} FROM solicitud_programa WHERE id_solicitud = $1 ORDER BY orden`,
+        [id],
+      );
+      const pregrado =
+        solicitud.tipo_solicitud === 'PREGRADO'
+          ? await client.query(
+              `SELECT ${proyeccion(PREGRADO)} FROM informacion_pregrado WHERE id_solicitud = $1`,
+              [id],
+            )
+          : { rows: [] };
+      const posgrado =
+        solicitud.tipo_solicitud === 'POSGRADO'
+          ? await client.query(
+              `SELECT ${proyeccion(POSGRADO)} FROM informacion_posgrado WHERE id_solicitud = $1`,
+              [id],
+            )
+          : { rows: [] };
+      const experiencia =
+        solicitud.tipo_solicitud === 'POSGRADO'
+          ? await client.query(
+              `SELECT ${proyeccion(EXPERIENCIA)} FROM experiencia_laboral WHERE id_solicitud = $1 ORDER BY orden`,
+              [id],
+            )
+          : { rows: [] };
+      const docs = await client.query(
+        `SELECT tipo_documento, orden, nombre_original, tamano_bytes
+        FROM documentos WHERE id_solicitud = $1 AND id_entrega IS NULL AND estado = 'CARGADO'
+        ORDER BY version`,
+        [id],
+      );
+      const documentos: Record<string, DocumentoCargadoDTO> = {};
+      for (const doc of docs.rows) {
+        const tipo = normalizarTipoDocumento(doc.tipo_documento);
+        const clave = doc.orden === 2 ? `${tipo}-2` : tipo;
+        documentos[clave] = {
+          id: clave,
+          nombre: doc.nombre_original,
+          tamano: doc.tamano_bytes,
+        };
+      }
+      return {
+        ok: true,
+        id_solicitud: id,
+        estado: 'BORRADOR',
+        borrador: {
+          ...usuario.rows[0],
+          nivel: solicitud.tipo_solicitud,
+          segundoPrograma: solicitud.segundo_programa,
+          perfil: perfil.rows[0] ?? {},
+          programas: programas.rows,
+          pregrado: pregrado.rows[0] ?? {},
+          posgrado: posgrado.rows[0] ?? {},
+          experiencia: experiencia.rows,
+          documentos,
+          guardadoEn: new Date(solicitud.fecha_actualizacion).toISOString(),
+        },
+      };
+    });
+  }
+
   async guardarBorrador(
     idEstudiante: number,
     payload?: DatosEnvioPreinscripcion,
   ): Promise<RespuestaGuardarBorrador> {
+    const datos = validarBorrador(payload);
     return this.databaseService.transaction(async (client) => {
-      const resSolicitud = await client.query<SolicitudResumen>(
-        `SELECT id_solicitud, tipo_solicitud, estado
-         FROM solicitud_grado
-         WHERE id_estudiante = $1
-         ORDER BY id_solicitud DESC
-         LIMIT 1
-         FOR UPDATE;`,
+      // Bloquear una fila que SIEMPRE existe evita duplicados incluso en el primer guardado.
+      await client.query(
+        'SELECT id_usuario FROM usuarios WHERE id_usuario = $1 FOR UPDATE',
         [idEstudiante],
       );
-
-      let solicitud = resSolicitud.rows[0];
-
+      const res = await client.query<SolicitudResumen>(
+        `SELECT id_solicitud, tipo_solicitud, estado FROM solicitud_grado
+         WHERE id_estudiante = $1 ORDER BY id_solicitud DESC LIMIT 1 FOR UPDATE`,
+        [idEstudiante],
+      );
+      let solicitud = res.rows[0];
       if (solicitud && solicitud.estado !== 'BORRADOR') {
         throw new ConflictException(
           `La preinscripción ya fue enviada y no puede ser modificada en estado ${solicitud.estado}`,
         );
       }
-
+      const nivel =
+        datos.nivel ??
+        datos.tipo_solicitud ??
+        solicitud?.tipo_solicitud ??
+        'PREGRADO';
       if (!solicitud) {
-        const nivel = (payload?.nivel || payload?.tipo_solicitud || 'PREGRADO').toUpperCase();
-        const insertRes = await client.query<SolicitudResumen>(
+        const insert = await client.query<SolicitudResumen>(
           `INSERT INTO solicitud_grado (id_estudiante, tipo_solicitud, estado)
-           VALUES ($1, $2, 'BORRADOR')
-           RETURNING id_solicitud, tipo_solicitud, estado;`,
+           VALUES ($1, $2, 'BORRADOR') RETURNING id_solicitud, tipo_solicitud, estado`,
           [idEstudiante, nivel],
         );
-        solicitud = insertRes.rows[0];
+        solicitud = insert.rows[0];
       }
-
-      if (payload) {
-        await this.persistirDatosFormulario(
+      const id = solicitud.id_solicitud;
+      if (nivel !== solicitud.tipo_solicitud) {
+        // Limpiar los hijos antes de cambiar el nivel, respetando los triggers SQL.
+        for (const tabla of [
+          'informacion_pregrado',
+          'informacion_posgrado',
+          'experiencia_laboral',
+          'solicitud_programa',
+        ]) {
+          await client.query(`DELETE FROM ${tabla} WHERE id_solicitud = $1`, [
+            id,
+          ]);
+        }
+        // Los documentos ya cargados permanecen vinculados a la misma solicitud.
+      }
+      const actualizado = await client.query<{ fecha_actualizacion: Date }>(
+        `UPDATE solicitud_grado SET tipo_solicitud = $2,
+         segundo_programa = CASE WHEN $3::boolean THEN $4::boolean ELSE segundo_programa END,
+         fecha_actualizacion = CURRENT_TIMESTAMP
+         WHERE id_solicitud = $1 AND estado = 'BORRADOR' RETURNING fecha_actualizacion`,
+        [
+          id,
+          nivel,
+          datos.segundoPrograma !== undefined,
+          datos.segundoPrograma ?? null,
+        ],
+      );
+      await this.guardarCampos(
+        client,
+        'usuarios',
+        'id_usuario',
+        idEstudiante,
+        {
+          nombres: 'nombres',
+          apellidos: 'apellidos',
+          codigoEstudiantil: 'codigo_estudiante',
+        },
+        Object.fromEntries(
+          Object.entries(datos).filter(
+            ([k, v]) =>
+              ['nombres', 'apellidos', 'codigoEstudiantil'].includes(k) &&
+              typeof v === 'string' &&
+              v.trim(),
+          ),
+        ),
+        false,
+      );
+      if (datos.perfil)
+        await this.guardarCampos(
           client,
+          'perfil_estudiante',
+          'id_usuario',
           idEstudiante,
-          solicitud.id_solicitud,
-          solicitud.tipo_solicitud,
-          payload,
+          PERFIL,
+          datos.perfil,
+        );
+      if (datos.programas) {
+        await client.query(
+          'DELETE FROM solicitud_programa WHERE id_solicitud = $1',
+          [id],
+        );
+        for (const programa of datos.programas) {
+          if (programa.orden === 2 && datos.segundoPrograma === false) continue;
+          await this.guardarCampos(
+            client,
+            'solicitud_programa',
+            'id_solicitud',
+            id,
+            PROGRAMA,
+            {
+              ...programa,
+              tipoOpcionGrado:
+                nivel === 'POSGRADO' ? '' : programa.tipoOpcionGrado,
+            },
+          );
+        }
+      }
+      if (datos.segundoPrograma === false)
+        await client.query(
+          'DELETE FROM solicitud_programa WHERE id_solicitud = $1 AND orden = 2',
+          [id],
+        );
+      if (nivel === 'PREGRADO' && datos.pregrado) {
+        // Combinar respuestas parciales con lo existente antes de limpiar campos dependientes.
+        const previo = await client.query(
+          `SELECT ${proyeccion(PREGRADO)} FROM informacion_pregrado WHERE id_solicitud = $1`,
+          [id],
+        );
+        const preg = { ...previo.rows[0], ...datos.pregrado };
+        if (preg.conoceRegistroSaberPro !== true) {
+          preg.numeroRegistroSaberPro = '';
+          preg.fechaExamenSaberPro = '';
+        }
+        if (preg.esEmpleadoUtb !== true) preg.tipoContrato = '';
+        await this.guardarCampos(
+          client,
+          'informacion_pregrado',
+          'id_solicitud',
+          id,
+          PREGRADO,
+          preg,
         );
       }
-
+      if (nivel === 'POSGRADO') {
+        if (datos.posgrado)
+          await this.guardarCampos(
+            client,
+            'informacion_posgrado',
+            'id_solicitud',
+            id,
+            POSGRADO,
+            datos.posgrado,
+          );
+        if (datos.experiencia) {
+          await client.query(
+            'DELETE FROM experiencia_laboral WHERE id_solicitud = $1',
+            [id],
+          );
+          for (const exp of datos.experiencia)
+            await this.guardarCampos(
+              client,
+              'experiencia_laboral',
+              'id_solicitud',
+              id,
+              EXPERIENCIA,
+              exp,
+            );
+        }
+      }
+      // Solo metadatos: el transporte/almacenamiento del archivo corresponde al servicio de carga.
+      if (datos.documentos) {
+        const docs = Array.isArray(datos.documentos)
+          ? datos.documentos
+          : Object.values(datos.documentos);
+        for (const doc of docs) {
+          const original = doc.tipo ?? doc.id ?? '';
+          const tipo = normalizarTipoDocumento(original.replace(/-2$/, ''));
+          if (!TypeDocument.safeParse(tipo).success)
+            throw new BadRequestException('Tipo documental inválido');
+          const orden =
+            original.endsWith('-2') ||
+            doc.id?.endsWith('-2') ||
+            original === 'estampilla2'
+              ? 2
+              : 1;
+          if (orden === 2 && tipo !== 'estampilla_pro_cultura')
+            throw new BadRequestException('Orden documental inválido');
+          await client.query(
+            `INSERT INTO documentos
+            (id_solicitud, tipo_documento, orden, nombre_original, mime_type, tamano_bytes, version, estado, id_entrega)
+            VALUES ($1, $2, $3, $4, 'application/pdf', $5, 1, 'CARGADO', NULL)
+            ON CONFLICT (id_solicitud, tipo_documento, orden, version) DO UPDATE
+            SET nombre_original = EXCLUDED.nombre_original, tamano_bytes = EXCLUDED.tamano_bytes
+            WHERE documentos.id_entrega IS NULL AND documentos.estado = 'CARGADO'`,
+            [id, tipo, orden, doc.nombre, doc.tamano],
+          );
+        }
+      }
       return {
         ok: true,
-        guardadoEn: new Date().toISOString(),
+        id_solicitud: id,
+        estado: 'BORRADOR',
+        mensaje: 'Borrador guardado exitosamente',
+        guardadoEn: new Date(
+          actualizado.rows[0].fecha_actualizacion,
+        ).toISOString(),
       };
     });
+  }
+
+  private async guardarCampos(
+    client: PoolClient,
+    tabla: string,
+    clave: string,
+    id: number,
+    mapa: Record<string, string>,
+    datos: object,
+    insertar = true,
+  ) {
+    const campos = Object.entries(datos).filter(
+      ([k, v]) => mapa[k] && v !== undefined,
+    );
+    if (!campos.length) return;
+    const columnas = campos.map(([k]) => mapa[k]);
+    const valores = campos.map(([, v]) =>
+      typeof v === 'string' ? v.trim() || null : v,
+    );
+    const parametros = columnas.map((_, i) => `$${i + 2}`);
+    if (!insertar) {
+      await client.query(
+        `UPDATE ${tabla} SET ${columnas.map((c, i) => `${c} = ${parametros[i]}`).join(', ')} WHERE ${clave} = $1`,
+        [id, ...valores],
+      );
+      return;
+    }
+    const conflicto = columnas.includes('orden') ? `${clave}, orden` : clave;
+    await client.query(
+      `INSERT INTO ${tabla} (${clave}, ${columnas.join(', ')})
+      VALUES ($1, ${parametros.join(', ')}) ON CONFLICT (${conflicto}) DO UPDATE
+      SET ${columnas.map((c) => `${c} = EXCLUDED.${c}`).join(', ')}`,
+      [id, ...valores],
+    );
   }
 
   private async persistirDatosFormulario(
@@ -262,8 +551,8 @@ export class SolicitudesService {
            telefono_celular = COALESCE(EXCLUDED.telefono_celular, perfil_estudiante.telefono_celular);`,
         [
           idEstudiante,
-          p.tipoDocumento?.trim() || 'CC',
-          p.numeroDocumento?.trim() || '12345678',
+          p.tipoDocumento?.trim() || null,
+          p.numeroDocumento?.trim() || null,
           p.fechaNacimiento?.trim() || null,
           p.genero?.trim() || null,
           p.departamento?.trim() || null,
@@ -295,8 +584,8 @@ export class SolicitudesService {
           [
             idSolicitud,
             prog.orden,
-            prog.programa?.trim() || '',
-            prog.modalidad?.trim() || 'PRESENCIAL',
+            prog.programa?.trim() || null,
+            prog.modalidad?.trim() || null,
             tipoOpcion,
           ],
         );
@@ -349,8 +638,8 @@ export class SolicitudesService {
              es_egresado_pregrado_utb = EXCLUDED.es_egresado_pregrado_utb;`,
           [
             idSolicitud,
-            pos.nivelEstudios?.trim() || 'PROFESIONAL',
-            pos.tituloObtenido?.trim() || 'Título Previo',
+            pos.nivelEstudios?.trim() || null,
+            pos.tituloObtenido?.trim() || null,
             pos.esEgresadoPregradoUtb ?? false,
           ],
         );

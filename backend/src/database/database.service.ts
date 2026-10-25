@@ -44,16 +44,6 @@ export class DatabaseService
     }
   }
 
-  async query<T extends QueryResultRow = QueryResultRow>(
-    sql: string,
-    params: unknown[] = [],
-  ): Promise<QueryResult<T>> {
-    if (!this.pool) {
-      throw new Error('PostgreSQL no está configurado.');
-    }
-    return this.pool.query<T>(sql, params);
-  }
-
   async onModuleDestroy(): Promise<void> {
     await this.pool?.end();
   }

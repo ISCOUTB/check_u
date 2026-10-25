@@ -5,7 +5,7 @@
  * En desarrollo, soporta escenarios simulados mediante ?escenario= en la URL.
  */
 
-import { DOCUMENTOS_REQUERIDOS, documentosRequeridos, type NivelAcademico as Nivel } from "@/app/estudiante/documentos-requeridos";
+import { documentosRequeridos, type NivelAcademico as Nivel } from "@/app/estudiante/documentos-requeridos";
 import { borradorVacio, type BorradorPreinscripcion } from "./tipos";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ export function escenarioDesde(valor: string | undefined): Escenario {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Memoria del módulo (fallback y caché local)
+// Estado del envío en la visita actual
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Lo que tarda cada llamada simulada, para que se vean "Guardando…" y "Enviando…". */
@@ -37,7 +37,6 @@ const RETARDO_MS = 300;
 
 type ResultadoEnvio = { ok: true } | { ok: false; motivos: string[] };
 
-let borradorGuardado: BorradorPreinscripcion | null = null;
 let solicitudEnviada: { nivel: Nivel; correo: string } | null = null;
 /** Resultado de cada envío por su clave de idempotencia: repetir la clave no repite el envío. */
 const enviosPorClave = new Map<string, ResultadoEnvio>();
@@ -46,10 +45,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 function esperar(): Promise<void> {
     return new Promise((resolver) => setTimeout(resolver, RETARDO_MS));
-}
-
-function copiar(borrador: BorradorPreinscripcion): BorradorPreinscripcion {
-    return structuredClone(borrador);
 }
 
 function mismoEstudiante(a: { nivel: Nivel; correo: string }, b: { nivel: Nivel; correo: string }): boolean {
@@ -151,7 +146,7 @@ function borradorCompleto(nivel: Nivel, correo: string): BorradorPreinscripcion 
 /**
  * Carga el borrador del estudiante, o uno vacío si no tiene.
  * Si ya envió su solicitud, `estado` es "enviada" (la página redirige).
- * Lo guardado en esta misma visita a la página tiene prioridad sobre el escenario.
+ * Fuera de los escenarios de demostración, consulta siempre la base de datos.
  * Los escenarios "borrador" (parcial) y "rechazo" (completo) cargan un borrador de ejemplo.
  */
 export async function cargarPreinscripcion(
@@ -159,15 +154,12 @@ export async function cargarPreinscripcion(
     correo: string,
     escenario: Escenario,
 ): Promise<{ estado: "sin_borrador" | "borrador" | "enviada"; borrador: BorradorPreinscripcion }> {
-    await esperar();
+    if (escenario !== "ninguno") await esperar();
 
     const estudiante = { nivel, correo };
 
     if (escenario === "enviada" || (solicitudEnviada && mismoEstudiante(solicitudEnviada, estudiante))) {
         return { estado: "enviada", borrador: borradorVacio(nivel, correo) };
-    }
-    if (borradorGuardado && mismoEstudiante(borradorGuardado, estudiante)) {
-        return { estado: "borrador", borrador: copiar(borradorGuardado) };
     }
     if (escenario === "borrador") {
         return { estado: "borrador", borrador: borradorParcial(nivel, correo) };
@@ -175,31 +167,51 @@ export async function cargarPreinscripcion(
     if (escenario === "rechazo") {
         return { estado: "borrador", borrador: borradorCompleto(nivel, correo) };
     }
-    return { estado: "sin_borrador", borrador: borradorVacio(nivel, correo) };
+    const respuesta = await fetch(`${API_URL}/solicitudes/borrador`, {
+        credentials: "include", cache: "no-store",
+    });
+    if (!respuesta.ok) throw new Error("No fue posible recuperar el borrador");
+    const datos = await respuesta.json();
+    if (datos.estado && datos.estado !== "BORRADOR") {
+        return { estado: "enviada", borrador: borradorVacio(nivel, correo) };
+    }
+    if (!datos.borrador) return { estado: "sin_borrador", borrador: borradorVacio(nivel, correo) };
+    const base = borradorVacio(datos.borrador.nivel ?? nivel, correo);
+    // PostgreSQL usa NULL para textos pendientes; los controles del formulario usan "".
+    const normalizar = <T extends object>(vacio: T, guardado: Partial<T> | undefined): T =>
+        Object.fromEntries(Object.entries(vacio).map(([clave, valor]) => {
+            const dato = guardado?.[clave as keyof T];
+            return [clave, dato == null ? valor : dato];
+        })) as T;
+    const guardado = datos.borrador;
+    return { estado: "borrador", borrador: {
+        ...normalizar(base, guardado), correo, id_solicitud: datos.id_solicitud,
+        perfil: normalizar(base.perfil, guardado.perfil),
+        pregrado: normalizar(base.pregrado, guardado.pregrado),
+        posgrado: normalizar(base.posgrado, guardado.posgrado),
+        programas: base.programas.map(p => normalizar(p, guardado.programas?.find((g: { orden: number }) => g.orden === p.orden))),
+        experiencia: base.experiencia.map(e => normalizar(e, guardado.experiencia?.find((g: { orden: number }) => g.orden === e.orden))),
+        documentos: guardado.documentos ?? {},
+    } };
 }
 
 /**
  * Guarda el borrador tal como está, sin exigir nada. Devuelve la fecha del guardado (ISO 8601).
- * Envía petición al backend POST /api/solicitudes/borrador si está disponible.
+ * Solo confirma el guardado después de recibir éxito del backend.
  */
-export async function guardarBorrador(borrador: BorradorPreinscripcion): Promise<{ guardadoEn: string }> {
-    await esperar();
-
-    const guardadoEn = new Date().toISOString();
-    borradorGuardado = { ...copiar(borrador), guardadoEn };
-
-    if (typeof window !== "undefined") {
-        fetch(`${API_URL}/solicitudes/borrador`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify(borrador),
-        }).catch(() => {
-            // Se tolera si el backend no está disponible en entornos desconectados
-        });
+export async function guardarBorrador(borrador: BorradorPreinscripcion): Promise<{ guardadoEn: string; id_solicitud: number }> {
+    const respuesta = await fetch(`${API_URL}/solicitudes/borrador`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(borrador),
+    });
+    if (!respuesta.ok) throw new Error("No fue posible guardar el borrador");
+    const datos = await respuesta.json();
+    if (!datos.ok || !Number.isInteger(datos.id_solicitud) || !datos.guardadoEn) {
+        throw new Error("Respuesta de guardado inválida");
     }
-
-    return { guardadoEn };
+    return { guardadoEn: datos.guardadoEn, id_solicitud: datos.id_solicitud };
 }
 
 /**
@@ -246,7 +258,6 @@ export async function enviarPreinscripcion(
             if (data.ok) {
                 resultado = { ok: true };
                 solicitudEnviada = { nivel: borrador.nivel, correo: borrador.correo };
-                borradorGuardado = null;
                 enviosPorClave.set(claveIdempotencia, resultado);
                 return resultado;
             }
@@ -264,7 +275,6 @@ export async function enviarPreinscripcion(
         if (typeof window === "undefined") {
             resultado = { ok: true };
             solicitudEnviada = { nivel: borrador.nivel, correo: borrador.correo };
-            borradorGuardado = null;
             enviosPorClave.set(claveIdempotencia, resultado);
             return resultado;
         }

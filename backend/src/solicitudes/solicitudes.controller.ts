@@ -44,6 +44,12 @@ export class SolicitudesController {
     return this.solicitudesService.enviarPreinscripcion(user.id, body);
   }
 
+  @Get('solicitudes/borrador')
+  async obtenerBorrador(@Req() req: Request) {
+    const user = this.obtenerEstudianteAutenticado(req);
+    return this.solicitudesService.obtenerBorrador(user.id);
+  }
+
   @Post('solicitudes/borrador')
   async guardarBorrador(
     @Req() req: Request,

@@ -20,6 +20,16 @@ export interface RespuestaEnvioPreinscripcion {
 export interface RespuestaGuardarBorrador {
   ok: true;
   guardadoEn: string;
+  id_solicitud: number;
+  estado: 'BORRADOR';
+  mensaje: string;
+}
+
+export interface RespuestaObtenerBorrador {
+  ok: true;
+  id_solicitud: number | null;
+  estado: string | null;
+  borrador: (DatosEnvioPreinscripcion & { guardadoEn: string }) | null;
 }
 
 export interface PerfilEstudianteDTO {

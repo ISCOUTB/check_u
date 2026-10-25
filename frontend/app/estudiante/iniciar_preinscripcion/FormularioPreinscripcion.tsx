@@ -38,7 +38,7 @@ function nivelDesde(valor: string | undefined): Nivel | null {
  *   - Nivel inválido, o distinto del nivel del usuario: a /estudiante/bienvenida.
  *   - Solicitud ya enviada: a /estudiante/preinscripcion.
  * Orquesta guardar, enviar (con su diálogo de confirmación) y la salida con cambios sin guardar.
- * El borrador vive solo en memoria: nada va a localStorage, sessionStorage, la URL ni la consola.
+ * El borrador se conserva en PostgreSQL; los datos no van al almacenamiento del navegador.
  */
 export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?: string; escenario?: string }) {
     const router = useRouter();
@@ -56,6 +56,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
     const [guardados, setGuardados] = useState(0);
     const [errorGuardado, setErrorGuardado] = useState(false);
     const cambios = useRef(0);
+    const guardandoRef = useRef(false);
 
     // Enviar. Tras el primer intento, cada campo marca su error mientras falte.
     const [validar, setValidar] = useState(false);
@@ -111,13 +112,14 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
 
     /** Guarda el borrador tal como está, sin exigir nada. Devuelve si se pudo. */
     const guardar = async (): Promise<boolean> => {
-        if (!borrador || guardando) return false;
+        if (!borrador || guardandoRef.current) return false;
+        guardandoRef.current = true;
         const cambiosAlGuardar = cambios.current;
         setGuardando(true);
         setErrorGuardado(false);
         try {
-            const { guardadoEn } = await guardarBorrador(borrador);
-            setBorrador((actual) => (actual ? { ...actual, guardadoEn } : actual));
+            const { guardadoEn, id_solicitud } = await guardarBorrador(borrador);
+            setBorrador((actual) => (actual ? { ...actual, guardadoEn, id_solicitud } : actual));
             setGuardados((veces) => veces + 1);
             if (cambios.current === cambiosAlGuardar) setSucio(false);
             return true;
@@ -125,6 +127,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
             setErrorGuardado(true);
             return false;
         } finally {
+            guardandoRef.current = false;
             setGuardando(false);
         }
     };

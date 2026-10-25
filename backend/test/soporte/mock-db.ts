@@ -131,17 +131,17 @@ export function crearMockDatabaseService() {
           actualizados++;
         }
       }
-      return { rows: [], rowCount: actualizados } as QueryResult;
+      return { rows: [], rowCount: actualizados, command: 'UPDATE', oid: 0, fields: [] } as QueryResult;
     }
 
     if (q.includes('UPDATE solicitud_grado') && q.includes("SET estado = 'EN_PROCESO'")) {
       const idSol = params?.[0] as number;
       const fila = estado.solicitudes.find((s) => s.id_solicitud === idSol);
       if (fila) fila.estado = 'EN_PROCESO';
-      return { rows: [], rowCount: fila ? 1 : 0 } as QueryResult;
+      return { rows: [], rowCount: fila ? 1 : 0, command: 'UPDATE', oid: 0, fields: [] } as QueryResult;
     }
 
-    return { rows: [], rowCount: 0 } as QueryResult;
+    return { rows: [], rowCount: 0, command: '', oid: 0, fields: [] } as QueryResult;
   };
 
   const clientMock = {

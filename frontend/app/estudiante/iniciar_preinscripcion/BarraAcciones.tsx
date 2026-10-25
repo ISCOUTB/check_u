@@ -20,7 +20,7 @@ export interface BarraAccionesProps {
 
 /**
  * Barra fija abajo: Guardar para continuar después, Enviar preinscripción, el estado del borrador
- * (role="status") y la nota de que la simulación no conserva nada al recargar. Los dos botones siguen
+ * (role="status") y la nota para continuar después. Los dos botones siguen
  * enfocables mientras trabajan (`conservarFoco`): con el teclado no se pierde el sitio.
  *
  * Publica su alto en `--alto-barra-acciones` para el `scroll-padding-bottom` de la página: así el
@@ -75,7 +75,7 @@ export default function BarraAcciones({
                             </Button>
                         </p>
                     )}
-                    <p className={styles.nota}>Simulación: el borrador no se conserva si recargas la página.</p>
+                    <p className={styles.nota}>Puedes guardar y retomar tu borrador más adelante.</p>
                 </div>
                 <div className={styles.botones}>
                     <Button
