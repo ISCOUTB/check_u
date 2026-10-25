@@ -4,7 +4,6 @@ import type { ArchivoSubido } from './analisis-documental.service.js';
 const DOCUMENTOS_PREGRADO = [
   'cedula',
   'evaluacion_grado',
-  'paz_y_salvo',
   'estampilla',
   'saber_pro',
 ] as const;
