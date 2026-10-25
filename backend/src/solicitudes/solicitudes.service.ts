@@ -275,9 +275,18 @@ export class SolicitudesService {
       );
     }
 
-    // Persistir solicitud_programa
+    // Persistir solicitud_programa. El programa 2 solo se guarda si el estudiante respondió que sí:
+    // si no, se borra el que hubiera, para que la fila 2 siempre signifique "hay segundo programa"
+    // (y entonces se exige su estampilla, ver validarRequisitosCompletos).
     if (payload.programas && Array.isArray(payload.programas)) {
+      const conSegundoPrograma = payload.segundoPrograma === true;
+      if (!conSegundoPrograma) {
+        await client.query(`DELETE FROM solicitud_programa WHERE id_solicitud = $1 AND orden = 2;`, [
+          idSolicitud,
+        ]);
+      }
       for (const prog of payload.programas) {
+        if (prog.orden === 2 && !conSegundoPrograma) continue;
         if (!prog.programa && !prog.modalidad) continue;
         const tipoOpcion =
           tipoSolicitud === 'POSGRADO'
@@ -512,8 +521,8 @@ export class SolicitudesService {
     }
 
     // Validar documentos cargados
-    const resDocs = await client.query<{ tipo_documento: string }>(
-      `SELECT tipo_documento FROM documentos
+    const resDocs = await client.query<{ tipo_documento: string; orden?: number | null }>(
+      `SELECT tipo_documento, orden FROM documentos
        WHERE id_solicitud = $1 AND (id_entrega IS NULL OR estado = 'CARGADO');`,
       [idSolicitud],
     );
@@ -528,6 +537,15 @@ export class SolicitudesService {
         : DOCUMENTOS_REQUERIDOS_POSGRADO;
 
     const faltantes = requeridos.filter((tipo) => !tiposExistentes.has(tipo));
+
+    // Doble programa en pregrado: una estampilla Pro-Cultura por programa (la del segundo, con orden 2).
+    const hayPrograma2 = resPrograma.rows.some((p) => p.orden === 2 && p.programa?.trim());
+    const hayEstampilla2 = resDocs.rows.some(
+      (d) => normalizarTipoDocumento(d.tipo_documento) === 'estampilla_pro_cultura' && (d.orden ?? 1) === 2,
+    );
+    if (tipoSolicitud === 'PREGRADO' && hayPrograma2 && !hayEstampilla2) {
+      faltantes.push('estampilla_pro_cultura (segundo programa)');
+    }
 
     if (faltantes.length > 0) {
       throw new BadRequestException(
