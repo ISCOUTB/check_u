@@ -84,9 +84,16 @@
                           ]
                         },
                         "confidence": {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 1
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -320,9 +327,16 @@
                           ]
                         },
                         "confidence": {
-                          "type": "number",
-                          "minimum": 0,
-                          "maximum": 1
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
