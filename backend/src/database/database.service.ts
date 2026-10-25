@@ -6,6 +6,7 @@ import {
   OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
+
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 
 @Injectable()
@@ -41,6 +42,16 @@ export class DatabaseService
       this.pool = undefined;
       throw error;
     }
+  }
+
+  async query<T extends QueryResultRow = QueryResultRow>(
+    sql: string,
+    params: unknown[] = [],
+  ): Promise<QueryResult<T>> {
+    if (!this.pool) {
+      throw new Error('PostgreSQL no está configurado.');
+    }
+    return this.pool.query<T>(sql, params);
   }
 
   async onModuleDestroy(): Promise<void> {
