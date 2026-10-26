@@ -271,9 +271,9 @@ test("formatearGuardado cambia de día según la hora de Bogotá, no la de UTC",
 test('guardarBorrador propaga errores HTTP y de red', async () => {
     const borrador = borradorVacio('PREGRADO', 'prueba@utb.edu.co');
     globalThis.fetch = async () => Response.json({ message: 'Error' }, { status: 503 });
-    await expect(guardarBorrador(borrador)).rejects.toThrow('No fue posible guardar');
+    await expect(guardarBorrador(borrador)).rejects.toThrow('El servicio de guardado no está disponible');
     globalThis.fetch = async () => { throw new Error('Sin conexión'); };
-    await expect(guardarBorrador(borrador)).rejects.toThrow('Sin conexión');
+    await expect(guardarBorrador(borrador)).rejects.toThrow('No pudimos conectar con el servidor');
 });
 
 test('cargarPreinscripcion consulta el backend con cookie y sin caché', async () => {
@@ -284,4 +284,28 @@ test('cargarPreinscripcion consulta el backend con cookie y sin caché', async (
     };
     await cargarPreinscripcion('PREGRADO', 'prueba@utb.edu.co', 'ninguno');
     expect(opciones).toMatchObject({ credentials: 'include', cache: 'no-store' });
+});
+
+
+test.describe("Tarea 33: mensajes del cliente HTTP", () => {
+    for (const [status, respuesta, esperado] of [
+        [401, { message: "SQL interno" }, "Tu sesión ha expirado"],
+        [403, {}, "Tu cuenta no tiene permiso"],
+        [400, { codigo: "BORRADOR_CAMPO_REQUERIDO", campos: [{ campo: "perfil.tipoDocumento", motivo: "FALTANTE" }] }, "falta completar el tipo de documento de identidad"],
+        [422, { codigo: "BORRADOR_DATOS_INVALIDOS", campos: [{ campo: "perfil.fechaNacimiento", motivo: "INVALIDO" }] }, "la fecha de nacimiento contiene un valor inválido"],
+        [409, { codigo: "BORRADOR_IDENTIDAD_REPETIDA" }, "ya está registrado"],
+        [503, { message: "SELECT * FROM usuarios" }, "El servicio de guardado no está disponible"],
+        [500, { message: "stack: secreto" }, "Ocurrió un inconveniente"],
+    ] as const) {
+        test(`HTTP ${status}: ${esperado}`, async () => {
+            globalThis.fetch = async () => Response.json(respuesta, { status });
+            await expect(guardarBorrador(borradorVacio("PREGRADO", "prueba@utb.edu.co"))).rejects.toThrow(esperado);
+        });
+    }
+    test("una respuesta ilegible o sin confirmación no se trata como éxito", async () => {
+        for (const respuesta of [new Response("HTML interno"), Response.json({ ok: true })]) {
+            globalThis.fetch = async () => respuesta;
+            await expect(guardarBorrador(borradorVacio("PREGRADO", "prueba@utb.edu.co"))).rejects.toThrow("Ocurrió un inconveniente");
+        }
+    });
 });
