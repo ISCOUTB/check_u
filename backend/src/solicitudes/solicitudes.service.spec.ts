@@ -299,7 +299,7 @@ describe('SolicitudesService', () => {
 
   describe('guardarBorrador (Inmutabilidad post-envío)', () => {
     it('lanza ConflictException si la solicitud está en EN_PROCESO (inmutabilidad post-envío)', async () => {
-      mockClient.query.mockResolvedValueOnce({
+      mockClient.query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({
         rows: [{ id_solicitud: 102, tipo_solicitud: 'PREGRADO', estado: 'EN_PROCESO' }],
       });
 
@@ -308,9 +308,11 @@ describe('SolicitudesService', () => {
 
     it('permite guardar borrador si la solicitud está en BORRADOR', async () => {
       mockClient.query
+        .mockResolvedValueOnce({ rows: [] }) // bloqueo de usuario
         .mockResolvedValueOnce({
           rows: [{ id_solicitud: 102, tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
         })
+        .mockResolvedValueOnce({ rows: [{ fecha_actualizacion: new Date() }] })
         .mockResolvedValue({ rows: [] });
 
       const res = await service.guardarBorrador(1, {

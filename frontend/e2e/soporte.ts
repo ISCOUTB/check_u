@@ -63,19 +63,27 @@ export async function sesionComo(page: Page, rol: Rol | null, nombre?: string): 
               ? ruta.fulfill({ status: 403, json: { message: "Acceso restringido a estudiantes" } })
               : ruta.fulfill({ status: 401, json: { message: "Sesión no válida o expirada" } }),
     );
-    await page.route(`${API}/solicitudes/borrador`, (ruta) =>
-        rol === "estudiante"
-            ? ruta.fulfill({
-                  status: 201,
-                  json: {
-                      ok: true,
-                      guardadoEn: new Date().toISOString(),
-                  },
-              })
-            : rol === "funcionario"
-              ? ruta.fulfill({ status: 403, json: { message: "Acceso restringido a estudiantes" } })
-              : ruta.fulfill({ status: 401, json: { message: "Sesión no válida o expirada" } }),
-    );
+    let borrador: Record<string, unknown> | null = null;
+    await page.route(`${API}/solicitudes/borrador`, async (ruta) => {
+        if (rol !== "estudiante") {
+            await ruta.fulfill({ status: rol ? 403 : 401, json: { message: "Acceso restringido" } });
+            return;
+        }
+        if (ruta.request().method() === "GET") {
+            await ruta.fulfill({ status: 200, json: {
+                ok: true, id_solicitud: borrador ? 1 : null, estado: borrador ? "BORRADOR" : null, borrador,
+            } });
+            return;
+        }
+        const guardadoEn = await page.evaluate(() => new Date().toISOString());
+        borrador = { ...ruta.request().postDataJSON(), guardadoEn };
+        // Latencia del servidor simulado para comprobar el estado de espera del botón.
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await ruta.fulfill({ status: 201, json: {
+            ok: true, id_solicitud: 1, estado: "BORRADOR", guardadoEn,
+            mensaje: "Borrador guardado exitosamente",
+        } });
+    });
 }
 
 /** Revisa una página con axe (WCAG 2.2 A/AA) y que no tenga scroll horizontal. */

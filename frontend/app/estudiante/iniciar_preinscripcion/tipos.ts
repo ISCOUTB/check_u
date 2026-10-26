@@ -81,6 +81,8 @@ export interface DocumentoCargado {
 }
 
 export interface BorradorPreinscripcion {
+    /** Identificador del borrador persistido, para asociar las cargas posteriores. */
+    id_solicitud?: number;
     nivel: Nivel;
     nombres: string;
     apellidos: string;
