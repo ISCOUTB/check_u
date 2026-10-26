@@ -31,18 +31,69 @@ test.describe("dashboard", () => {
         const validas = page.getByRole("button", { name: "Válidas", exact: true });
         await validas.click();
         await expect(validas).toHaveAttribute("aria-pressed", "true");
+        await expect(page.locator("[aria-live=polite]")).toHaveText("1 solicitud");
+    });
+
+    test("periodo, nivel, fechas y estado están en un mismo panel de filtros", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        await page.goto(DASHBOARD);
+        const panel = page.getByRole("region", { name: "Filtros de búsqueda" });
+        await expect(panel).toBeVisible();
+        await expect(panel.getByLabel("Periodo de grado")).toBeVisible();
+        await expect(panel.getByLabel("Nivel académico")).toBeVisible();
+        await expect(panel.getByLabel("Fecha inicial")).toBeVisible();
+        await expect(panel.getByLabel("Fecha final")).toBeVisible();
+        await expect(panel.getByRole("group", { name: "Estado de la solicitud" })).toBeVisible();
+    });
+
+    test("el filtro de nivel académico sigue disponible", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        await page.goto(DASHBOARD);
+        await page.getByLabel("Nivel académico").selectOption("POSGRADO");
         await expect(page.locator("[aria-live=polite]")).toHaveText("2 solicitudes");
+        await expect(page.getByRole("cell", { name: "GR-2026-003", exact: true })).toBeVisible();
+    });
+
+    test("el rango de fechas filtra la lista y se puede limpiar", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        await page.goto(DASHBOARD);
+        await expect(page.locator("[aria-live=polite]")).toHaveText("3 solicitudes");
+        await page.getByLabel("Fecha inicial").fill("2026-10-05");
+        await page.getByLabel("Fecha final").fill("2026-10-31");
+        await page.getByRole("button", { name: "Aplicar fechas" }).click();
+        await expect(page.locator("[aria-live=polite]")).toHaveText("0 solicitudes");
+        await expect(page.getByRole("heading", { name: "No hay solicitudes" })).toBeVisible();
+        await page.getByRole("button", { name: "Limpiar fechas" }).click();
+        await expect(page.locator("[aria-live=polite]")).toHaveText("3 solicitudes");
+    });
+
+    test("crea un periodo de grado desde el dashboard", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        await page.goto(DASHBOARD);
+        const gestionar = page.getByRole("button", { name: /periodos/i });
+        await expect(gestionar).toHaveAttribute("aria-expanded", "false");
+        await gestionar.click();
+        await expect(gestionar).toHaveAttribute("aria-expanded", "true");
+        await expect(page.getByRole("heading", { name: "Gestión de periodos de grado" })).toBeVisible();
+        await expect(page.getByLabel("Nombre del periodo")).toBeFocused();
+        await page.getByLabel("Nombre del periodo").fill("Grados noviembre 2026");
+        await page.getByLabel("Fecha de inicio").fill("2026-11-01");
+        await page.getByLabel("Fecha de finalización").fill("2026-11-30");
+        await page.getByLabel("Fecha de graduación").fill("2026-12-15");
+        await page.getByRole("button", { name: "Registrar periodo" }).click();
+        await expect(page.getByRole("status")).toHaveText("Periodo guardado correctamente.");
+        await expect(page.getByRole("combobox", { name: "Periodo de grado" })).toContainText("Grados noviembre 2026");
     });
 
     test("a 1280px es una tabla con encabezados; a 360px son tarjetas", async ({ page }) => {
         await sesionComo(page, "funcionario");
         await page.setViewportSize({ width: 1280, height: 900 });
         await page.goto(DASHBOARD);
-        await expect(page.getByRole("table", { name: /Preinscripciones/ })).toBeVisible();
+        await expect(page.getByRole("table", { name: /Solicitudes de grado/ })).toBeVisible();
         await expect(page.getByRole("columnheader", { name: "Estudiante" })).toBeVisible();
         await page.setViewportSize({ width: 360, height: 800 });
-        await expect(page.getByRole("table", { name: /Preinscripciones/ })).toBeHidden();
-        await expect(page.getByRole("list", { name: "Preinscripciones" }).getByRole("listitem")).toHaveCount(5);
+        await expect(page.getByRole("table", { name: /Solicitudes de grado/ })).toBeHidden();
+        await expect(page.getByRole("list", { name: "Solicitudes de grado" }).getByRole("listitem")).toHaveCount(3);
     });
 
     test("los gráficos tienen alternativa en texto y se redibujan al cambiar de tema", async ({ page }) => {
@@ -51,7 +102,7 @@ test.describe("dashboard", () => {
         await page.goto(DASHBOARD);
         const figuras = page.locator("figure");
         await expect(figuras).toHaveCount(2);
-        await expect(figuras.first().locator("canvas")).toHaveAttribute("aria-label", /Válidas: 2/);
+        await expect(figuras.first().locator("canvas")).toHaveAttribute("aria-label", /Válidas: 1/);
         await expect(figuras.first()).toHaveAttribute("data-tema", "light");
         await page.emulateMedia({ colorScheme: "dark" });
         await expect(figuras.first()).toHaveAttribute("data-tema", "dark");
@@ -61,12 +112,12 @@ test.describe("dashboard", () => {
         await page.setViewportSize({ width: 1280, height: 900 });
         await sesionComo(page, "funcionario");
         await page.goto(DASHBOARD);
-        const contador = page.getByRole("button", { name: /^Válidas 2/ });
+        const contador = page.getByRole("button", { name: /^Válidas 1/ });
         await expect(contador).toHaveAccessibleDescription(/filtra la lista/i);
         await contador.focus();
         await page.keyboard.press("Enter");
         await expect(page.getByRole("button", { name: "Válidas", exact: true })).toHaveAttribute("aria-pressed", "true");
-        const titulo = page.getByRole("heading", { name: "Preinscripciones", exact: true });
+        const titulo = page.getByRole("heading", { name: "Solicitudes de grado", exact: true });
         await expect(titulo).toBeFocused();
         const tapado = await titulo.evaluate(async (e) => {
             await new Promise((listo) => requestAnimationFrame(() => requestAnimationFrame(listo)));
