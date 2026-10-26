@@ -661,7 +661,7 @@ test.describe("iniciar preinscripción", () => {
         await abrir(page, POSGRADO);
 
         let envioLlamado = false;
-        let cuerpoEnvio: any = null;
+        let cuerpoEnvio: { nivel?: string; claveIdempotencia?: string } | null = null;
 
         await page.route(`${API}/solicitudes/enviar`, async (ruta) => {
             envioLlamado = true;
