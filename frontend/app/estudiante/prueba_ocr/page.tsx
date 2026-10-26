@@ -137,6 +137,15 @@ function claseEstado(c?: string) {
   return styles.check;
 }
 
+function mensajeError(data: unknown, status: number): string {
+  if (typeof data === 'object' && data !== null && 'message' in data) {
+    const m = (data as { message: unknown }).message;
+    if (typeof m === 'string') return m;
+    if (Array.isArray(m)) return m.map(String).join(' ');
+  }
+  return `Error HTTP ${status}`;
+}
+
 export default function PruebaOcrPage() {
   const [nivel, setNivel] = useState<Nivel>('PREGRADO');
   const [jsonTexto, setJsonTexto] = useState(
@@ -190,7 +199,7 @@ export default function PruebaOcrPage() {
 
     if (pares.length === 0) {
       setError(
-        'Adjunta al menos un documento de un tipo soportado por el motor (cédula, Saber Pro o estampilla).',
+        'Adjunta al menos un documento de un tipo soportado por el motor (cédula, Saber Pro, estampilla o Evaluación de Grado).',
       );
       return;
     }
@@ -211,13 +220,7 @@ export default function PruebaOcrPage() {
       });
       const data: unknown = await res.json();
       if (!res.ok) {
-        const msg =
-          typeof data === 'object' &&
-          data !== null &&
-          'message' in data &&
-          typeof (data as { message: unknown }).message === 'string'
-            ? (data as { message: string }).message
-            : `Error HTTP ${res.status}`;
+        const msg = mensajeError(data, res.status);
         setError(msg);
         setRespuesta(data as RespuestaAnalisis);
         setVerJson(false);
