@@ -208,6 +208,53 @@ describe('SolicitudesService', () => {
       );
     });
 
+    describe('doble programa en PREGRADO: una estampilla por programa', () => {
+      const conSegundoPrograma = (documentos: { tipo_documento: string; orden?: number }[]) =>
+        mockClient.query
+          .mockResolvedValueOnce({
+            rows: [{ id_solicitud: 103, tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+          }) // solicitud
+          .mockResolvedValueOnce({
+            rows: [{ nombres: 'Ana', apellidos: 'Prueba', codigo_estudiante: 'T00000002' }],
+          }) // usuario
+          .mockResolvedValueOnce({
+            rows: [{ tipo_documento_identidad: 'CC', numero_documento: '1000000001' }],
+          }) // perfil
+          .mockResolvedValueOnce({
+            rows: [
+              { orden: 1, programa: 'Ingeniería de Sistemas', modalidad: 'PRESENCIAL', tipo_opcion_grado: 'TRABAJO' },
+              { orden: 2, programa: 'Ingeniería Industrial', modalidad: 'PRESENCIAL', tipo_opcion_grado: 'TRABAJO' },
+            ],
+          }) // programas (el 2 existe)
+          .mockResolvedValueOnce({
+            rows: [{ conoce_registro_saber_pro: false, numero_registro_saber_pro: null }],
+          }) // pregrado
+          .mockResolvedValueOnce({ rows: documentos }) // documentos
+          .mockResolvedValueOnce({ rows: [{ id_entrega: 7 }] }) // INSERT entregas
+          .mockResolvedValue({ rows: [] }); // UPDATE documentos / solicitud_grado
+
+      const cinco = [
+        { tipo_documento: 'identification', orden: 1 },
+        { tipo_documento: 'academic_evaluation', orden: 1 },
+        { tipo_documento: 'paz_y_salvo_bib', orden: 1 },
+        { tipo_documento: 'estampilla_pro_cultura', orden: 1 },
+        { tipo_documento: 'saber_pro', orden: 1 },
+      ];
+
+      it('rechaza el envío si falta la estampilla del segundo programa (orden 2)', async () => {
+        conSegundoPrograma(cinco);
+        await expect(service.enviarPreinscripcion(1)).rejects.toThrow(
+          /estampilla_pro_cultura \(segundo programa\)/,
+        );
+      });
+
+      it('completa el envío con las dos estampillas', async () => {
+        conSegundoPrograma([...cinco, { tipo_documento: 'estampilla_pro_cultura', orden: 2 }]);
+        const res = await service.enviarPreinscripcion(1);
+        expect(res).toMatchObject({ ok: true, id_solicitud: 103, id_entrega: 7, estado: 'EN_PROCESO' });
+      });
+    });
+
     it('completa el flujo exitoso en POSGRADO (3 documentos)', async () => {
       mockClient.query
         .mockResolvedValueOnce({
@@ -275,6 +322,43 @@ describe('SolicitudesService', () => {
 
       expect(res.ok).toBe(true);
       expect(typeof res.guardadoEn).toBe('string');
+    });
+
+    describe('el programa 2 solo se guarda si el estudiante respondió que sí', () => {
+      const programas = [
+        { orden: 1, programa: 'Ingeniería de Sistemas', modalidad: 'PRESENCIAL', tipoOpcionGrado: 'TRABAJO' },
+        { orden: 2, programa: 'Ingeniería Industrial', modalidad: 'PRESENCIAL', tipoOpcionGrado: 'TRABAJO' },
+      ];
+      const llamadas = () => mockClient.query.mock.calls as [string, unknown[]][];
+      const guardoPrograma = (orden: number) =>
+        llamadas().some(([sql, params]) => sql.includes('INSERT INTO solicitud_programa') && params[1] === orden);
+      const borroPrograma2 = () =>
+        llamadas().some(([sql]) => sql.includes('DELETE FROM solicitud_programa') && sql.includes('orden = 2'));
+
+      beforeEach(() => {
+        mockClient.query
+          .mockResolvedValueOnce({
+            rows: [{ id_solicitud: 102, tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+          })
+          .mockResolvedValue({ rows: [] });
+      });
+
+      it.each([false, null, undefined])(
+        'con segundoPrograma %s no guarda el programa 2 y borra el que hubiera',
+        async (segundoPrograma) => {
+          await service.guardarBorrador(1, { nivel: 'PREGRADO', segundoPrograma, programas });
+          expect(guardoPrograma(1)).toBe(true);
+          expect(guardoPrograma(2)).toBe(false);
+          expect(borroPrograma2()).toBe(true);
+        },
+      );
+
+      it('con segundoPrograma true guarda los dos programas', async () => {
+        await service.guardarBorrador(1, { nivel: 'PREGRADO', segundoPrograma: true, programas });
+        expect(guardoPrograma(1)).toBe(true);
+        expect(guardoPrograma(2)).toBe(true);
+        expect(borroPrograma2()).toBe(false);
+      });
     });
   });
 });
