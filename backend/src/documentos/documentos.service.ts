@@ -33,16 +33,28 @@ export class DocumentosService {
       form.append('documentos', blob, archivo.originalname || 'documento.pdf');
     }
 
+    const TIMEOUT_MS = Number(process.env.MOTOR_TIMEOUT_MS) || 60_000;
+
     let response: Response;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
       response = await fetch(`${this.motorUrl}/analizar`, {
         method: 'POST',
         body: form,
+        signal: controller.signal,
       });
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new ServiceUnavailableException(
+          'El motor de validación no respondió a tiempo. Intenta de nuevo más tarde.',
+        );
+      }
       throw new ServiceUnavailableException(
         'No se pudo conectar con el motor de validación documental.',
       );
+    } finally {
+      clearTimeout(timer);
     }
 
     const texto = await response.text();

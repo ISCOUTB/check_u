@@ -12,6 +12,7 @@ const SOPORTADOS = new Set([
   'identification',
   'saber_pro',
   'estampilla_pro_cultura',
+  'academic_evaluation',
 ]);
 
 const DOCS_POR_NIVEL: Record<Nivel, { tipo: string; etiqueta: string }[]> = {
@@ -85,19 +86,33 @@ const ETIQUETA_CLASE: Record<string, string> = {
 };
 
 const ETIQUETA_CAMPO: Record<string, string> = {
+  //Cedula, etc
   full_name: 'Nombre completo',
   identification_number: 'Número de documento',
   identification_type: 'Tipo de documento',
   birth_date: 'Fecha de nacimiento',
   sex: 'Sexo',
+
+  //academic_evaluation
+  full_name_student: 'Nombre completo',
+  code_student: 'Código estudiantil',
+  program: 'Programa académico',
+  max_credits: 'Créditos requeridos',
+  credits_approved: 'Créditos aprobados',
+  general_result: 'Resultado general',
+  motivo: 'Motivo',
 };
 
 const ETIQUETA_REGLA: Record<string, string> = {
+  //Cedula, etc
   identification_document: 'Documento de identidad',
   required_fields_present: 'Campos obligatorios',
   machine_readable_code: 'Código legible por máquina',
   image_quality: 'Calidad de imagen',
   rui_name_match: 'Coincidencia con RUI',
+  //academic_evaluation
+  academic_evaluation_document: 'Documento de evaluación',
+  curriculum_compliance: 'Cumplimiento de malla',
 };
 
 const ETIQUETA_RESULTADO: Record<string, string> = {
@@ -120,6 +135,15 @@ function claseEstado(c?: string) {
   if (c === 'invalid') return styles.bad;
   if (c === 'inconsistent') return styles.warn;
   return styles.check;
+}
+
+function mensajeError(data: unknown, status: number): string {
+  if (typeof data === 'object' && data !== null && 'message' in data) {
+    const m = (data as { message: unknown }).message;
+    if (typeof m === 'string') return m;
+    if (Array.isArray(m)) return m.map(String).join(' ');
+  }
+  return `Error HTTP ${status}`;
 }
 
 export default function PruebaOcrPage() {
@@ -175,7 +199,7 @@ export default function PruebaOcrPage() {
 
     if (pares.length === 0) {
       setError(
-        'Adjunta al menos un documento de un tipo soportado por el motor (cédula, Saber Pro o estampilla).',
+        'Adjunta al menos un documento de un tipo soportado por el motor (cédula, Saber Pro, estampilla o Evaluación de Grado).',
       );
       return;
     }
@@ -196,13 +220,7 @@ export default function PruebaOcrPage() {
       });
       const data: unknown = await res.json();
       if (!res.ok) {
-        const msg =
-          typeof data === 'object' &&
-          data !== null &&
-          'message' in data &&
-          typeof (data as { message: unknown }).message === 'string'
-            ? (data as { message: string }).message
-            : `Error HTTP ${res.status}`;
+        const msg = mensajeError(data, res.status);
         setError(msg);
         setRespuesta(data as RespuestaAnalisis);
         setVerJson(false);
