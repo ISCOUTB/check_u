@@ -372,6 +372,35 @@ describe('Borrador de solicitud (Tarea 28, PostgreSQL)', () => {
     expect(res.body.borrador.pregrado.fechaExamenSaberPro).toBe('2026-08-20');
   });
 
+  it('Tarea 33: devuelve un campo inválido sin reflejar valores personales', async () => {
+    const res = await agente.post('/api/solicitudes/borrador')
+      .send({ perfil: { numeroDocumento: 'DATO PRIVADO!' } }).expect(400);
+    expect(res.body).toMatchObject({ codigo: 'BORRADOR_DATOS_INVALIDOS', campos: [{ campo: 'perfil.numeroDocumento', motivo: 'INVALIDO' }] });
+    expect(res.body.message).toContain('el número de documento de identidad');
+    expect(JSON.stringify(res.body)).not.toContain('DATO PRIVADO!');
+  });
+
+  it('Tarea 33: traduce una restricción NOT NULL real sin exponer SQL', async () => {
+    // Emula un esquema institucional que aún exige el tipo de documento.
+    await base.db.exec('ALTER TABLE perfil_estudiante ALTER COLUMN tipo_documento_identidad SET NOT NULL');
+    const res = await agente.post('/api/solicitudes/borrador')
+      .send({ perfil: { numeroDocumento: 'ABC123' } }).expect(400);
+    expect(res.body.codigo).toBe('BORRADOR_CAMPO_REQUERIDO');
+    expect(res.body.message).toContain('falta completar el tipo de documento de identidad');
+    expect(JSON.stringify(res.body)).not.toMatch(/23502|INSERT|perfil_estudiante/);
+    expect((await base.db.query('SELECT * FROM solicitud_grado')).rows).toHaveLength(0);
+  });
+
+  it('Tarea 33: describe una identidad duplicada y conserva la transacción anterior', async () => {
+    await base.db.exec("INSERT INTO perfil_estudiante(id_usuario,tipo_documento_identidad,numero_documento) VALUES(2,'CC','ABC123')");
+    const res = await agente.post('/api/solicitudes/borrador')
+      .send({ perfil: { tipoDocumento: 'CC', numeroDocumento: 'ABC123' } }).expect(409);
+    expect(res.body.codigo).toBe('BORRADOR_IDENTIDAD_REPETIDA');
+    expect(res.body.message).toContain('ya está registrado');
+    expect(JSON.stringify(res.body)).not.toMatch(/23505|INSERT|uq_perfil/);
+    expect((await base.db.query('SELECT * FROM solicitud_grado')).rows).toHaveLength(0);
+  });
+
   it('rechaza datos mal formados antes de persistir', async () => {
     for (const payload of [
       { nivel: 'OTRO' },
