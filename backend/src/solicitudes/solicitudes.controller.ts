@@ -10,6 +10,7 @@ import {
 import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service.js';
 import { readSessionId } from '../auth/session.js';
+import { traducirErrorBorrador } from './errores-borrador.js';
 import { SolicitudesService } from './solicitudes.service.js';
 import type {
   DatosEnvioPreinscripcion,
@@ -55,8 +56,12 @@ export class SolicitudesController {
     @Req() req: Request,
     @Body() body?: DatosEnvioPreinscripcion,
   ): Promise<RespuestaGuardarBorrador> {
-    const user = this.obtenerEstudianteAutenticado(req);
-    return this.solicitudesService.guardarBorrador(user.id, body);
+    try {
+      const user = this.obtenerEstudianteAutenticado(req);
+      return await this.solicitudesService.guardarBorrador(user.id, body);
+    } catch (error) {
+      throw traducirErrorBorrador(error);
+    }
   }
 
   private obtenerEstudianteAutenticado(req: Request) {

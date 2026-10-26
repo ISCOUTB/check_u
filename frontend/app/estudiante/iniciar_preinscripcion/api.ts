@@ -6,6 +6,7 @@
  */
 
 import { documentosRequeridos, type NivelAcademico as Nivel } from "@/app/estudiante/documentos-requeridos";
+import { errorDeConexion, interpretarErrorGuardado } from "./mensajes-borrador";
 import { borradorVacio, type BorradorPreinscripcion } from "./tipos";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,16 +201,23 @@ export async function cargarPreinscripcion(
  * Solo confirma el guardado después de recibir éxito del backend.
  */
 export async function guardarBorrador(borrador: BorradorPreinscripcion): Promise<{ guardadoEn: string; id_solicitud: number }> {
-    const respuesta = await fetch(`${API_URL}/solicitudes/borrador`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(borrador),
-    });
-    if (!respuesta.ok) throw new Error("No fue posible guardar el borrador");
-    const datos = await respuesta.json();
-    if (!datos.ok || !Number.isInteger(datos.id_solicitud) || !datos.guardadoEn) {
-        throw new Error("Respuesta de guardado inválida");
+    let respuesta: Response;
+    try {
+        respuesta = await fetch(`${API_URL}/solicitudes/borrador`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(borrador),
+        });
+    } catch {
+        throw errorDeConexion();
+    }
+    const datos = await respuesta.json().catch(() => null);
+    if (!respuesta.ok) throw interpretarErrorGuardado(respuesta.status, datos);
+    if (!datos?.ok || !Number.isInteger(datos.id_solicitud) || datos.id_solicitud < 1 ||
+        typeof datos.guardadoEn !== "string" || !Number.isFinite(Date.parse(datos.guardadoEn))) {
+        // Una respuesta ilegible no confirma el guardado; nunca anunciar éxito en este caso.
+        throw interpretarErrorGuardado(500, null);
     }
     return { guardadoEn: datos.guardadoEn, id_solicitud: datos.id_solicitud };
 }

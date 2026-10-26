@@ -575,7 +575,7 @@ test.describe("iniciar preinscripción", () => {
         await abrir(page, PREGRADO);
         const guardar = page.getByRole("button", { name: "Guardar para continuar después" });
         const estado = page.getByRole("status").filter({ hasText: "Borrador guardado" });
-        const texto = /^Borrador guardado el 22\/10\/2026, 3:40\sp\.\sm\.$/;
+        const texto = /Borrador guardado el 22\/10\/2026, 3:40\sp\.\sm\.$/;
 
         await guardar.click();
         await expect(estado).toHaveText(texto);
@@ -597,13 +597,13 @@ test.describe("iniciar preinscripción", () => {
         await expect(zona(page, "identification")).toContainText("documento-de-ejemplo.pdf");
         await expect(contador(page)).toHaveText("1 de 5 documentos cargados");
         const estado = page.getByRole("status").filter({ hasText: "Borrador guardado" });
-        await expect(estado).toHaveText(/^Borrador guardado el 20\/10\/2026, 10:30\sa\.\sm\.$/);
+        await expect(estado).toHaveText(/Borrador guardado el 20\/10\/2026, 10:30\sa\.\sm\.$/);
         await expect(page.getByText("Puedes guardar y retomar tu borrador más adelante.")).toBeVisible();
 
         await page.getByLabel("Número de documento (obligatorio)").fill("9876543210");
         await page.getByRole("button", { name: "Guardar para continuar después" }).click();
         await expect(page.getByRole("button", { name: "Guardando…" })).toBeDisabled();
-        await expect(estado).toHaveText(/^Borrador guardado el 22\/10\/2026, 3:40\sp\.\sm\.$/);
+        await expect(estado).toHaveText(/Borrador guardado el 22\/10\/2026, 3:40\sp\.\sm\.$/);
         await expect(page.getByRole("button", { name: "Guardar para continuar después" })).toBeEnabled();
 
         // Nada del borrador sale de la memoria de la página: ni al navegador, ni a la URL, ni a la consola.
@@ -841,7 +841,7 @@ test("Tarea 28: un error del backend no anuncia guardado exitoso y permite reint
     await page.locator("#campo-nombres").fill("Lisandro");
     await page.getByRole("button", { name: "Guardar para continuar después" }).click();
     await expect(
-    page.getByRole("alert").filter({ hasText: "No fue posible guardar tu borrador" })
+    page.getByRole("alert").filter({ hasText: "El servicio de guardado no está disponible" })
 ).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "Borrador guardado" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Guardar para continuar después" })).toBeEnabled();

@@ -8,7 +8,7 @@ export interface DialogoSalidaProps {
     abierto: boolean;
     guardando: boolean;
     /** El último guardado falló: se avisa aquí, porque la barra queda detrás del diálogo */
-    errorGuardado: boolean;
+    errorGuardado: string | null;
     alGuardarYSalir: () => void;
     alSalirSinGuardar: () => void;
     alSeguirAqui: () => void;
@@ -39,7 +39,7 @@ export default function DialogoSalida({
         >
             {errorGuardado && (
                 <p role="alert" className={styles.errorDialogo}>
-                    No fue posible guardar tu borrador. Inténtalo de nuevo.
+                    {errorGuardado}
                 </p>
             )}
             <div className={styles.accionesDialogo}>

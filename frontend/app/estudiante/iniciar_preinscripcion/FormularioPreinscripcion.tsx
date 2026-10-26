@@ -8,6 +8,7 @@ import PageHeader from "@/app/components/ui/PageHeader";
 import type { Nivel } from "@/app/estudiante/documentos-requeridos";
 import { useSesion } from "@/app/lib/useSesion";
 import { cargarPreinscripcion, enviarPreinscripcion, escenarioDesde, guardarBorrador } from "./api";
+import { mensajeErrorGuardado } from "./mensajes-borrador";
 import BarraAcciones from "./BarraAcciones";
 import DialogoConfirmarEnvio from "./DialogoConfirmarEnvio";
 import DialogoSalida from "./DialogoSalida";
@@ -54,7 +55,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
     const [sucio, setSucio] = useState(false);
     const [guardando, setGuardando] = useState(false);
     const [guardados, setGuardados] = useState(0);
-    const [errorGuardado, setErrorGuardado] = useState(false);
+    const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
     const cambios = useRef(0);
     const guardandoRef = useRef(false);
 
@@ -116,15 +117,15 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
         guardandoRef.current = true;
         const cambiosAlGuardar = cambios.current;
         setGuardando(true);
-        setErrorGuardado(false);
+        setErrorGuardado(null);
         try {
             const { guardadoEn, id_solicitud } = await guardarBorrador(borrador);
             setBorrador((actual) => (actual ? { ...actual, guardadoEn, id_solicitud } : actual));
             setGuardados((veces) => veces + 1);
             if (cambios.current === cambiosAlGuardar) setSucio(false);
             return true;
-        } catch {
-            setErrorGuardado(true);
+        } catch (error) {
+            setErrorGuardado(mensajeErrorGuardado(error));
             return false;
         } finally {
             guardandoRef.current = false;
@@ -279,6 +280,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                             <BarraAcciones
                                 guardadoEn={borrador.guardadoEn}
                                 guardados={guardados}
+                                cambiosSinGuardar={sucio}
                                 guardando={guardando}
                                 enviando={enviando}
                                 errorGuardado={errorGuardado}

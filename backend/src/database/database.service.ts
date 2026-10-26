@@ -60,7 +60,7 @@ export class DatabaseService
       return await this.pool.query<R>(text, params);
     } catch (error) {
       this.logger.error('Error al ejecutar consulta en PostgreSQL', error);
-      throw new ServiceUnavailableException('Error en el servicio de base de datos');
+      throw new ServiceUnavailableException('Error en el servicio de base de datos', { cause: error });
     }
   }
 
@@ -85,7 +85,7 @@ export class DatabaseService
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new ServiceUnavailableException('Error en el servicio de base de datos');
+      throw new ServiceUnavailableException('Error en el servicio de base de datos', { cause: error });
     } finally {
       client.release();
     }

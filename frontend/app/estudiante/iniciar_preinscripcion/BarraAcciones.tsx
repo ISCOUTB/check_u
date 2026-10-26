@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Button from "@/app/components/ui/Button";
+import { GUARDADO_EXITOSO } from "./mensajes-borrador";
 import { formatearGuardado } from "./api";
 import styles from "./BarraAcciones.module.css";
 
@@ -10,10 +11,11 @@ export interface BarraAccionesProps {
     guardadoEn: string | null;
     /** Cuántas veces se guardó en esta visita: cada guardado se anuncia, aunque diga la misma hora */
     guardados: number;
+    cambiosSinGuardar: boolean;
     guardando: boolean;
     enviando: boolean;
     /** El último guardado falló */
-    errorGuardado: boolean;
+    errorGuardado: string | null;
     alGuardar: () => void;
     alEnviar: () => void;
 }
@@ -29,6 +31,7 @@ export interface BarraAccionesProps {
 export default function BarraAcciones({
     guardadoEn,
     guardados,
+    cambiosSinGuardar,
     guardando,
     enviando,
     errorGuardado,
@@ -60,16 +63,19 @@ export default function BarraAcciones({
                          * Un nodo nuevo por guardado: el lector no repite un texto que no cambió, y dos
                          * guardados en el mismo minuto dicen lo mismo.
                          */}
-                        {guardadoEn && !errorGuardado && (
-                            <span key={guardados}>
-                                Borrador guardado el{" "}
-                                <span className={styles.fecha}>{formatearGuardado(guardadoEn)}</span>
-                            </span>
+                        {guardando ? <span>Guardando tu borrador…</span> : !errorGuardado && (
+                            cambiosSinGuardar ? <span>Tienes cambios sin guardar.</span> : guardadoEn ? (
+                                <span key={guardados}>
+                                    {GUARDADO_EXITOSO}{" "}
+                                    Borrador guardado el{" "}
+                                    <span className={styles.fecha}>{formatearGuardado(guardadoEn)}</span>
+                                </span>
+                            ) : null
                         )}
                     </p>
                     {errorGuardado && (
                         <p role="alert" className={styles.error}>
-                            No fue posible guardar tu borrador.{" "}
+                            {errorGuardado}{" "}
                             <Button variante="sutil" className={styles.reintentar} onClick={alGuardar}>
                                 Reintentar
                             </Button>
