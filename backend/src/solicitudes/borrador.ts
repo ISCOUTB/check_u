@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { errorValidacionBorrador } from './errores-borrador.js';
 import { z } from 'zod';
 
 const texto = z.string().max(500).optional();
@@ -75,15 +75,26 @@ const esquema = z.object({
 
 export function validarBorrador(payload: unknown) {
   const resultado = esquema.safeParse(payload ?? {});
-  if (!resultado.success)
-    throw new BadRequestException('Formato de borrador inválido');
+  if (!resultado.success) {
+    const campos = resultado.error.issues.map(issue => {
+      let dato: unknown = payload;
+      for (const parte of issue.path) {
+        dato = dato && typeof dato === 'object' ? Reflect.get(dato, parte) : undefined;
+      }
+      return {
+        campo: issue.path.map(String).join('.'),
+        motivo: (dato === undefined || dato === null || dato === '' ? 'FALTANTE' : 'INVALIDO') as 'FALTANTE' | 'INVALIDO',
+      };
+    });
+    throw errorValidacionBorrador(campos);
+  }
   const datos = resultado.data;
   if (
     datos.nivel &&
     datos.tipo_solicitud &&
     datos.nivel !== datos.tipo_solicitud
   ) {
-    throw new BadRequestException('El nivel de la solicitud es inconsistente');
+    throw errorValidacionBorrador([{ campo: 'nivel', motivo: 'INVALIDO' }]);
   }
   return datos;
 }
