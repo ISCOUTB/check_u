@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from modules.validadores.academic_evaluation import validar_academic_evaluation
 from modules.validadores.cedula import validar_cedula
 from modules.validadores.estampilla import validar_estampilla
 from modules.validadores.saber_pro import validar_saber_pro
@@ -11,8 +12,8 @@ VALIDADORES = {
     "identification": validar_cedula,
     "saber_pro": validar_saber_pro,
     "estampilla_pro_cultura": validar_estampilla,
-    # Pendientes cuando existan en modules/validadores:
-    # "academic_evaluation": ...,
+    "academic_evaluation": validar_academic_evaluation,
+    # Pendientes:
     # "paz_y_salvo_bib": ...,
 }
 
