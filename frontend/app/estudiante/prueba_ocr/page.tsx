@@ -12,6 +12,7 @@ const SOPORTADOS = new Set([
   'identification',
   'saber_pro',
   'estampilla_pro_cultura',
+  'academic_evaluation',
 ]);
 
 const DOCS_POR_NIVEL: Record<Nivel, { tipo: string; etiqueta: string }[]> = {
@@ -85,19 +86,33 @@ const ETIQUETA_CLASE: Record<string, string> = {
 };
 
 const ETIQUETA_CAMPO: Record<string, string> = {
+  //Cedula, etc
   full_name: 'Nombre completo',
   identification_number: 'Número de documento',
   identification_type: 'Tipo de documento',
   birth_date: 'Fecha de nacimiento',
   sex: 'Sexo',
+
+  //academic_evaluation
+  full_name_student: 'Nombre completo',
+  code_student: 'Código estudiantil',
+  program: 'Programa académico',
+  max_credits: 'Créditos requeridos',
+  credits_approved: 'Créditos aprobados',
+  general_result: 'Resultado general',
+  motivo: 'Motivo',
 };
 
 const ETIQUETA_REGLA: Record<string, string> = {
+  //Cedula, etc
   identification_document: 'Documento de identidad',
   required_fields_present: 'Campos obligatorios',
   machine_readable_code: 'Código legible por máquina',
   image_quality: 'Calidad de imagen',
   rui_name_match: 'Coincidencia con RUI',
+  //academic_evaluation
+  academic_evaluation_document: 'Documento de evaluación',
+  curriculum_compliance: 'Cumplimiento de malla',
 };
 
 const ETIQUETA_RESULTADO: Record<string, string> = {
