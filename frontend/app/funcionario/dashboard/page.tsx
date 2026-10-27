@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import Navbar from "@/app/components/navbar/Navbar";
 import Button from "@/app/components/ui/Button";
 import Card from "@/app/components/ui/Card";
+import Dialog from "@/app/components/ui/Dialog";
+import Icono from "@/app/components/ui/Icono";
 import PageHeader from "@/app/components/ui/PageHeader";
 import StatusBadge from "@/app/components/ui/StatusBadge";
 import { useSesion } from "@/app/lib/useSesion";
@@ -49,7 +51,8 @@ export default function Dashboard() {
     const [periodoId, setPeriodoId] = useState("");
     const [errorPeriodos, setErrorPeriodos] = useState("");
     const [cargandoPeriodos, setCargandoPeriodos] = useState(true);
-    const [mostrarGestion, setMostrarGestion] = useState(false);
+    const [mostrarFiltros, setMostrarFiltros] = useState(false);
+    const [gestionAbierta, setGestionAbierta] = useState(false);
     const [periodoEditando, setPeriodoEditando] = useState<Periodo | null>(null);
     const [nombrePeriodo, setNombrePeriodo] = useState("");
     const [inicioPeriodo, setInicioPeriodo] = useState("");
@@ -148,6 +151,16 @@ export default function Dashboard() {
         setFechaInicial(""); setFechaFinal(""); setRangoAplicado(null); setErrorRango("");
     };
 
+    const limpiarFormulario = useCallback(() => {
+        setPeriodoEditando(null);
+        setNombrePeriodo(""); setInicioPeriodo(""); setFinPeriodo(""); setGraduacionPeriodo(""); setEstadoPeriodo("ABIERTO"); setMensajePeriodo("");
+    }, []);
+
+    const cerrarGestion = () => {
+        setGestionAbierta(false);
+        limpiarFormulario();
+    };
+
     const guardarPeriodo = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setMensajePeriodo("");
@@ -170,10 +183,9 @@ export default function Dashboard() {
         } finally { setGuardandoPeriodo(false); }
     };
 
-    const alternarGestion = () => {
-        const abriendo = !mostrarGestion;
-        setMostrarGestion(abriendo);
-        if (abriendo) enfocarFormulario();
+    const abrirGestion = () => {
+        setGestionAbierta(true);
+        enfocarFormulario();
     };
 
     const editarPeriodo = (periodo: Periodo) => {
@@ -196,91 +208,119 @@ export default function Dashboard() {
                     titulo="Filtros de búsqueda"
                     className={styles.panelFiltros}
                     acciones={
-                        <Button
-                            variante="secundario"
-                            onClick={alternarGestion}
-                            aria-expanded={mostrarGestion}
-                            aria-controls="gestion-periodos"
-                        >
-                            {mostrarGestion ? "Ocultar gestión de periodos" : "Gestionar periodos"}
-                        </Button>
+                        <div className={styles.accionesPanel}>
+                            <Button
+                                variante="secundario"
+                                className={styles.botonIcono}
+                                onClick={() => setMostrarFiltros((visible) => !visible)}
+                                aria-expanded={mostrarFiltros}
+                                aria-controls="panel-filtros"
+                                aria-label={mostrarFiltros ? "Ocultar filtros" : "Mostrar filtros"}
+                                title={mostrarFiltros ? "Ocultar filtros" : "Mostrar filtros"}
+                            >
+                                <Icono nombre="filtro" tamano={20} />
+                            </Button>
+                            <Button variante="secundario" onClick={abrirGestion} aria-haspopup="dialog">
+                                Gestionar periodos
+                            </Button>
+                        </div>
                     }
                 >
-                    <p className={styles.descripcionFiltros}>Consulta las solicitudes por periodo, nivel, estado y rango de fechas.</p>
+                    <div id="panel-filtros" className={styles.contenidoFiltros} hidden={!mostrarFiltros}>
+                        <p className={styles.descripcionFiltros}>Consulta las solicitudes por periodo, nivel, estado y rango de fechas.</p>
 
-                    <div className={styles.rejillaFiltros}>
-                        <fieldset className={styles.grupoFiltro}>
-                            <legend id="titulo-periodo">Periodo de grado</legend>
-                            <select
-                                id="periodo-grado"
-                                className={styles.control}
-                                aria-labelledby="titulo-periodo"
-                                value={periodoId}
-                                onChange={(e) => setPeriodoId(e.target.value)}
-                                disabled={cargandoPeriodos || periodos.length === 0}
-                            >
-                                <option value="">{cargandoPeriodos ? "Cargando periodos..." : "Selecciona un periodo"}</option>
-                                {periodos.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.estado} ({p.fechaInicio} – {p.fechaFin})</option>)}
-                            </select>
-                            {errorPeriodos && <p className={styles.error} role="alert">{errorPeriodos}</p>}
-                            {!cargandoPeriodos && !errorPeriodos && periodos.length === 0 && <p className={styles.textoSecundario}>No hay periodos registrados. Crea uno para comenzar.</p>}
-                            {!cargandoPeriodos && periodos.length > 0 && !periodos.some((p) => p.estado === "ABIERTO") && <p className={styles.textoSecundario}>No hay periodos abiertos. Los periodos cerrados se pueden consultar, pero no deben recibir nuevas solicitudes.</p>}
-                        </fieldset>
+                        <div className={styles.rejillaFiltros}>
+                            <fieldset className={styles.grupoFiltro}>
+                                <legend id="titulo-periodo">Periodo de grado</legend>
+                                <select
+                                    id="periodo-grado"
+                                    className={styles.control}
+                                    aria-labelledby="titulo-periodo"
+                                    value={periodoId}
+                                    onChange={(e) => setPeriodoId(e.target.value)}
+                                    disabled={cargandoPeriodos || periodos.length === 0}
+                                >
+                                    <option value="">{cargandoPeriodos ? "Cargando periodos..." : "Selecciona un periodo"}</option>
+                                    {periodos.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.estado} ({p.fechaInicio} – {p.fechaFin})</option>)}
+                                </select>
+                                {errorPeriodos && <p className={styles.error} role="alert">{errorPeriodos}</p>}
+                                {!cargandoPeriodos && !errorPeriodos && periodos.length === 0 && <p className={styles.textoSecundario}>No hay periodos registrados. Crea uno para comenzar.</p>}
+                                {!cargandoPeriodos && periodos.length > 0 && !periodos.some((p) => p.estado === "ABIERTO") && <p className={styles.textoSecundario}>No hay periodos abiertos. Los periodos cerrados se pueden consultar, pero no deben recibir nuevas solicitudes.</p>}
+                            </fieldset>
 
-                        <fieldset className={styles.grupoFiltro}>
-                            <legend id="titulo-nivel">Nivel académico</legend>
-                            <select
-                                id="nivel-academico"
-                                className={styles.control}
-                                aria-labelledby="titulo-nivel"
-                                value={nivel}
-                                onChange={(e) => setNivel(e.target.value as NivelAcademico)}
-                            >
-                                <option value="PREGRADO">Pregrado</option><option value="POSGRADO">Posgrado</option>
-                            </select>
-                        </fieldset>
+                            <fieldset className={styles.grupoFiltro}>
+                                <legend id="titulo-nivel">Nivel académico</legend>
+                                <select
+                                    id="nivel-academico"
+                                    className={styles.control}
+                                    aria-labelledby="titulo-nivel"
+                                    value={nivel}
+                                    onChange={(e) => setNivel(e.target.value as NivelAcademico)}
+                                >
+                                    <option value="PREGRADO">Pregrado</option><option value="POSGRADO">Posgrado</option>
+                                </select>
+                            </fieldset>
 
-                        <fieldset className={styles.grupoFiltro}>
-                            <legend>Rango de fechas</legend>
-                            <div className={styles.camposFecha}>
-                                <label className={styles.campo}>Fecha inicial<input className={styles.control} type="date" value={fechaInicial} onChange={(e) => setFechaInicial(e.target.value)} /></label>
-                                <label className={styles.campo}>Fecha final<input className={styles.control} type="date" min={fechaInicial || undefined} value={fechaFinal} onChange={(e) => setFechaFinal(e.target.value)} /></label>
-                            </div>
-                            <div className={styles.accionesFiltro}>
-                                <Button onClick={aplicarRango}>Aplicar fechas</Button>
-                                <Button variante="secundario" onClick={limpiarRango}>Limpiar fechas</Button>
-                            </div>
-                            {errorRango && <p className={styles.error} role="alert">{errorRango}</p>}
-                        </fieldset>
+                            <fieldset className={styles.grupoFiltro}>
+                                <legend>Rango de fechas</legend>
+                                <div className={styles.camposFecha}>
+                                    <label className={styles.campo}>Fecha inicial<input className={styles.control} type="date" value={fechaInicial} onChange={(e) => setFechaInicial(e.target.value)} /></label>
+                                    <label className={styles.campo}>Fecha final<input className={styles.control} type="date" min={fechaInicial || undefined} value={fechaFinal} onChange={(e) => setFechaFinal(e.target.value)} /></label>
+                                </div>
+                                <div className={styles.accionesFiltro}>
+                                    <Button onClick={aplicarRango}>Aplicar fechas</Button>
+                                    <Button variante="secundario" onClick={limpiarRango}>Limpiar fechas</Button>
+                                </div>
+                                {errorRango && <p className={styles.error} role="alert">{errorRango}</p>}
+                            </fieldset>
 
-                        <fieldset className={styles.grupoFiltro}>
-                            <legend>Estado de la solicitud</legend>
-                            <div className={styles.filtros}>
-                                {(["todos", ...ESTADOS_SOLICITUD] as FiltroEstado[]).map((valor) => <button key={valor} type="button" className={styles.filtro} aria-pressed={filtroEstado === valor} onClick={() => setFiltroEstado(valor)}>{valor === "todos" ? "Todas" : ETIQUETA_PLURAL[valor]}</button>)}
-                            </div>
-                        </fieldset>
-                    </div>
-
-                    <section id="gestion-periodos" className={styles.gestionPeriodos} aria-labelledby="titulo-gestion" hidden={!mostrarGestion}>
-                        <div className={styles.cabeceraGestion}>
-                            <h3 id="titulo-gestion">Gestión de periodos de grado</h3>
-                            <p>Crea un periodo nuevo o edita uno existente. Los campos con fechas definen la ventana de inscripción.</p>
+                            <fieldset className={styles.grupoFiltro}>
+                                <legend>Estado de la solicitud</legend>
+                                <div className={styles.filtros}>
+                                    {(["todos", ...ESTADOS_SOLICITUD] as FiltroEstado[]).map((valor) => <button key={valor} type="button" className={styles.filtro} aria-pressed={filtroEstado === valor} onClick={() => setFiltroEstado(valor)}>{valor === "todos" ? "Todas" : ETIQUETA_PLURAL[valor]}</button>)}
+                                </div>
+                            </fieldset>
                         </div>
-                        <form ref={formPeriodoRef} className={styles.formPeriodo} onSubmit={guardarPeriodo}>
-                            <label className={styles.campo}>Nombre del periodo<input className={styles.control} required maxLength={120} value={nombrePeriodo} onChange={(e) => setNombrePeriodo(e.target.value)} placeholder="Ej. Grados octubre 2026" /></label>
-                            <label className={styles.campo}>Fecha de inicio<input className={styles.control} required type="date" value={inicioPeriodo} onChange={(e) => setInicioPeriodo(e.target.value)} /></label>
-                            <label className={styles.campo}>Fecha de finalización<input className={styles.control} required type="date" min={inicioPeriodo || undefined} value={finPeriodo} onChange={(e) => setFinPeriodo(e.target.value)} /></label>
-                            <label className={styles.campo}>Fecha de graduación<input className={styles.control} required type="date" value={graduacionPeriodo} onChange={(e) => setGraduacionPeriodo(e.target.value)} /></label>
-                            <label className={styles.campo}>Estado del periodo<select className={styles.control} required value={estadoPeriodo} onChange={(e) => setEstadoPeriodo(e.target.value as EstadoPeriodo)}><option value="ABIERTO">ABIERTO — recibe solicitudes</option><option value="CERRADO">CERRADO — no recibe solicitudes</option></select></label>
-                            <div className={styles.accionesFormulario}>
-                                <Button type="submit" disabled={guardandoPeriodo}>{guardandoPeriodo ? "Guardando..." : periodoEditando ? "Guardar cambios" : "Registrar periodo"}</Button>
-                                {periodoEditando && <Button type="button" variante="secundario" onClick={() => { setPeriodoEditando(null); setNombrePeriodo(""); setInicioPeriodo(""); setFinPeriodo(""); setGraduacionPeriodo(""); setEstadoPeriodo("ABIERTO"); }}>Cancelar edición</Button>}
-                            </div>
-                            {mensajePeriodo && <p role="status" className={styles.mensajePeriodo}>{mensajePeriodo}</p>}
-                        </form>
-                        <ul className={styles.listaPeriodos} aria-label="Periodos de grado registrados">{periodos.map((p) => <li key={p.id}><span><strong>{p.nombre} · {p.estado}</strong><small>Recepción: {p.fechaInicio} – {p.fechaFin} · Graduación: {p.fechaGraduacion}</small></span><Button variante="secundario" onClick={() => editarPeriodo(p)}>Editar</Button></li>)}</ul>
-                    </section>
+                    </div>
                 </Card>
+
+                <Dialog
+                    abierto={gestionAbierta}
+                    alCerrar={cerrarGestion}
+                    titulo="Gestión de periodos de grado"
+                    descripcion="Crea un periodo nuevo o edita uno existente. Las fechas definen la ventana de inscripción."
+                    etiqueta="Periodos"
+                >
+                    <div className={styles.gestionPeriodos}>
+                        <section className={styles.bloqueGestion} aria-labelledby="titulo-form-periodo">
+                            <div className={styles.cabeceraBloque}>
+                                <h3 id="titulo-form-periodo">{periodoEditando ? "Editar periodo" : "Nuevo periodo"}</h3>
+                            </div>
+                            <form ref={formPeriodoRef} className={styles.formPeriodo} onSubmit={guardarPeriodo}>
+                                <label className={`${styles.campo} ${styles.campoAncho}`}>Nombre del periodo<input className={styles.control} required maxLength={120} value={nombrePeriodo} onChange={(e) => setNombrePeriodo(e.target.value)} placeholder="Ej. Grados octubre 2026" /></label>
+                                <label className={styles.campo}>Fecha de inicio<input className={styles.control} required type="date" value={inicioPeriodo} onChange={(e) => setInicioPeriodo(e.target.value)} /></label>
+                                <label className={styles.campo}>Fecha de finalización<input className={styles.control} required type="date" min={inicioPeriodo || undefined} value={finPeriodo} onChange={(e) => setFinPeriodo(e.target.value)} /></label>
+                                <label className={styles.campo}>Fecha de graduación<input className={styles.control} required type="date" value={graduacionPeriodo} onChange={(e) => setGraduacionPeriodo(e.target.value)} /></label>
+                                <label className={`${styles.campo} ${styles.campoAncho}`}>Estado del periodo<select className={styles.control} required value={estadoPeriodo} onChange={(e) => setEstadoPeriodo(e.target.value as EstadoPeriodo)}><option value="ABIERTO">ABIERTO — recibe solicitudes</option><option value="CERRADO">CERRADO — no recibe solicitudes</option></select></label>
+                                <div className={`${styles.accionesFormulario} ${styles.campoAncho}`}>
+                                    <Button type="submit" disabled={guardandoPeriodo}>{guardandoPeriodo ? "Guardando..." : periodoEditando ? "Guardar cambios" : "Registrar periodo"}</Button>
+                                    {periodoEditando && <Button type="button" variante="secundario" onClick={limpiarFormulario}>Cancelar edición</Button>}
+                                </div>
+                                {mensajePeriodo && <p role="status" className={`${styles.mensajePeriodo} ${styles.campoAncho}`}>{mensajePeriodo}</p>}
+                            </form>
+                        </section>
+
+                        <section className={styles.bloqueGestion} aria-labelledby="titulo-lista-periodos">
+                            <div className={styles.cabeceraBloque}>
+                                <h3 id="titulo-lista-periodos">Periodos registrados</h3>
+                                <span className={styles.conteo}>{periodos.length === 1 ? "1 periodo" : `${periodos.length} periodos`}</span>
+                            </div>
+                            {periodos.length === 0
+                                ? <p className={styles.textoSinPeriodos}>Aún no hay periodos registrados. Crea el primero con el formulario.</p>
+                                : <ul className={styles.listaPeriodos} aria-label="Periodos de grado registrados">{periodos.map((p) => <li key={p.id}><span><strong>{p.nombre} · {p.estado}</strong><small>Recepción: {p.fechaInicio} – {p.fechaFin} · Graduación: {p.fechaGraduacion}</small></span><Button variante="secundario" onClick={() => editarPeriodo(p)} aria-label={`Editar ${p.nombre}`}>Editar</Button></li>)}</ul>}
+                        </section>
+                    </div>
+                </Dialog>
 
                 <section aria-labelledby="titulo-resumen" className={styles.seccion}>
                     <h2 id="titulo-resumen" className="solo-lector">Resumen por estado</h2>
