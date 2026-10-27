@@ -1,17 +1,27 @@
 .seccion {
-    padding: 1.5rem;
+    padding: .75rem 1rem;
     margin-block: 1.5rem;
     border: 1px solid var(--color-border);
     border-radius: 1rem;
     background: var(--color-surface);
     color: var(--color-text);
 }
-.seccion h2 { margin: 0 0 1rem; font-size: 1.2rem; }
-.seccion h3 { margin-block: 1.25rem .5rem; font-size: 1rem; }
-.seccion p { line-height: 1.6; }
+.detalles h3 { margin-block: 1.25rem .5rem; font-size: 1rem; }
+.detalles p { line-height: 1.6; }
 .fechas { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-block: 1rem; }
 .fechas dt { font-size: .875rem; }
 .fechas dd { margin: .4rem 0 0; font-weight: 600; }
 .proximos { padding-left: 1.25rem; }
 .proximos li { margin-block: .75rem; }
 .proximos span { display: block; margin-top: .25rem; line-height: 1.5; }
+
+.resumen { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; line-height: 1.5; }
+.resumen strong { overflow-wrap: anywhere; min-width: 0; }
+.ayuda {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.75rem; height: 2.75rem; flex-shrink: 0;
+    border: 1px solid var(--color-border); border-radius: 50%;
+    background: var(--color-surface); color: var(--color-text);
+    font: inherit; font-weight: 700; cursor: pointer;
+}
+.ayuda:hover { background: var(--color-surface-muted); }

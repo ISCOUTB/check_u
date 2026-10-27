@@ -23,16 +23,26 @@ test('Tarea 35: disponible antes de guardar, asignado después y conservado tras
             borrador, periodos: periodos() } });
     });
     await page.goto(RUTA);
-    const seccion = page.getByRole('region', { name: 'Periodo de inscripción', exact: true });
+    const seccion = page.locator('section[aria-label="Periodo de inscripción"]');
+    await page.getByRole('button', { name: 'Ver información del periodo de inscripción' }).click();
     await expect(seccion).toContainText('Se asignará automáticamente al guardar');
     await expect(seccion).toContainText('23/11/2026');
     await expect(seccion).toContainText(FUTURO.nombre);
     await expect(seccion.getByRole('combobox')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ver información del periodo de inscripción' })).toBeFocused();
     await page.locator('#campo-nombres').fill('Prueba de periodo');
     await page.getByRole('button', { name: 'Guardar para continuar después' }).click();
-    await expect(seccion.getByRole('heading', { name: 'Periodo de inscripción asignado' })).toBeVisible();
+    await expect(seccion).toContainText(PERIODO.nombre);
+    await page.getByRole('button', { name: 'Ver información del periodo de inscripción' }).click();
+    await expect(page.getByRole('dialog')).toContainText('Periodo de inscripción asignado');
+    await page.keyboard.press('Escape');
     await page.reload();
-    await expect(seccion.getByRole('heading', { name: 'Periodo de inscripción asignado' })).toBeVisible();
+    await expect(seccion).toContainText(PERIODO.nombre);
+    await page.getByRole('button', { name: 'Ver información del periodo de inscripción' }).click();
+    await expect(page.getByRole('dialog')).toContainText('Periodo de inscripción asignado');
+    await page.keyboard.press('Escape');
     await expect(page.locator('#campo-nombres')).toHaveValue('Prueba de periodo');
 });
 
@@ -43,10 +53,13 @@ test('Tarea 35: futuros informativos y guardado sin periodo conserva el formular
         : route.fulfill({ json: { ok: true, estado: null, borrador: null, periodos: { fechaActual: '2026-11-23',
             periodoAsignado: null, periodoDisponible: null, proximosPeriodos: [FUTURO] } } }));
     await page.goto(RUTA);
-    const seccion = page.getByRole('region', { name: 'Periodo de inscripción', exact: true });
+    const seccion = page.locator('section[aria-label="Periodo de inscripción"]');
+    await expect(seccion).toContainText('Sin periodo disponible');
+    await page.getByRole('button', { name: 'Ver información del periodo de inscripción' }).click();
     await expect(seccion).toContainText('Actualmente no hay un periodo');
     await expect(seccion).toContainText(FUTURO.nombre);
     await expect(seccion.getByRole('combobox')).toHaveCount(0);
+    await page.keyboard.press('Escape');
     await page.locator('#campo-nombres').fill('Conservar información');
     await page.getByRole('button', { name: 'Guardar para continuar después' }).click();
     const alerta = page.getByRole('alert').filter({ hasText: 'Actualmente no hay un periodo' });
@@ -64,10 +77,16 @@ for (const tema of ['light', 'dark'] as const) {
             periodos: { fechaActual: '2026-12-01', periodoAsignado: { ...PERIODO, estado: 'CERRADO' },
                 periodoDisponible: null, proximosPeriodos: [] } } }));
         await page.goto(RUTA);
-        const seccion = page.getByRole('region', { name: 'Periodo de inscripción', exact: true });
+        const seccion = page.locator('section[aria-label="Periodo de inscripción"]');
+        await expect(page.getByRole('dialog')).not.toBeVisible();
+        await page.getByRole('button', { name: 'Ver información del periodo de inscripción' }).click();
         await expect(seccion).toContainText('Tu solicitud conserva su asignación');
         await expect(seccion).toContainText('No hay próximos periodos');
         await revisarAxe(page);
+        await expect(page.getByRole('dialog')).toBeVisible();
+        await page.mouse.click(1, 1);
+        await expect(page.getByRole('dialog')).not.toBeVisible();
+        await expect(page.getByRole('button', { name: 'Ver información del periodo de inscripción' })).toBeFocused();
         expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
     });
 }

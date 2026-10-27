@@ -144,3 +144,16 @@ LEFT JOIN periodos_grado pg ON pg.id = sg.id_periodo;
 
 Las pruebas automáticas cubren el caso sin periodo y el día exacto de corte sin
 necesidad de cambiar el reloj del equipo ni borrar solicitudes existentes.
+
+## Ajuste de presentación
+
+El formulario muestra una línea con el nombre del periodo y un botón circular `?`.
+El botón abre el diálogo informativo existente, conservando todos los detalles,
+las fechas y los próximos periodos del bloque original. Se cierra mediante X,
+Escape o clic fuera y devuelve el foco al botón de ayuda. La asignación automática
+y las validaciones del backend mantienen su comportamiento.
+
+Validación del ajuste: generación de tipos de Next.js y `tsc --noEmit` correctos.
+Las pruebas de navegador se actualizaron para abrir el modal y comprobar sus
+cierres, pero no pudieron ejecutarse en este entorno: Chromium no está instalado
+y su descarga devolvió un ZIP incompleto. No se reportan como aprobadas.
