@@ -314,6 +314,28 @@
     margin-bottom: var(--space-6);
 }
 
+.accionesPanel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.botonIcono {
+    width: 44px;
+    padding: 0;
+}
+
+.botonIcono[aria-expanded="true"] {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent);
+}
+
+/* El atributo hidden debe ganar al layout del panel. */
+.contenidoFiltros[hidden] {
+    display: none;
+}
+
 .descripcionFiltros {
     margin-bottom: var(--space-4);
     color: var(--color-text-secondary);
@@ -386,13 +408,17 @@
     margin-top: var(--space-3);
 }
 
+/* Gestión de periodos: formulario y listado dentro del diálogo */
 .gestionPeriodos {
-    margin-top: var(--space-5);
-    padding-top: var(--space-5);
-    border-top: 1px solid var(--color-border);
+    display: grid;
+    gap: var(--space-6);
 }
 
-.cabeceraGestion {
+.bloqueGestion {
+    min-width: 0;
+}
+
+.cabeceraBloque {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -400,24 +426,21 @@
     gap: var(--space-2) var(--space-4);
 }
 
-.cabeceraGestion h3 {
+.cabeceraBloque h3 {
     color: var(--color-title);
     font-size: 16px;
     font-weight: 700;
 }
 
-.cabeceraGestion p {
-    max-width: 65ch;
-    color: var(--color-text-secondary);
-    font-size: 14px;
-    line-height: 1.5;
-}
-
 .formPeriodo {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
     gap: var(--space-4);
-    padding: var(--space-4) 0;
+    margin-top: var(--space-4);
+}
+
+.campoAncho {
+    grid-column: 1 / -1;
 }
 
 .accionesFormulario {
@@ -433,9 +456,16 @@
     font-size: 14px;
 }
 
+.textoSinPeriodos {
+    margin-top: var(--space-4);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
 .listaPeriodos {
     display: grid;
     gap: var(--space-2);
+    margin-top: var(--space-4);
     list-style: none;
 }
 
@@ -465,8 +495,14 @@
 }
 
 @media (min-width: 900px) {
-    .rejillaFiltros {
+    .rejillaFiltros,
+    .gestionPeriodos {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .bloqueGestion + .bloqueGestion {
+        padding-left: var(--space-6);
+        border-left: 1px solid var(--color-border);
     }
 }
 
