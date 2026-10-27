@@ -19,7 +19,9 @@ página.
 - **Periodos:** el botón Gestionar periodos abre un diálogo modal dividido en dos
   secciones: el formulario (nombre, fechas de inicio, finalización y graduación,
   estado) y el listado de periodos con la acción Editar. Al abrir el diálogo o al
-  pulsar Editar, el foco pasa al primer campo del formulario.
+  pulsar Editar, el foco pasa al primer campo del formulario. El listado tiene su
+  propio desplazamiento vertical, de modo que el formulario permanece visible
+  mientras se recorren los periodos registrados.
 - **Accesibilidad del diálogo:** usa `<dialog>` nativo con `showModal`, atrapa el
   foco, se cierra con Esc o con un clic en el fondo y devuelve el foco al botón que
   lo abrió.
@@ -47,12 +49,13 @@ npx playwright test e2e/base.spec.ts e2e/colores.spec.ts
 Resultados comprobados al preparar el parche:
 
 - ESLint y `next build` pasan.
-- `e2e/dashboard.spec.ts`: 28 pruebas aprobadas. Incluyen accesibilidad y
+- `e2e/dashboard.spec.ts`: 29 pruebas aprobadas. Incluyen accesibilidad y
   desborde en 320, 360, 768 y 1280 px, en tema claro y oscuro, con los filtros
   desplegados y el diálogo de periodos abierto.
 - `e2e/base.spec.ts` y `e2e/colores.spec.ts`: 35 pruebas aprobadas.
 - Las pruebas nuevas cubren el panel desplegable, el filtro de nivel, el rango de
-  fechas, la creación de un periodo desde el modal y su edición desde el listado.
+  fechas, la creación de un periodo desde el modal, su edición desde el listado y
+  el desplazamiento independiente del listado de periodos.
 - Suite completa: 286 pruebas aprobadas y los 3 fallos preexistentes descritos
   abajo.
 
