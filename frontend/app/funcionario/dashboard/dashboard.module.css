@@ -331,9 +331,40 @@
     border-color: var(--color-accent);
 }
 
-/* El atributo hidden debe ganar al layout del panel. */
-.contenidoFiltros[hidden] {
-    display: none;
+/*
+ * Apertura y cierre suaves: la fila del grid pasa de 0fr a 1fr y el contenido se recorta.
+ * visibility se retrasa al cerrar para que la animación se vea completa.
+ */
+.envolturaFiltros {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        grid-template-rows var(--duracion) var(--ease-out),
+        opacity var(--duracion-rapida) ease,
+        visibility 0s linear var(--duracion);
+}
+
+.envolturaAbierta {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+    transition:
+        grid-template-rows var(--duracion) var(--ease-out),
+        opacity var(--duracion-rapida) ease,
+        visibility 0s;
+}
+
+.contenidoFiltros {
+    min-height: 0;
+    overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .envolturaFiltros {
+        transition: none;
+    }
 }
 
 .descripcionFiltros {
