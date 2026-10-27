@@ -16,6 +16,10 @@
     margin-bottom: var(--space-4);
 }
 
+.cabeceraSinMargen .cabecera {
+    margin-bottom: 0;
+}
+
 .titulo {
     color: var(--color-title);
     font-size: 17px;
