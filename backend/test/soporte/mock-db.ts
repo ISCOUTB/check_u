@@ -5,6 +5,7 @@ export function crearMockDatabaseService() {
     solicitudes: [
       {
         id_solicitud: 1,
+        id_periodo: '11111111-1111-4111-8111-111111111111',
         id_estudiante: 1,
         tipo_solicitud: 'PREGRADO',
         estado: 'BORRADOR',
