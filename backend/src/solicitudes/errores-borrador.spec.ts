@@ -102,4 +102,12 @@ describe('Errores del borrador (Tarea 33)', () => {
       expect(JSON.stringify(res)).not.toContain('DATO PRIVADO!');
     }
   });
+  it('distingue ausencia de periodo de una solicitud ya enviada', () => {
+    const error = new ConflictException({ codigo: 'SIN_PERIODO_DISPONIBLE', message: 'No propagar texto arbitrario' });
+    const res = traducirErrorBorrador(error);
+    expect(res.getStatus()).toBe(409);
+    expect(res.getResponse()).toMatchObject({ codigo: 'SIN_PERIODO_DISPONIBLE' });
+    expect(JSON.stringify(res.getResponse())).not.toContain('arbitrario');
+  });
+
 });
