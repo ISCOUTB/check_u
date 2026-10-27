@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { ANCHOS, revisarAxe, revisarPagina, sesionComo, TEMAS } from "./soporte";
+import { ANCHOS, API, PERIODO_DEMO, revisarAxe, revisarPagina, sesionComo, TEMAS } from "./soporte";
 
 const DASHBOARD = "/funcionario/dashboard";
 
@@ -142,6 +142,42 @@ test.describe("dashboard", () => {
         await expect(dialogo.getByRole("status")).toHaveText("Periodo guardado correctamente.");
         await expect(dialogo.getByRole("list", { name: "Periodos de grado registrados" })).toContainText("Grado octubre 2026 ajustado");
         await expect(dialogo.getByRole("heading", { name: "Nuevo periodo" })).toBeVisible();
+    });
+
+    test("el formulario queda fijo y el listado de periodos tiene scroll propio", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        const extras = Array.from({ length: 12 }, (_, i) => ({
+            ...PERIODO_DEMO,
+            id: `periodo-extra-${i}`,
+            nombre: `Periodo cerrado ${i + 1}`,
+            estado: "CERRADO" as const,
+        }));
+        // Este mock solo reemplaza el GET inicial; POST y PATCH siguen usando el de soporte.
+        await page.route(`${API}/periodos-grado`, (ruta) =>
+            ruta.request().method() === "GET"
+                ? ruta.fulfill({ status: 200, json: [PERIODO_DEMO, ...extras] })
+                : ruta.fallback(),
+        );
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.goto(DASHBOARD);
+        await page.getByRole("button", { name: "Gestionar periodos" }).click();
+        const dialogo = page.getByRole("dialog", { name: "Gestión de periodos de grado" });
+        const lista = dialogo.getByRole("list", { name: "Periodos de grado registrados" });
+        await expect(lista).toBeVisible();
+        const medida = await lista.evaluate((elemento) => {
+            const estilos = getComputedStyle(elemento);
+            return { scrollHeight: elemento.scrollHeight, clientHeight: elemento.clientHeight, overflowY: estilos.overflowY };
+        });
+        expect(medida.overflowY).toBe("auto");
+        expect(medida.scrollHeight).toBeGreaterThan(medida.clientHeight);
+
+        const tituloFormulario = dialogo.getByRole("heading", { name: "Nuevo periodo" });
+        const antes = await tituloFormulario.boundingBox();
+        await lista.evaluate((elemento) => { elemento.scrollTop = elemento.scrollHeight; });
+        const despues = await tituloFormulario.boundingBox();
+        // Tolerancia de 2 px por el redondeo subpíxel del diálogo.
+        expect(Math.abs((despues?.y ?? 0) - (antes?.y ?? 0))).toBeLessThanOrEqual(2);
+        await expect(tituloFormulario).toBeVisible();
     });
 
     test("a 1280px es una tabla con encabezados; a 360px son tarjetas", async ({ page }) => {
