@@ -4,7 +4,7 @@ import { sesionComo } from "./soporte";
 test.describe("base", () => {
     for (const [ruta, rol, titulo] of [
         ["/estudiante/home", "estudiante", "Inicio · CheckU"],
-        ["/funcionario/dashboard", "funcionario", "Dashboard de preinscripciones · CheckU"],
+        ["/funcionario/dashboard", "funcionario", "Dashboard de solicitudes de grado · CheckU"],
         ["/funcionario/detalle_preinscripcion/GR-2026-001", "funcionario", "Detalle de preinscripción · CheckU"],
         ["/connect", null, "Prueba de conexión · CheckU"],
     ] as const) {

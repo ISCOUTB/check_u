@@ -140,7 +140,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
-    margin: var(--space-5) 0;
+    margin: var(--space-2) 0 0;
 }
 
 .filtro {
@@ -309,20 +309,103 @@
     }
 }
 
-/* Filtros de nivel, periodo y fechas */
-.cabeceraPeriodo {
+/* Panel de filtros: periodo, nivel, fechas y estado en un solo bloque */
+.panelFiltros {
+    margin-bottom: var(--space-6);
+}
+
+.accionesPanel {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    margin-bottom: var(--space-3);
-    font-weight: 600;
+    gap: var(--space-2);
+}
+
+.botonIcono {
+    width: 44px;
+    padding: 0;
+}
+
+.botonIcono[aria-expanded="true"] {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent);
+}
+
+/*
+ * Apertura y cierre suaves: la fila del grid pasa de 0fr a 1fr y el contenido se recorta.
+ * visibility se retrasa al cerrar para que la animación se vea completa.
+ */
+.envolturaFiltros {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        grid-template-rows var(--duracion) var(--ease-out),
+        opacity var(--duracion-rapida) ease,
+        visibility 0s linear var(--duracion);
+}
+
+.envolturaAbierta {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+    transition:
+        grid-template-rows var(--duracion) var(--ease-out),
+        opacity var(--duracion-rapida) ease,
+        visibility 0s;
+}
+
+.contenidoFiltros {
+    min-height: 0;
+    overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .envolturaFiltros {
+        transition: none;
+    }
+}
+
+.descripcionFiltros {
+    margin-bottom: var(--space-4);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.rejillaFiltros {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.grupoFiltro {
+    min-width: 0;
+    min-inline-size: 0;
+    padding: var(--space-4);
+    background: var(--color-surface-muted);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+}
+
+.grupoFiltro legend {
+    padding: 0 var(--space-2);
+    color: var(--color-title);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.grupoFiltro > .control {
+    margin-top: var(--space-2);
+}
+
+.grupoFiltro .textoSecundario {
+    margin-top: var(--space-2);
 }
 
 .control {
     display: block;
-    width: min(100%, 420px);
+    width: 100%;
     min-height: 44px;
     padding: 0 var(--space-3);
     color: var(--color-text);
@@ -330,35 +413,17 @@
     border: 1px solid var(--color-border-control);
     border-radius: var(--radius-control);
     font: inherit;
+    font-size: 16px;
 }
 
-.grupoFiltros {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+.camposFecha {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
     gap: var(--space-3);
-    margin-top: var(--space-4);
+    margin-top: var(--space-2);
 }
 
-.grupoFiltros > label {
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.grupoFiltros .control {
-    width: min(100%, 220px);
-}
-
-.filtroFechas {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: end;
-    gap: var(--space-3);
-    margin: var(--space-4) 0;
-}
-
-.filtroFechas label,
-.formPeriodo label {
+.campo {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -367,22 +432,46 @@
     font-weight: 500;
 }
 
-.filtroFechas input,
-.formPeriodo input {
-    min-height: 44px;
-    padding: 0 var(--space-3);
-    border: 1px solid var(--color-border-control);
-    border-radius: var(--radius-control);
-    color: var(--color-text);
-    background: var(--color-surface);
-    font: inherit;
+.accionesFiltro {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+/* Gestión de periodos: formulario y listado dentro del diálogo */
+.gestionPeriodos {
+    display: grid;
+    gap: var(--space-6);
+}
+
+.bloqueGestion {
+    min-width: 0;
+}
+
+.cabeceraBloque {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+}
+
+.cabeceraBloque h3 {
+    color: var(--color-title);
+    font-size: 16px;
+    font-weight: 700;
 }
 
 .formPeriodo {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
     gap: var(--space-4);
-    padding: var(--space-4) 0;
+    margin-top: var(--space-4);
+}
+
+.campoAncho {
+    grid-column: 1 / -1;
 }
 
 .accionesFormulario {
@@ -392,9 +481,29 @@
     gap: var(--space-2);
 }
 
+.mensajePeriodo {
+    grid-column: 1 / -1;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+.textoSinPeriodos {
+    margin-top: var(--space-4);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+/* El listado tiene su propio scroll para que el formulario no se desplace con él. */
 .listaPeriodos {
     display: grid;
     gap: var(--space-2);
+    max-height: min(52vh, 480px);
+    margin-top: var(--space-4);
+    padding-right: var(--space-2);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: var(--color-border-control) transparent;
+    scrollbar-width: thin;
     list-style: none;
 }
 
@@ -414,27 +523,41 @@
 
 .listaPeriodos small {
     color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
 }
 
 .error {
     margin-top: var(--space-2);
-    color: var(--color-danger, #b42318);
+    color: var(--status-invalid-text);
     font-size: 14px;
 }
 
-@media (max-width: 560px) {
-    .filtroFechas {
-        align-items: stretch;
-        flex-direction: column;
+@media (min-width: 900px) {
+    .rejillaFiltros,
+    .gestionPeriodos {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .filtroFechas label,
-    .filtroFechas input,
-    .filtroFechas > button {
+    .bloqueGestion + .bloqueGestion {
+        padding-left: var(--space-6);
+        border-left: 1px solid var(--color-border);
+    }
+}
+
+@media (max-width: 560px) {
+    .accionesFiltro > button {
         width: 100%;
+    }
+
+    .listaPeriodos {
+        max-height: 42vh;
     }
 
     .listaPeriodos li {
         align-items: flex-start;
+    }
+
+    .listaPeriodos li > button {
+        flex-shrink: 0;
     }
 }

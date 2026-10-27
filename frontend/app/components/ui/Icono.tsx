@@ -48,6 +48,7 @@ const TRAZOS = {
         </>
     ),
     flecha_abajo: <path d="m6.5 9.5 5.5 5.5 5.5-5.5" />,
+    filtro: <path d="M4 5.5h16l-6.25 7.5v6l-3.5 1.5v-7.5L4 5.5Z" />,
     documento: (
         <>
             <path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8L14 3.5Z" />
