@@ -51,8 +51,8 @@ export interface PerfilEstudianteDTO {
 
 export interface ProgramaSolicitudDTO {
   orden: number;
-  programa: string;
-  modalidad: string;
+  programa?: string;
+  modalidad?: string;
   tipoOpcionGrado?: string;
 }
 
