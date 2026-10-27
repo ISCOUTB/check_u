@@ -324,7 +324,7 @@ export default function Dashboard() {
                             </div>
                             {periodos.length === 0
                                 ? <p className={styles.textoSinPeriodos}>Aún no hay periodos registrados. Crea el primero con el formulario.</p>
-                                : <ul className={styles.listaPeriodos} aria-label="Periodos de grado registrados">{periodos.map((p) => <li key={p.id}><span><strong>{p.nombre} · {p.estado}</strong><small>Recepción: {p.fechaInicio} – {p.fechaFin} · Graduación: {p.fechaGraduacion}</small></span><Button variante="secundario" onClick={() => editarPeriodo(p)} aria-label={`Editar ${p.nombre}`}>Editar</Button></li>)}</ul>}
+                                : <ul className={styles.listaPeriodos} aria-label="Periodos de grado registrados" tabIndex={0}>{periodos.map((p) => <li key={p.id}><span><strong>{p.nombre} · {p.estado}</strong><small>Recepción: {p.fechaInicio} – {p.fechaFin} · Graduación: {p.fechaGraduacion}</small></span><Button variante="secundario" onClick={() => editarPeriodo(p)} aria-label={`Editar ${p.nombre}`}>Editar</Button></li>)}</ul>}
                         </section>
                     </div>
                 </Dialog>
