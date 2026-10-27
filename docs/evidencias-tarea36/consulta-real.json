@@ -1,0 +1,488 @@
+{
+  "id": "1",
+  "estadoSolicitud": "EN_PROCESO",
+  "estadoAnalisis": "registrado",
+  "estudiante": {
+    "codigo": "T00000001",
+    "nombre": "Estudiante Prueba",
+    "tipoDocumento": "CC",
+    "numeroDocumento": "1000000001",
+    "fechaNacimiento": "",
+    "programa": "Ingeniería",
+    "facultad": "",
+    "nivel": "PREGRADO",
+    "correo": "lizapata@utb.edu.co",
+    "telefono": "",
+    "ciudad": "",
+    "fechaSolicitud": "Mon Oct 26 2026 22:48:52 GMT-0500 (hora estándar de Colombia)"
+  },
+  "informacion": {
+    "nombres": "Estudiante",
+    "apellidos": "Prueba",
+    "codigoEstudiantil": "T00000001",
+    "correo": "lizapata@utb.edu.co",
+    "tipoDocumento": "CC",
+    "numeroDocumento": "1000000001",
+    "fechaNacimiento": "",
+    "genero": "",
+    "telefonoFijo": "",
+    "telefonoCelular": "",
+    "departamento": "",
+    "ciudad": "",
+    "direccion": "",
+    "programa": "Ingeniería",
+    "modalidad": "PRESENCIAL",
+    "tipoOpcionGrado": "TRABAJO_DE_GRADO",
+    "tieneSegundoPrograma": false,
+    "segundoPrograma": "",
+    "modalidadSegundoPrograma": "",
+    "tipoOpcionGradoSegundo": "",
+    "conoceRegistroSaberPro": false,
+    "numeroRegistroSaberPro": "",
+    "fechaExamenSaberPro": "",
+    "esEmpleadoUtb": false,
+    "tipoContrato": "",
+    "esHijoEmpleadoUtb": false,
+    "nivelEstudiosAlcanzado": "",
+    "tituloObtenido": "",
+    "esEgresadoPregradoUtb": false,
+    "cargos": []
+  },
+  "documentos": [
+    {
+      "id": "2",
+      "tipo": "academic_evaluation",
+      "orden": 1,
+      "nombre": "Evaluación de Grado (Banner)",
+      "descripcion": "academic_evaluation.pdf",
+      "fileName": "academic_evaluation.pdf",
+      "resultados": [
+        {
+          "estado": "no_valido",
+          "mensaje": "Consulta las observaciones del análisis documental."
+        }
+      ],
+      "analisis": {
+        "rules": [
+          {
+            "rule": "academic_evaluation_document",
+            "errors": [],
+            "result": "no_cumple",
+            "message": "El documento analizado no corresponde a una Evaluación de Grado expedida por Banner.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": null
+          },
+          {
+            "rule": "required_fields_present",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el documento no se identificó como Evaluación de Grado.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          },
+          {
+            "rule": "curriculum_compliance",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el documento no se identificó como Evaluación de Grado.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          }
+        ],
+        "errors": [
+          "El documento analizado no corresponde a una Evaluación de Grado expedida por Banner."
+        ],
+        "mensaje": "Consulta las observaciones del análisis documental.",
+        "timestamp": "2026-10-26T22:48:54-05:00",
+        "id_student": "T00000001",
+        "type_document": "academic_evaluation",
+        "document_order": 1,
+        "extracted_data": {
+          "motivo": {
+            "value": "El documento analizado no corresponde a una Evaluación de Grado expedida por Banner.",
+            "confidence": 1
+          },
+          "program": {
+            "value": null,
+            "confidence": null
+          },
+          "max_credits": {
+            "value": null,
+            "confidence": null
+          },
+          "code_student": {
+            "value": null,
+            "confidence": null
+          },
+          "general_result": {
+            "value": "no_cumple",
+            "confidence": 1
+          },
+          "credits_approved": {
+            "value": null,
+            "confidence": null
+          },
+          "full_name_student": {
+            "value": null,
+            "confidence": null
+          }
+        },
+        "required_action": "upload_new_version",
+        "document_version": 1,
+        "validation_status": "completed",
+        "validation_version": "academic_evaluation@1.0.0",
+        "resubmission_reason": "El documento analizado no corresponde a una Evaluación de Grado expedida por Banner.",
+        "estado_general_motor": "invalid",
+        "resubmission_allowed": true,
+        "document_classification": "invalid"
+      },
+      "expiraEn": "2026-12-11T05:00:00.000Z",
+      "archivoDisponible": true,
+      "resubmission_allowed": false
+    },
+    {
+      "id": "4",
+      "tipo": "estampilla_pro_cultura",
+      "orden": 1,
+      "nombre": "Estampilla Pro-Cultura",
+      "descripcion": "estampilla_pro_cultura.pdf",
+      "fileName": "estampilla_pro_cultura.pdf",
+      "resultados": [
+        {
+          "estado": "no_valido",
+          "mensaje": "Consulta las observaciones del análisis documental."
+        }
+      ],
+      "analisis": {
+        "rules": [
+          {
+            "rule": "payment_certificate_document",
+            "errors": [],
+            "result": "no_cumple",
+            "message": "El archivo no es un certificado de pago de la Estampilla Pro-Cultura. Sube el certificado de pago que descargaste de la Gobernación de Bolívar.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": null
+          },
+          {
+            "rule": "required_fields_present",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como un certificado de pago.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          },
+          {
+            "rule": "pro_cultura_paid",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como un certificado de pago.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          },
+          {
+            "rule": "official_record",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como un certificado de pago.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          },
+          {
+            "rule": "official_record_matches",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como un certificado de pago.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          }
+        ],
+        "errors": [],
+        "mensaje": "Consulta las observaciones del análisis documental.",
+        "timestamp": "2026-10-26T22:48:54-05:00",
+        "id_student": "T00000001",
+        "type_document": "estampilla_pro_cultura",
+        "document_order": 1,
+        "extracted_data": {
+          "full_name": {
+            "value": null,
+            "confidence": null
+          },
+          "payment_date": {
+            "value": null,
+            "confidence": null
+          },
+          "receipt_number": {
+            "value": null,
+            "confidence": null
+          },
+          "pro_cultura_amount": {
+            "value": null,
+            "confidence": null
+          },
+          "identification_number": {
+            "value": null,
+            "confidence": null
+          }
+        },
+        "required_action": "upload_new_version",
+        "document_version": 1,
+        "validation_status": "completed",
+        "validation_version": "estampilla_pro_cultura@1.1.0",
+        "resubmission_reason": "El archivo no es un certificado de pago de la Estampilla Pro-Cultura. Sube el certificado de pago que descargaste de la Gobernación de Bolívar.",
+        "estado_general_motor": "invalid",
+        "resubmission_allowed": true,
+        "document_classification": "invalid"
+      },
+      "expiraEn": "2026-12-11T05:00:00.000Z",
+      "archivoDisponible": true,
+      "resubmission_allowed": false
+    },
+    {
+      "id": "1",
+      "tipo": "identification",
+      "orden": 1,
+      "nombre": "Documento de identidad",
+      "descripcion": "identification.pdf",
+      "fileName": "identification.pdf",
+      "resultados": [
+        {
+          "estado": "no_valido",
+          "mensaje": "Consulta las observaciones del análisis documental."
+        }
+      ],
+      "analisis": {
+        "rules": [
+          {
+            "rule": "identification_document",
+            "errors": [],
+            "result": "no_cumple",
+            "message": "El archivo no es una cédula. Sube una foto o un PDF de tu cédula por ambas caras.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:52-05:00",
+            "no_evaluable_reason": null
+          },
+          {
+            "rule": "required_fields_present",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como una cédula.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:52-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          },
+          {
+            "rule": "machine_readable_code",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como una cédula.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:52-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          },
+          {
+            "rule": "image_quality",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como una cédula.",
+            "mandatory": false,
+            "timestamp": "2026-10-26T22:48:52-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          },
+          {
+            "rule": "rui_name_match",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como una cédula.",
+            "mandatory": false,
+            "timestamp": "2026-10-26T22:48:52-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          }
+        ],
+        "errors": [
+          "No se pudo leer ni el numero ni el nombre del documento. Puede que no sea una cedula, o que la imagen tenga muy poca resolucion."
+        ],
+        "mensaje": "Consulta las observaciones del análisis documental.",
+        "timestamp": "2026-10-26T22:48:52-05:00",
+        "id_student": "T00000001",
+        "type_document": "identification",
+        "document_order": 1,
+        "extracted_data": {
+          "sex": {
+            "value": null,
+            "confidence": null
+          },
+          "full_name": {
+            "value": null,
+            "confidence": null
+          },
+          "birth_date": {
+            "value": null,
+            "confidence": null
+          },
+          "identification_type": {
+            "value": null,
+            "confidence": null
+          },
+          "identification_number": {
+            "value": null,
+            "confidence": null
+          }
+        },
+        "required_action": "upload_new_version",
+        "document_version": 1,
+        "validation_status": "completed",
+        "validation_version": "cedula@1.0.0",
+        "resubmission_reason": "El archivo no es una cédula. Sube una foto o un PDF de tu cédula por ambas caras.",
+        "estado_general_motor": "invalid",
+        "resubmission_allowed": true,
+        "document_classification": "invalid"
+      },
+      "expiraEn": "2026-12-11T05:00:00.000Z",
+      "archivoDisponible": true,
+      "resubmission_allowed": false
+    },
+    {
+      "id": "3",
+      "tipo": "paz_y_salvo_bib",
+      "orden": 1,
+      "nombre": "Paz y Salvo de Biblioteca",
+      "descripcion": "paz_y_salvo_bib.pdf",
+      "fileName": "paz_y_salvo_bib.pdf",
+      "resultados": [
+        {
+          "estado": "por_revisar",
+          "mensaje": "La validación de Paz y Salvo de Biblioteca está pendiente de integración. Requiere revisión humana."
+        }
+      ],
+      "analisis": {
+        "rules": [],
+        "errors": [],
+        "mensaje": "La validación de Paz y Salvo de Biblioteca está pendiente de integración. Requiere revisión humana.",
+        "extracted_data": {},
+        "estado_procesamiento": "pendiente_integracion"
+      },
+      "expiraEn": "2026-12-11T05:00:00.000Z",
+      "archivoDisponible": true,
+      "resubmission_allowed": false
+    },
+    {
+      "id": "5",
+      "tipo": "saber_pro",
+      "orden": 1,
+      "nombre": "Resultados Saber Pro",
+      "descripcion": "saber_pro.pdf",
+      "fileName": "saber_pro.pdf",
+      "resultados": [
+        {
+          "estado": "no_valido",
+          "mensaje": "Consulta las observaciones del análisis documental."
+        }
+      ],
+      "analisis": {
+        "rules": [
+          {
+            "rule": "saber_pro_report",
+            "errors": [],
+            "result": "no_cumple",
+            "message": "El archivo no es un reporte de resultados Saber Pro. Sube el PDF descargado de icfes.gov.co.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": null
+          },
+          {
+            "rule": "required_fields_present",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como un reporte Saber Pro.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          },
+          {
+            "rule": "global_score_minimum",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como un reporte Saber Pro.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          },
+          {
+            "rule": "icfes_signature_intact",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como un reporte Saber Pro.",
+            "mandatory": true,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          },
+          {
+            "rule": "icfes_certificate_valid",
+            "errors": [],
+            "result": "no_evaluable",
+            "message": "No se evalúa porque el archivo no se pudo identificar como un reporte Saber Pro.",
+            "mandatory": false,
+            "timestamp": "2026-10-26T22:48:54-05:00",
+            "no_evaluable_reason": "missing_dependency"
+          }
+        ],
+        "errors": [],
+        "mensaje": "Consulta las observaciones del análisis documental.",
+        "timestamp": "2026-10-26T22:48:54-05:00",
+        "id_student": "T00000001",
+        "type_document": "saber_pro",
+        "document_order": 1,
+        "extracted_data": {
+          "exam_date": {
+            "value": null,
+            "confidence": null
+          },
+          "full_name": {
+            "value": null,
+            "confidence": null
+          },
+          "global_score": {
+            "value": null,
+            "confidence": null
+          },
+          "identification_type": {
+            "value": null,
+            "confidence": null
+          },
+          "registration_number": {
+            "value": null,
+            "confidence": null
+          },
+          "identification_number": {
+            "value": null,
+            "confidence": null
+          }
+        },
+        "required_action": "upload_new_version",
+        "document_version": 1,
+        "validation_status": "completed",
+        "validation_version": "saber_pro@1.0.0",
+        "resubmission_reason": "El archivo no es un reporte de resultados Saber Pro. Sube el PDF descargado de icfes.gov.co.",
+        "estado_general_motor": "invalid",
+        "resubmission_allowed": true,
+        "document_classification": "invalid"
+      },
+      "expiraEn": "2026-12-11T05:00:00.000Z",
+      "archivoDisponible": true,
+      "resubmission_allowed": false
+    }
+  ],
+  "politicaReenvios": {
+    "usados": 0,
+    "limite": 0,
+    "zona": "America/Bogota"
+  }
+}
