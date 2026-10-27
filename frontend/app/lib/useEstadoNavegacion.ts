@@ -37,11 +37,14 @@ export function useEstadoNavegacion(
 
     let vigente = true;
 
+
+
     void (async () => {
       try {
         const estado = await obtenerEstadoNavegacion();
         if (vigente) {
           setData(estado);
+      
         }
       } catch (e) {
         if (vigente) {
