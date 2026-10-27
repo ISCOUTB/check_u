@@ -1,4 +1,7 @@
+import type { ContextoPeriodo } from '../periodos/asignacion-periodo.js';
+
 export interface SolicitudResumen {
+  id_periodo?: string | null;
   id_solicitud: number;
   tipo_solicitud: string;
   estado: string;
@@ -18,6 +21,7 @@ export interface RespuestaEnvioPreinscripcion {
 }
 
 export interface RespuestaGuardarBorrador {
+  periodos: ContextoPeriodo;
   ok: true;
   guardadoEn: string;
   id_solicitud: number;
@@ -26,6 +30,7 @@ export interface RespuestaGuardarBorrador {
 }
 
 export interface RespuestaObtenerBorrador {
+  periodos: ContextoPeriodo;
   ok: true;
   id_solicitud: number | null;
   estado: string | null;
