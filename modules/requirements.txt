@@ -14,3 +14,5 @@ numpy==2.4.6
 requests==2.34.2
 # Verificación de estampilla Pro-Cultura (Tarea 22)
 lxml>=5.0.0
+#flask
+Flask
