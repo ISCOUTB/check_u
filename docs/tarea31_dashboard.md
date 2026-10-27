@@ -8,7 +8,9 @@ página.
 
 - **Filtros de búsqueda:** tarjeta con un botón de icono (filtro) que despliega
   cuatro grupos (`fieldset` + `legend`): periodo, nivel, fechas y estado. El botón
-  usa `aria-expanded` y `aria-controls`, y el panel está oculto por defecto.
+  usa `aria-expanded` y `aria-controls`, y el panel está oculto por defecto. Con el
+  panel cerrado la cabecera no conserva el margen inferior; al abrirlo se recupera
+  el espaciado entre el título y los filtros.
 - **Fechas:** se conservan los campos inicial y final, la validación del rango y
   los botones Aplicar fechas y Limpiar fechas.
 - **Estado:** se conservan los botones con `aria-pressed` y la opción Todas.
