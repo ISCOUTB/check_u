@@ -102,7 +102,7 @@ describe('SolicitudesService', () => {
 
     it('lanza ConflictException si la solicitud ya fue enviada (estado EN_PROCESO)', async () => {
       mockClient.query.mockResolvedValueOnce({
-        rows: [{ id_solicitud: 10, tipo_solicitud: 'PREGRADO', estado: 'EN_PROCESO' }],
+        rows: [{ id_solicitud: 10, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'EN_PROCESO' }],
       });
 
       await expect(service.enviarPreinscripcion(1)).rejects.toThrow(ConflictException);
@@ -111,7 +111,7 @@ describe('SolicitudesService', () => {
     it('lanza BadRequestException si faltan datos obligatorios de usuario o perfil', async () => {
       mockClient.query
         .mockResolvedValueOnce({
-          rows: [{ id_solicitud: 10, tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+          rows: [{ id_solicitud: 10, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
         }) // solicitud
         .mockResolvedValueOnce({
           rows: [{ nombres: 'Lisandro', apellidos: '', codigo_estudiante: 'T00000001' }],
@@ -123,7 +123,7 @@ describe('SolicitudesService', () => {
     it('lanza BadRequestException si faltan documentos obligatorios en PREGRADO (menos de 5)', async () => {
       mockClient.query
         .mockResolvedValueOnce({
-          rows: [{ id_solicitud: 10, tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+          rows: [{ id_solicitud: 10, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
         }) // solicitud
         .mockResolvedValueOnce({
           rows: [{ nombres: 'Lisandro', apellidos: 'Zapata', codigo_estudiante: 'T00000001' }],
@@ -150,7 +150,7 @@ describe('SolicitudesService', () => {
     it('completa el flujo exitoso en PREGRADO (5 documentos)', async () => {
       mockClient.query
         .mockResolvedValueOnce({
-          rows: [{ id_solicitud: 102, tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+          rows: [{ id_solicitud: 102, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
         }) // solicitud
         .mockResolvedValueOnce({
           rows: [{ nombres: 'Lisandro', apellidos: 'Zapata', codigo_estudiante: 'T00000001' }],
@@ -212,7 +212,7 @@ describe('SolicitudesService', () => {
       const conSegundoPrograma = (documentos: { tipo_documento: string; orden?: number }[]) =>
         mockClient.query
           .mockResolvedValueOnce({
-            rows: [{ id_solicitud: 103, tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+            rows: [{ id_solicitud: 103, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
           }) // solicitud
           .mockResolvedValueOnce({
             rows: [{ nombres: 'Ana', apellidos: 'Prueba', codigo_estudiante: 'T00000002' }],
@@ -258,7 +258,7 @@ describe('SolicitudesService', () => {
     it('completa el flujo exitoso en POSGRADO (3 documentos)', async () => {
       mockClient.query
         .mockResolvedValueOnce({
-          rows: [{ id_solicitud: 200, tipo_solicitud: 'POSGRADO', estado: 'BORRADOR' }],
+          rows: [{ id_solicitud: 200, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'POSGRADO', estado: 'BORRADOR' }],
         }) // solicitud
         .mockResolvedValueOnce({
           rows: [{ nombres: 'Ana', apellidos: 'Prueba', codigo_estudiante: 'T00000002' }],
@@ -300,7 +300,7 @@ describe('SolicitudesService', () => {
   describe('guardarBorrador (Inmutabilidad post-envío)', () => {
     it('lanza ConflictException si la solicitud está en EN_PROCESO (inmutabilidad post-envío)', async () => {
       mockClient.query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({
-        rows: [{ id_solicitud: 102, tipo_solicitud: 'PREGRADO', estado: 'EN_PROCESO' }],
+        rows: [{ id_solicitud: 102, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'EN_PROCESO' }],
       });
 
       await expect(service.guardarBorrador(1, { nivel: 'PREGRADO' })).rejects.toThrow(ConflictException);
@@ -310,7 +310,7 @@ describe('SolicitudesService', () => {
       mockClient.query
         .mockResolvedValueOnce({ rows: [] }) // bloqueo de usuario
         .mockResolvedValueOnce({
-          rows: [{ id_solicitud: 102, tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+          rows: [{ id_solicitud: 102, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
         })
         .mockResolvedValueOnce({ rows: [{ fecha_actualizacion: new Date() }] })
         .mockResolvedValue({ rows: [] });
@@ -338,7 +338,7 @@ describe('SolicitudesService', () => {
       beforeEach(() => {
         mockClient.query
           .mockResolvedValueOnce({
-            rows: [{ id_solicitud: 102, tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+            rows: [{ id_solicitud: 102, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
           })
           .mockResolvedValue({ rows: [] });
       });
