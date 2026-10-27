@@ -14,6 +14,7 @@
     justify-content: space-between;
     gap: var(--space-3);
     margin-bottom: var(--space-4);
+    transition: margin-bottom var(--duracion) var(--ease-out);
 }
 
 .cabeceraSinMargen .cabecera {
