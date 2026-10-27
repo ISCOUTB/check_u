@@ -15,6 +15,7 @@ import { SolicitudesService } from './solicitudes.service.js';
 import type {
   DatosEnvioPreinscripcion,
   RespuestaEnvioPreinscripcion,
+  RespuestaEstadoNavegacion,
   RespuestaGuardarBorrador,
   RespuestaSolicitudEstudiante,
 } from './solicitudes.types.js';
@@ -34,6 +35,14 @@ export class SolicitudesController {
     // El identificador del estudiante proviene estrictamente de la sesión.
     // Ignora cualquier identificador enviado por el cliente en query, params o body.
     return this.solicitudesService.obtenerSolicitudEstudiante(user.id);
+  }
+
+  @Get('solicitudes/estado')
+  async obtenerEstadoNavegacion(
+    @Req() req: Request,
+  ): Promise<RespuestaEstadoNavegacion> {
+    const user = this.obtenerEstudianteAutenticado(req);
+    return this.solicitudesService.obtenerEstadoNavegacion(user.id);
   }
 
   @Post('solicitudes/enviar')

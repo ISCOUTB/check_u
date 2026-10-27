@@ -95,3 +95,20 @@ export interface DatosEnvioPreinscripcion {
   documentos?: Record<string, DocumentoCargadoDTO> | DocumentoCargadoDTO[];
   claveIdempotencia?: string;
 }
+
+/** Estados de navegación del estudiante*/
+export type EstadoNavegacionSolicitud =
+  'SIN_SOLICITUD' | 'BORRADOR' | 'ENVIADA';
+
+export interface RespuestaEstadoNavegacion {
+  ok: true;
+  estado: EstadoNavegacionSolicitud;
+  /** Ruta del App Router a la que debe ir el frontend. */
+  destino:
+    | '/estudiante/bienvenida'
+    | '/estudiante/iniciar_preinscripcion'
+    | '/estudiante/home';
+  id_solicitud?: number;
+  /** PREGRADO | POSGRADO, desde tipo_solicitud. */
+  nivel?: string;
+}
