@@ -24,6 +24,7 @@ import SaberProVinculacion from "./secciones/SaberProVinculacion";
 import type { BorradorPreinscripcion } from "./tipos";
 import { useCambiosSinGuardar } from "./useCambiosSinGuardar";
 import { progreso as calcularProgreso, faltantes, seccionesDelNivel } from "./validacion";
+import PeriodoInscripcion, { type ContextoPeriodo } from "./PeriodoInscripcion";
 import styles from "./iniciar_preinscripcion.module.css";
 
 const NOMBRE_NIVEL: Record<Nivel, string> = { PREGRADO: "Pregrado", POSGRADO: "Posgrado" };
@@ -46,6 +47,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
     const { usuario, cargando } = useSesion("estudiante");
     const nivelPedido = nivelDesde(nivel);
 
+    const [periodos, setPeriodos] = useState<ContextoPeriodo | null>(null);
     const [borrador, setBorrador] = useState<BorradorPreinscripcion | null>(null);
     const [errorCarga, setErrorCarga] = useState(false);
     const [intento, setIntento] = useState(0);
@@ -86,6 +88,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                     return;
                 }
                 setBorrador(resultado.borrador);
+                setPeriodos(resultado.periodos ?? null);
             })
             .catch(() => {
                 if (vigente) setErrorCarga(true);
@@ -119,7 +122,8 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
         setGuardando(true);
         setErrorGuardado(null);
         try {
-            const { guardadoEn, id_solicitud } = await guardarBorrador(borrador);
+            const { guardadoEn, id_solicitud, periodos: periodosGuardados } = await guardarBorrador(borrador);
+            setPeriodos(periodosGuardados ?? null);
             setBorrador((actual) => (actual ? { ...actual, guardadoEn, id_solicitud } : actual));
             setGuardados((veces) => veces + 1);
             if (cambios.current === cambiosAlGuardar) setSucio(false);
@@ -210,6 +214,8 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                     titulo={titulo}
                     descripcion="Completa todos los campos obligatorios y adjunta los documentos requeridos en formato PDF. Puedes dejar vacíos los campos opcionales y guardar tu borrador para continuar más tarde. Recuerda enviar tu preinscripción antes de la fecha límite."
                 />
+
+                {borrador && <PeriodoInscripcion datos={periodos} />}
 
                 {/*
                  * Los diálogos van antes del formulario: al rechazarse el envío, el diálogo se cierra y
