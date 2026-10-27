@@ -1,4 +1,13 @@
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import {
+  AnalisisPreinscripcionService,
+  type PdfPreinscripcion,
+} from './analisis-preinscripcion.service.js';
+import {
+  BadRequestException,
+  UploadedFiles,
+  UseInterceptors,
   Body,
   Controller,
   ForbiddenException,
@@ -24,6 +33,7 @@ export class SolicitudesController {
   constructor(
     private readonly solicitudesService: SolicitudesService,
     private readonly authService: AuthService,
+    private readonly analisis: AnalisisPreinscripcionService,
   ) {}
 
   @Get('estudiante/solicitud')
@@ -36,13 +46,48 @@ export class SolicitudesController {
     return this.solicitudesService.obtenerSolicitudEstudiante(user.id);
   }
 
+  @Get('estudiante/solicitud/analisis')
+  async obtenerAnalisis(@Req() req: Request) {
+    return this.analisis.obtenerDetalle(
+      this.obtenerEstudianteAutenticado(req).id,
+    );
+  }
+
   @Post('solicitudes/enviar')
+  @UseInterceptors(
+    FilesInterceptor('documentos', 6, {
+      storage: memoryStorage(),
+      limits: { fileSize: 25 * 1024 * 1024, fieldSize: 1024 * 1024, fields: 3 },
+    }),
+  )
   async enviarPreinscripcion(
     @Req() req: Request,
-    @Body() body?: DatosEnvioPreinscripcion,
+    @Body() body: { datos?: string; tipos?: string },
+    @UploadedFiles() archivos?: Omit<PdfPreinscripcion, 'tipo'>[],
   ): Promise<RespuestaEnvioPreinscripcion> {
     const user = this.obtenerEstudianteAutenticado(req);
-    return this.solicitudesService.enviarPreinscripcion(user.id, body);
+    let datos: DatosEnvioPreinscripcion;
+    try {
+      datos = JSON.parse(body?.datos ?? 'null') as DatosEnvioPreinscripcion;
+    } catch {
+      throw new BadRequestException(
+        'El campo datos debe contener JSON válido.',
+      );
+    }
+    if (!datos || typeof datos !== 'object' || Array.isArray(datos))
+      throw new BadRequestException(
+        'Adjunta los datos y PDF de la preinscripción.',
+      );
+    if (typeof body.tipos !== 'string')
+      throw new BadRequestException('Falta la lista de tipos documentales.');
+    const tipos = body.tipos.split(',');
+    if (!archivos?.length || archivos.length !== tipos.length)
+      throw new BadRequestException('La cantidad de tipos y PDF no coincide.');
+    return this.solicitudesService.enviarPreinscripcion(
+      user.id,
+      datos,
+      archivos.map((a, i) => ({ ...a, tipo: tipos[i] })),
+    );
   }
 
   @Get('solicitudes/borrador')
