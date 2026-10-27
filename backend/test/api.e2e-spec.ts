@@ -181,6 +181,9 @@ describe('Borrador de solicitud (Tarea 28, PostgreSQL)', () => {
   beforeEach(async () => {
     const { crearDbBorrador } = await import('./soporte/db-borrador.js');
     base = await crearDbBorrador();
+    await base.db.exec(`INSERT INTO periodos_grado
+      (nombre, fecha_inicio, fecha_fin, fecha_graduacion)
+      VALUES ('Periodo de prueba', CURRENT_DATE - 30, CURRENT_DATE + 30, CURRENT_DATE + 60)`);
     const modulo = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DatabaseService)
       .useValue(base.servicio)
@@ -212,7 +215,10 @@ describe('Borrador de solicitud (Tarea 28, PostgreSQL)', () => {
     await agente
       .get('/api/solicitudes/borrador')
       .expect(200)
-      .expect({ ok: true, id_solicitud: null, estado: null, borrador: null });
+      .expect(res => {
+        expect(res.body).toMatchObject({ ok: true, id_solicitud: null, estado: null, borrador: null });
+        expect(res.body.periodos.periodoDisponible.nombre).toBe('Periodo de prueba');
+      });
     const res = await agente
       .post('/api/solicitudes/borrador')
       .send({ nivel: 'PREGRADO', perfil: {} })
