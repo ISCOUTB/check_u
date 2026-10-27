@@ -59,7 +59,7 @@ function BloqueNivel({
 export default function Bienvenida() {
   // Si la sesión no es de estudiante (ej. funcionario), useSesion redirige automáticamente.
   const router = useRouter();
-  const pathname = usePathname();
+
   const { usuario, cargando: cargandoSesion } = useSesion('estudiante');
   const {
     cargando: cargandoEstado,
@@ -99,6 +99,8 @@ export default function Bienvenida() {
     );
   }
 
+  const puedeIniciar = !data || data.estado === 'SIN_SOLICITUD';
+
   // TODO: Hoy /auth/me no devuelve el campo nivel en el usuario de sesión.
   // Si usuario.nivel está definido, se muestra únicamente el bloque de ese nivel para guiar al estudiante.
   // Si no está definido, se muestran ambos bloques (Pregrado y Posgrado).
@@ -124,27 +126,29 @@ export default function Bienvenida() {
           />
         </div>
 
-        <div
-          className={muestraAmbos ? styles.bloques : styles.bloquesUnico}
-          data-testid="bloques-nivel"
-        >
-          {mostrarPregrado && (
-            <BloqueNivel
-              nivel="PREGRADO"
-              titulo="Pregrado"
-              textoBoton="Iniciar preinscripción para pregrado"
-              documentos={DOCUMENTOS_REQUERIDOS.PREGRADO}
-            />
-          )}
-          {mostrarPosgrado && (
-            <BloqueNivel
-              nivel="POSGRADO"
-              titulo="Posgrado"
-              textoBoton="Iniciar preinscripción para posgrado"
-              documentos={DOCUMENTOS_REQUERIDOS.POSGRADO}
-            />
-          )}
-        </div>
+        {puedeIniciar && (
+          <div
+            className={muestraAmbos ? styles.bloques : styles.bloquesUnico}
+            data-testid="bloques-nivel"
+          >
+            {mostrarPregrado && (
+              <BloqueNivel
+                nivel="PREGRADO"
+                titulo="Pregrado"
+                textoBoton="Iniciar preinscripción para pregrado"
+                documentos={DOCUMENTOS_REQUERIDOS.PREGRADO}
+              />
+            )}
+            {mostrarPosgrado && (
+              <BloqueNivel
+                nivel="POSGRADO"
+                titulo="Posgrado"
+                textoBoton="Iniciar preinscripción para posgrado"
+                documentos={DOCUMENTOS_REQUERIDOS.POSGRADO}
+              />
+            )}
+          </div>
+        )}
       </main>
     </>
   );

@@ -32,20 +32,16 @@ export function useEstadoNavegacion(
 
   useEffect(() => {
     if (!habilitado) {
-      setCargando(false);
       return;
     }
 
     let vigente = true;
-    setCargando(true);
-    setError(null);
 
     void (async () => {
       try {
         const estado = await obtenerEstadoNavegacion();
         if (vigente) {
           setData(estado);
-          setError(null);
         }
       } catch (e) {
         if (vigente) {

@@ -82,6 +82,14 @@ export default function FormularioPreinscripcion({
 
   const nivelPedido = nivelDesde(nivel);
 
+  const nivelDesdeEstado =
+    estadoNav?.estado === 'BORRADOR' &&
+    (estadoNav.nivel === 'PREGRADO' || estadoNav.nivel === 'POSGRADO')
+      ? estadoNav.nivel
+      : null;
+
+  const nivelEfectivo = nivelDesdeEstado ?? nivelPedido;
+
   const [borrador, setBorrador] = useState<BorradorPreinscripcion | null>(null);
   const [errorCarga, setErrorCarga] = useState(false);
   const [intento, setIntento] = useState(0);
@@ -109,14 +117,14 @@ export default function FormularioPreinscripcion({
 
   useEffect(() => {
     if (!usuario) return;
-    if (!nivelPedido || (usuario.nivel && usuario.nivel !== nivelPedido)) {
+    if (!nivelEfectivo || (usuario.nivel && usuario.nivel !== nivelEfectivo)) {
       router.replace('/estudiante/bienvenida');
       return;
     }
 
     let vigente = true;
     cargarPreinscripcion(
-      nivelPedido,
+      nivelEfectivo,
       usuario.username,
       escenarioDesde(escenario),
     )
@@ -134,7 +142,7 @@ export default function FormularioPreinscripcion({
     return () => {
       vigente = false;
     };
-  }, [usuario, nivelPedido, escenario, router, intento]);
+  }, [usuario, nivelEfectivo, escenario, router, intento]);
 
   const cambiar = useCallback((cambio: Cambio) => {
     cambios.current += 1;
@@ -147,8 +155,8 @@ export default function FormularioPreinscripcion({
     [borrador],
   );
   const secciones = useMemo(
-    () => (nivelPedido ? seccionesDelNivel(nivelPedido) : []),
-    [nivelPedido],
+    () => (nivelEfectivo ? seccionesDelNivel(nivelEfectivo) : []),
+    [nivelEfectivo],
   );
   const errores = useMemo(
     () =>
@@ -271,8 +279,8 @@ export default function FormularioPreinscripcion({
     );
   }
 
-  const titulo = nivelPedido
-    ? `Preinscripción de grado · ${NOMBRE_NIVEL[nivelPedido]}`
+  const titulo = nivelEfectivo
+    ? `Preinscripción de grado · ${NOMBRE_NIVEL[nivelEfectivo]}`
     : 'Preinscripción de grado';
 
   return (
@@ -280,7 +288,7 @@ export default function FormularioPreinscripcion({
       <Navbar
         tipoUsuario={usuario.role}
         nombreUsuario={usuario.name}
-        nivel={nivelPedido ?? usuario.nivel}
+        nivel={nivelEfectivo ?? usuario.nivel}
       />
       <main
         id="contenido"
