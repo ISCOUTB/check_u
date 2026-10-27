@@ -4,6 +4,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import type { PoolClient } from 'pg';
+import { consultarContextoPeriodo, requerirPeriodoElegible } from '../periodos/asignacion-periodo.js';
 import { TypeDocument } from '../contratos/enums.js';
 import { validarBorrador, proyeccion, PERFIL, PREGRADO, POSGRADO, PROGRAMA, EXPERIENCIA } from './borrador.js';
 import { DatabaseService } from '../database/database.service.js';
@@ -46,7 +47,7 @@ export class SolicitudesService {
     idEstudiante: number,
   ): Promise<RespuestaSolicitudEstudiante> {
     const consulta = `
-      SELECT id_solicitud, tipo_solicitud, estado
+      SELECT id_solicitud, id_periodo, tipo_solicitud, estado
       FROM solicitud_grado
       WHERE id_estudiante = $1
       ORDER BY id_solicitud DESC
@@ -83,7 +84,7 @@ export class SolicitudesService {
     return this.databaseService.transaction(async (client) => {
       // 1. Obtener y bloquear la solicitud activa
       const resSolicitud = await client.query<SolicitudResumen>(
-        `SELECT id_solicitud, tipo_solicitud, estado
+        `SELECT id_solicitud, id_periodo, tipo_solicitud, estado
          FROM solicitud_grado
          WHERE id_estudiante = $1
          ORDER BY id_solicitud DESC
@@ -100,7 +101,7 @@ export class SolicitudesService {
           const insertRes = await client.query<SolicitudResumen>(
             `INSERT INTO solicitud_grado (id_estudiante, tipo_solicitud, estado)
              VALUES ($1, $2, 'BORRADOR')
-             RETURNING id_solicitud, tipo_solicitud, estado;`,
+             RETURNING id_solicitud, id_periodo, tipo_solicitud, estado;`,
             [idEstudiante, nivel],
           );
           solicitud = insertRes.rows[0];
@@ -114,6 +115,8 @@ export class SolicitudesService {
           `La solicitud ya ha sido enviada o no se encuentra en estado BORRADOR (estado actual: ${solicitud.estado})`,
         );
       }
+
+      await this.asegurarPeriodo(client, solicitud);
 
       // 2. Persistir datos del formulario si vienen en el payload
       if (payload) {
@@ -183,17 +186,19 @@ export class SolicitudesService {
           fecha_actualizacion: Date;
         }
       >(
-        `SELECT id_solicitud, tipo_solicitud, estado, segundo_programa, fecha_actualizacion
+        `SELECT id_solicitud, id_periodo, tipo_solicitud, estado, segundo_programa, fecha_actualizacion
          FROM solicitud_grado WHERE id_estudiante = $1 ORDER BY id_solicitud DESC LIMIT 1`,
         [idEstudiante],
       );
       const solicitud = res.rows[0];
+      const periodos = await consultarContextoPeriodo(client, solicitud?.id_periodo ?? null);
       if (!solicitud || solicitud.estado !== 'BORRADOR') {
         return {
           ok: true,
           id_solicitud: solicitud?.id_solicitud ?? null,
           estado: solicitud?.estado ?? null,
           borrador: null,
+          periodos,
         };
       }
       const id = solicitud.id_solicitud;
@@ -251,6 +256,7 @@ export class SolicitudesService {
         ok: true,
         id_solicitud: id,
         estado: 'BORRADOR',
+        periodos,
         borrador: {
           ...usuario.rows[0],
           nivel: solicitud.tipo_solicitud,
@@ -279,7 +285,7 @@ export class SolicitudesService {
         [idEstudiante],
       );
       const res = await client.query<SolicitudResumen>(
-        `SELECT id_solicitud, tipo_solicitud, estado FROM solicitud_grado
+        `SELECT id_solicitud, id_periodo, tipo_solicitud, estado FROM solicitud_grado
          WHERE id_estudiante = $1 ORDER BY id_solicitud DESC LIMIT 1 FOR UPDATE`,
         [idEstudiante],
       );
@@ -297,11 +303,12 @@ export class SolicitudesService {
       if (!solicitud) {
         const insert = await client.query<SolicitudResumen>(
           `INSERT INTO solicitud_grado (id_estudiante, tipo_solicitud, estado)
-           VALUES ($1, $2, 'BORRADOR') RETURNING id_solicitud, tipo_solicitud, estado`,
+           VALUES ($1, $2, 'BORRADOR') RETURNING id_solicitud, id_periodo, tipo_solicitud, estado`,
           [idEstudiante, nivel],
         );
         solicitud = insert.rows[0];
       }
+      await this.asegurarPeriodo(client, solicitud);
       const id = solicitud.id_solicitud;
       if (nivel !== solicitud.tipo_solicitud) {
         // Limpiar los hijos antes de cambiar el nivel, respetando los triggers SQL.
@@ -465,11 +472,23 @@ export class SolicitudesService {
         id_solicitud: id,
         estado: 'BORRADOR',
         mensaje: 'Borrador guardado exitosamente',
+        periodos: await consultarContextoPeriodo(client, solicitud.id_periodo!),
         guardadoEn: new Date(
           actualizado.rows[0].fecha_actualizacion,
         ).toISOString(),
       };
     });
+  }
+
+  private async asegurarPeriodo(client: PoolClient, solicitud: SolicitudResumen) {
+    if (solicitud.id_periodo) return;
+    // Incluye borradores históricos sin periodo: se vinculan una sola vez al siguiente guardado.
+    const idPeriodo = await requerirPeriodoElegible(client);
+    await client.query(
+      'UPDATE solicitud_grado SET id_periodo = $2 WHERE id_solicitud = $1 AND id_periodo IS NULL',
+      [solicitud.id_solicitud, idPeriodo],
+    );
+    solicitud.id_periodo = idPeriodo;
   }
 
   private async guardarCampos(
