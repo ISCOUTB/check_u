@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
+import { AnalisisPreinscripcionService, validarArchivos, type PdfPreinscripcion } from './analisis-preinscripcion.service.js';
 import type { PoolClient } from 'pg';
 import { consultarContextoPeriodo, requerirPeriodoElegible } from '../periodos/asignacion-periodo.js';
 import { TypeDocument } from '../contratos/enums.js';
@@ -41,7 +42,7 @@ function normalizarTipoDocumento(tipo: string): string {
 
 @Injectable()
 export class SolicitudesService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(private readonly databaseService: DatabaseService, private readonly analisis: AnalisisPreinscripcionService) {}
 
   async obtenerSolicitudEstudiante(
     idEstudiante: number,
@@ -80,8 +81,19 @@ export class SolicitudesService {
   async enviarPreinscripcion(
     idEstudiante: number,
     payload?: DatosEnvioPreinscripcion,
+    archivos: PdfPreinscripcion[] = [],
   ): Promise<RespuestaEnvioPreinscripcion> {
-    return this.databaseService.transaction(async (client) => {
+    validarArchivos(archivos);
+    // Primero guarda el borrador. Un fallo del motor no pierde los campos del estudiante.
+    const datos = validarBorrador(payload);
+    const tiposPermitidos = datos.nivel === 'POSGRADO' ? DOCUMENTOS_REQUERIDOS_POSGRADO : DOCUMENTOS_REQUERIDOS_PREGRADO;
+    const esperados = [...tiposPermitidos, ...(datos.nivel === 'PREGRADO' && datos.segundoPrograma ? ['estampilla_pro_cultura-2'] : [])];
+    if (archivos.length !== esperados.length || esperados.some(t => !archivos.some(a => a.tipo === t)))
+      throw new BadRequestException('Adjunta los documentos requeridos para tu nivel académico.');
+    const payloadReal = { ...datos, documentos: archivos.map(a => ({ id: a.tipo, nombre: a.originalname, tamano: a.buffer.length })) };
+    await this.guardarBorrador(idEstudiante, payloadReal);
+    const creados: string[] = [];
+    return this.databaseService.transaction<RespuestaEnvioPreinscripcion>(async (client) => {
       // 1. Obtener y bloquear la solicitud activa
       const resSolicitud = await client.query<SolicitudResumen>(
         `SELECT id_solicitud, id_periodo, tipo_solicitud, estado
@@ -118,16 +130,9 @@ export class SolicitudesService {
 
       await this.asegurarPeriodo(client, solicitud);
 
-      // 2. Persistir datos del formulario si vienen en el payload
-      if (payload) {
-        await this.persistirDatosFormulario(
-          client,
-          idEstudiante,
-          solicitud.id_solicitud,
-          solicitud.tipo_solicitud,
-          payload,
-        );
-      }
+      await client.query(`DELETE FROM documentos WHERE id_solicitud = $1 AND id_entrega IS NULL
+        AND NOT (tipo_documento || CASE WHEN orden = 2 THEN '-2' ELSE '' END = ANY($2::text[]))`,
+        [solicitud.id_solicitud, archivos.map(a => a.tipo)]);
 
       // 3. Validar completitud de campos obligatorios e información documental
       await this.validarRequisitosCompletos(
@@ -154,6 +159,9 @@ export class SolicitudesService {
         [idEntrega, solicitud.id_solicitud],
       );
 
+      await this.analisis.procesar(client, solicitud.id_solicitud, idEntrega, idEstudiante,
+        solicitud.tipo_solicitud, archivos, creados);
+
       // 6. Transicionar el estado de la solicitud a 'EN_PROCESO'
       await client.query(
         `UPDATE solicitud_grado
@@ -167,8 +175,11 @@ export class SolicitudesService {
         id_solicitud: solicitud.id_solicitud,
         id_entrega: idEntrega,
         estado: 'EN_PROCESO',
-        mensaje: 'Preinscripción registrada correctamente. Pendiente de análisis.',
+        mensaje: 'Preinscripción registrada. Consulta los resultados del análisis documental.',
       };
+    }).catch(async (error: unknown) => {
+      await this.analisis.descartar(creados);
+      throw error;
     });
   }
 
@@ -523,212 +534,6 @@ export class SolicitudesService {
       SET ${columnas.map((c) => `${c} = EXCLUDED.${c}`).join(', ')}`,
       [id, ...valores],
     );
-  }
-
-  private async persistirDatosFormulario(
-    client: PoolClient,
-    idEstudiante: number,
-    idSolicitud: number,
-    tipoSolicitud: string,
-    payload: DatosEnvioPreinscripcion,
-  ): Promise<void> {
-    // Actualizar datos básicos de usuario si se especificaron
-    if (payload.nombres || payload.apellidos || payload.codigoEstudiantil) {
-      await client.query(
-        `UPDATE usuarios
-         SET nombres = COALESCE(NULLIF($1, ''), nombres),
-             apellidos = COALESCE(NULLIF($2, ''), apellidos),
-             codigo_estudiante = COALESCE(NULLIF($3, ''), codigo_estudiante)
-         WHERE id_usuario = $4;`,
-        [
-          payload.nombres?.trim() ?? '',
-          payload.apellidos?.trim() ?? '',
-          payload.codigoEstudiantil?.trim() ?? '',
-          idEstudiante,
-        ],
-      );
-    }
-
-    // Persistir perfil_estudiante
-    if (payload.perfil) {
-      const p = payload.perfil;
-      await client.query(
-        `INSERT INTO perfil_estudiante (
-           id_usuario, tipo_documento_identidad, numero_documento,
-           fecha_nacimiento, genero, departamento_residencia, ciudad_residencia,
-           direccion_residencia, telefono_fijo, telefono_celular
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         ON CONFLICT (id_usuario) DO UPDATE SET
-           tipo_documento_identidad = EXCLUDED.tipo_documento_identidad,
-           numero_documento = EXCLUDED.numero_documento,
-           fecha_nacimiento = COALESCE(EXCLUDED.fecha_nacimiento, perfil_estudiante.fecha_nacimiento),
-           genero = COALESCE(EXCLUDED.genero, perfil_estudiante.genero),
-           departamento_residencia = COALESCE(EXCLUDED.departamento_residencia, perfil_estudiante.departamento_residencia),
-           ciudad_residencia = COALESCE(EXCLUDED.ciudad_residencia, perfil_estudiante.ciudad_residencia),
-           direccion_residencia = COALESCE(EXCLUDED.direccion_residencia, perfil_estudiante.direccion_residencia),
-           telefono_fijo = COALESCE(EXCLUDED.telefono_fijo, perfil_estudiante.telefono_fijo),
-           telefono_celular = COALESCE(EXCLUDED.telefono_celular, perfil_estudiante.telefono_celular);`,
-        [
-          idEstudiante,
-          p.tipoDocumento?.trim() || null,
-          p.numeroDocumento?.trim() || null,
-          p.fechaNacimiento?.trim() || null,
-          p.genero?.trim() || null,
-          p.departamento?.trim() || null,
-          p.ciudad?.trim() || null,
-          p.direccion?.trim() || null,
-          p.telefonoFijo?.trim() || null,
-          p.celular?.trim() || null,
-        ],
-      );
-    }
-
-    // Persistir solicitud_programa. El programa 2 solo se guarda si el estudiante respondió que sí:
-    // si no, se borra el que hubiera, para que la fila 2 siempre signifique "hay segundo programa"
-    // (y entonces se exige su estampilla, ver validarRequisitosCompletos).
-    if (payload.programas && Array.isArray(payload.programas)) {
-      const conSegundoPrograma = payload.segundoPrograma === true;
-      if (!conSegundoPrograma) {
-        await client.query(`DELETE FROM solicitud_programa WHERE id_solicitud = $1 AND orden = 2;`, [
-          idSolicitud,
-        ]);
-      }
-      for (const prog of payload.programas) {
-        if (prog.orden === 2 && !conSegundoPrograma) continue;
-        if (!prog.programa && !prog.modalidad) continue;
-        const tipoOpcion =
-          tipoSolicitud === 'POSGRADO'
-            ? null
-            : prog.tipoOpcionGrado?.trim() || null;
-
-        await client.query(
-          `INSERT INTO solicitud_programa (
-             id_solicitud, orden, programa, modalidad, tipo_opcion_grado
-           ) VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (id_solicitud, orden) DO UPDATE SET
-             programa = EXCLUDED.programa,
-             modalidad = EXCLUDED.modalidad,
-             tipo_opcion_grado = EXCLUDED.tipo_opcion_grado;`,
-          [
-            idSolicitud,
-            prog.orden,
-            prog.programa?.trim() || null,
-            prog.modalidad?.trim() || null,
-            tipoOpcion,
-          ],
-        );
-      }
-    }
-
-    // Persistir datos específicos de pregrado
-    if (tipoSolicitud === 'PREGRADO' && payload.pregrado) {
-      const preg = payload.pregrado;
-      const conoce = preg.conoceRegistroSaberPro ?? false;
-      const numSaberPro = conoce ? preg.numeroRegistroSaberPro?.trim() || null : null;
-      const esEmp = preg.esEmpleadoUtb ?? false;
-      const tipoContrato = esEmp ? preg.tipoContrato?.trim() || null : null;
-
-      await client.query(
-        `INSERT INTO informacion_pregrado (
-           id_solicitud, conoce_registro_saber_pro, numero_registro_saber_pro,
-           fecha_examen_saber_pro, es_empleado_utb, tipo_contrato, es_hijo_empleado_utb
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (id_solicitud) DO UPDATE SET
-           conoce_registro_saber_pro = EXCLUDED.conoce_registro_saber_pro,
-           numero_registro_saber_pro = EXCLUDED.numero_registro_saber_pro,
-           fecha_examen_saber_pro = EXCLUDED.fecha_examen_saber_pro,
-           es_empleado_utb = EXCLUDED.es_empleado_utb,
-           tipo_contrato = EXCLUDED.tipo_contrato,
-           es_hijo_empleado_utb = EXCLUDED.es_hijo_empleado_utb;`,
-        [
-          idSolicitud,
-          conoce,
-          numSaberPro,
-          preg.fechaExamenSaberPro?.trim() || null,
-          esEmp,
-          tipoContrato,
-          preg.esHijoDeEmpleadoUtb ?? false,
-        ],
-      );
-    }
-
-    // Persistir datos específicos de posgrado
-    if (tipoSolicitud === 'POSGRADO') {
-      if (payload.posgrado) {
-        const pos = payload.posgrado;
-        await client.query(
-          `INSERT INTO informacion_posgrado (
-             id_solicitud, nivel_estudios_alcanzado, titulo_obtenido, es_egresado_pregrado_utb
-           ) VALUES ($1, $2, $3, $4)
-           ON CONFLICT (id_solicitud) DO UPDATE SET
-             nivel_estudios_alcanzado = EXCLUDED.nivel_estudios_alcanzado,
-             titulo_obtenido = EXCLUDED.titulo_obtenido,
-             es_egresado_pregrado_utb = EXCLUDED.es_egresado_pregrado_utb;`,
-          [
-            idSolicitud,
-            pos.nivelEstudios?.trim() || null,
-            pos.tituloObtenido?.trim() || null,
-            pos.esEgresadoPregradoUtb ?? false,
-          ],
-        );
-      }
-
-      if (payload.experiencia && Array.isArray(payload.experiencia)) {
-        for (const exp of payload.experiencia) {
-          if (!exp.empresa && !exp.cargo) continue;
-          await client.query(
-            `INSERT INTO experiencia_laboral (
-               id_solicitud, orden, empresa, cargo, tiempo
-             ) VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (id_solicitud, orden) DO UPDATE SET
-               empresa = EXCLUDED.empresa,
-               cargo = EXCLUDED.cargo,
-               tiempo = EXCLUDED.tiempo;`,
-            [
-              idSolicitud,
-              exp.orden,
-              exp.empresa?.trim() || null,
-              exp.cargo?.trim() || null,
-              exp.tiempo?.trim() || null,
-            ],
-          );
-        }
-      }
-    }
-
-    // Persistir metadatos de documentos si vienen en el payload
-    if (payload.documentos) {
-      const docsArray: DocumentoCargadoDTO[] = Array.isArray(payload.documentos)
-        ? payload.documentos
-        : Object.values(payload.documentos);
-
-      for (const doc of docsArray) {
-        let idTipo = doc.tipo || doc.id;
-        let orden = 1;
-        if (doc.id && (doc.id.endsWith('-2') || doc.id === 'estampilla2')) {
-          idTipo = 'estampilla_pro_cultura';
-          orden = 2;
-        } else if (idTipo && (idTipo.endsWith('-2') || idTipo === 'estampilla2')) {
-          idTipo = 'estampilla_pro_cultura';
-          orden = 2;
-        }
-        if (!idTipo) continue;
-        const nombre = doc.nombre || `${idTipo}.pdf`;
-        const tamano = doc.tamano && doc.tamano > 0 ? doc.tamano : 1024;
-
-        await client.query(
-          `INSERT INTO documentos (
-             id_solicitud, tipo_documento, orden, nombre_original,
-             mime_type, tamano_bytes, version, estado
-           ) VALUES ($1, $2, $3, $4, 'application/pdf', $5, 1, 'CARGADO')
-           ON CONFLICT (id_solicitud, tipo_documento, orden, version) DO UPDATE SET
-             nombre_original = EXCLUDED.nombre_original,
-             tamano_bytes = EXCLUDED.tamano_bytes,
-             estado = 'CARGADO';`,
-          [idSolicitud, idTipo, orden, nombre, tamano],
-        );
-      }
-    }
   }
 
   private async validarRequisitosCompletos(
