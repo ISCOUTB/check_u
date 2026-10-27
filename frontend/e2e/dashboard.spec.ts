@@ -58,11 +58,16 @@ test.describe("dashboard", () => {
         await page.goto(DASHBOARD);
         const boton = page.getByRole("button", { name: "Mostrar filtros" });
         const cabecera = page.getByRole("heading", { name: "Filtros de búsqueda" }).locator("..");
+        const desplegable = page.locator("#panel-filtros");
         await expect(boton).toHaveAttribute("aria-expanded", "false");
         await expect(cabecera).toHaveCSS("margin-bottom", "0px");
+        await expect(desplegable).toHaveCSS("visibility", "hidden");
+        expect(await desplegable.evaluate((elemento) => getComputedStyle(elemento).transitionProperty)).toContain("grid-template-rows");
         await boton.click();
         await expect(page.getByRole("button", { name: "Ocultar filtros" })).toHaveAttribute("aria-expanded", "true");
         await expect(cabecera).toHaveCSS("margin-bottom", "16px");
+        await expect(desplegable).toHaveCSS("visibility", "visible");
+        await expect(desplegable).toHaveCSS("opacity", "1");
         const panel = page.getByRole("region", { name: "Filtros de búsqueda" });
         await expect(panel).toBeVisible();
         await expect(panel.getByLabel("Periodo de grado")).toBeVisible();
@@ -70,6 +75,9 @@ test.describe("dashboard", () => {
         await expect(panel.getByLabel("Fecha inicial")).toBeVisible();
         await expect(panel.getByLabel("Fecha final")).toBeVisible();
         await expect(panel.getByRole("group", { name: "Estado de la solicitud" })).toBeVisible();
+        await page.getByRole("button", { name: "Ocultar filtros" }).click();
+        await expect(desplegable).toHaveCSS("visibility", "hidden");
+        await expect(cabecera).toHaveCSS("margin-bottom", "0px");
     });
 
     test("el filtro de nivel académico sigue disponible", async ({ page }) => {
