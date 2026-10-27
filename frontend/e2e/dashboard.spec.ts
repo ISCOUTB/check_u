@@ -1,7 +1,11 @@
-import { expect, test } from "@playwright/test";
-import { ANCHOS, revisarPagina, sesionComo, TEMAS } from "./soporte";
+import { expect, test, type Page } from "@playwright/test";
+import { ANCHOS, revisarAxe, revisarPagina, sesionComo, TEMAS } from "./soporte";
 
 const DASHBOARD = "/funcionario/dashboard";
+
+async function abrirFiltros(page: Page): Promise<void> {
+    await page.getByRole("button", { name: "Mostrar filtros" }).click();
+}
 
 test.describe("dashboard", () => {
     for (const tema of TEMAS)
@@ -9,6 +13,20 @@ test.describe("dashboard", () => {
             test(`accesible y sin desborde (${tema}, ${ancho}px)`, async ({ page }) => {
                 await sesionComo(page, "funcionario");
                 await revisarPagina(page, DASHBOARD, tema, ancho);
+            });
+
+    for (const tema of TEMAS)
+        for (const ancho of ANCHOS)
+            test(`filtros desplegables y gestión de periodos accesibles (${tema}, ${ancho}px)`, async ({ page }) => {
+                await sesionComo(page, "funcionario");
+                await revisarPagina(page, DASHBOARD, tema, ancho);
+                await abrirFiltros(page);
+                await revisarAxe(page);
+                await page.getByRole("button", { name: "Gestionar periodos" }).click();
+                await expect(page.getByRole("dialog", { name: "Gestión de periodos de grado" })).toBeVisible();
+                await revisarAxe(page);
+                const desborde = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+                expect(desborde, "scroll horizontal en píxeles").toBeLessThanOrEqual(0);
             });
 
     test("un estudiante termina en su inicio", async ({ page }) => {
@@ -28,6 +46,7 @@ test.describe("dashboard", () => {
     test("los filtros indican cuál está activo y anuncian el conteo", async ({ page }) => {
         await sesionComo(page, "funcionario");
         await page.goto(DASHBOARD);
+        await abrirFiltros(page);
         const validas = page.getByRole("button", { name: "Válidas", exact: true });
         await validas.click();
         await expect(validas).toHaveAttribute("aria-pressed", "true");
@@ -37,6 +56,10 @@ test.describe("dashboard", () => {
     test("periodo, nivel, fechas y estado están en un mismo panel de filtros", async ({ page }) => {
         await sesionComo(page, "funcionario");
         await page.goto(DASHBOARD);
+        const boton = page.getByRole("button", { name: "Mostrar filtros" });
+        await expect(boton).toHaveAttribute("aria-expanded", "false");
+        await boton.click();
+        await expect(page.getByRole("button", { name: "Ocultar filtros" })).toHaveAttribute("aria-expanded", "true");
         const panel = page.getByRole("region", { name: "Filtros de búsqueda" });
         await expect(panel).toBeVisible();
         await expect(panel.getByLabel("Periodo de grado")).toBeVisible();
@@ -49,6 +72,7 @@ test.describe("dashboard", () => {
     test("el filtro de nivel académico sigue disponible", async ({ page }) => {
         await sesionComo(page, "funcionario");
         await page.goto(DASHBOARD);
+        await abrirFiltros(page);
         await page.getByLabel("Nivel académico").selectOption("POSGRADO");
         await expect(page.locator("[aria-live=polite]")).toHaveText("2 solicitudes");
         await expect(page.getByRole("cell", { name: "GR-2026-003", exact: true })).toBeVisible();
@@ -57,6 +81,7 @@ test.describe("dashboard", () => {
     test("el rango de fechas filtra la lista y se puede limpiar", async ({ page }) => {
         await sesionComo(page, "funcionario");
         await page.goto(DASHBOARD);
+        await abrirFiltros(page);
         await expect(page.locator("[aria-live=polite]")).toHaveText("3 solicitudes");
         await page.getByLabel("Fecha inicial").fill("2026-10-05");
         await page.getByLabel("Fecha final").fill("2026-10-31");
@@ -67,22 +92,45 @@ test.describe("dashboard", () => {
         await expect(page.locator("[aria-live=polite]")).toHaveText("3 solicitudes");
     });
 
-    test("crea un periodo de grado desde el dashboard", async ({ page }) => {
+    test("crea un periodo de grado desde el modal", async ({ page }) => {
         await sesionComo(page, "funcionario");
         await page.goto(DASHBOARD);
-        const gestionar = page.getByRole("button", { name: /periodos/i });
-        await expect(gestionar).toHaveAttribute("aria-expanded", "false");
+        const gestionar = page.getByRole("button", { name: "Gestionar periodos" });
+        await expect(gestionar).toHaveAttribute("aria-haspopup", "dialog");
         await gestionar.click();
-        await expect(gestionar).toHaveAttribute("aria-expanded", "true");
-        await expect(page.getByRole("heading", { name: "Gestión de periodos de grado" })).toBeVisible();
+        const dialogo = page.getByRole("dialog", { name: "Gestión de periodos de grado" });
+        await expect(dialogo).toBeVisible();
+        await expect(dialogo.getByRole("heading", { name: "Nuevo periodo" })).toBeVisible();
+        await expect(dialogo.getByRole("list", { name: "Periodos de grado registrados" })).toContainText("Grado octubre 2026");
         await expect(page.getByLabel("Nombre del periodo")).toBeFocused();
         await page.getByLabel("Nombre del periodo").fill("Grados noviembre 2026");
         await page.getByLabel("Fecha de inicio").fill("2026-11-01");
         await page.getByLabel("Fecha de finalización").fill("2026-11-30");
         await page.getByLabel("Fecha de graduación").fill("2026-12-15");
-        await page.getByRole("button", { name: "Registrar periodo" }).click();
-        await expect(page.getByRole("status")).toHaveText("Periodo guardado correctamente.");
+        await dialogo.getByRole("button", { name: "Registrar periodo" }).click();
+        await expect(dialogo.getByRole("status")).toHaveText("Periodo guardado correctamente.");
+        await expect(dialogo.getByRole("list", { name: "Periodos de grado registrados" })).toContainText("Grados noviembre 2026");
+        await dialogo.getByRole("button", { name: "Cerrar" }).click();
+        await expect(dialogo).toBeHidden();
+        await expect(gestionar).toBeFocused();
+        await abrirFiltros(page);
         await expect(page.getByRole("combobox", { name: "Periodo de grado" })).toContainText("Grados noviembre 2026");
+    });
+
+    test("edita un periodo desde el listado del modal", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        await page.goto(DASHBOARD);
+        await page.getByRole("button", { name: "Gestionar periodos" }).click();
+        const dialogo = page.getByRole("dialog", { name: "Gestión de periodos de grado" });
+        await dialogo.getByRole("button", { name: "Editar Grado octubre 2026" }).click();
+        await expect(dialogo.getByRole("heading", { name: "Editar periodo" })).toBeVisible();
+        await expect(dialogo.getByLabel("Nombre del periodo")).toHaveValue("Grado octubre 2026");
+        await expect(dialogo.getByLabel("Nombre del periodo")).toBeFocused();
+        await dialogo.getByLabel("Nombre del periodo").fill("Grado octubre 2026 ajustado");
+        await dialogo.getByRole("button", { name: "Guardar cambios" }).click();
+        await expect(dialogo.getByRole("status")).toHaveText("Periodo guardado correctamente.");
+        await expect(dialogo.getByRole("list", { name: "Periodos de grado registrados" })).toContainText("Grado octubre 2026 ajustado");
+        await expect(dialogo.getByRole("heading", { name: "Nuevo periodo" })).toBeVisible();
     });
 
     test("a 1280px es una tabla con encabezados; a 360px son tarjetas", async ({ page }) => {
@@ -112,6 +160,7 @@ test.describe("dashboard", () => {
         await page.setViewportSize({ width: 1280, height: 900 });
         await sesionComo(page, "funcionario");
         await page.goto(DASHBOARD);
+        await abrirFiltros(page);
         const contador = page.getByRole("button", { name: /^Válidas 1/ });
         await expect(contador).toHaveAccessibleDescription(/filtra la lista/i);
         await contador.focus();
