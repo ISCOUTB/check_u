@@ -207,6 +207,7 @@ export default function Dashboard() {
                 <Card
                     titulo="Filtros de búsqueda"
                     className={styles.panelFiltros}
+                    cabeceraSinMargen={!mostrarFiltros}
                     acciones={
                         <div className={styles.accionesPanel}>
                             <Button
