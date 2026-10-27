@@ -227,60 +227,66 @@ export default function Dashboard() {
                         </div>
                     }
                 >
-                    <div id="panel-filtros" className={styles.contenidoFiltros} hidden={!mostrarFiltros}>
-                        <p className={styles.descripcionFiltros}>Consulta las solicitudes por periodo, nivel, estado y rango de fechas.</p>
+                    <div
+                        id="panel-filtros"
+                        className={[styles.envolturaFiltros, mostrarFiltros && styles.envolturaAbierta].filter(Boolean).join(" ")}
+                        inert={!mostrarFiltros}
+                    >
+                        <div className={styles.contenidoFiltros}>
+                            <p className={styles.descripcionFiltros}>Consulta las solicitudes por periodo, nivel, estado y rango de fechas.</p>
 
-                        <div className={styles.rejillaFiltros}>
-                            <fieldset className={styles.grupoFiltro}>
-                                <legend id="titulo-periodo">Periodo de grado</legend>
-                                <select
-                                    id="periodo-grado"
-                                    className={styles.control}
-                                    aria-labelledby="titulo-periodo"
-                                    value={periodoId}
-                                    onChange={(e) => setPeriodoId(e.target.value)}
-                                    disabled={cargandoPeriodos || periodos.length === 0}
-                                >
-                                    <option value="">{cargandoPeriodos ? "Cargando periodos..." : "Selecciona un periodo"}</option>
-                                    {periodos.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.estado} ({p.fechaInicio} – {p.fechaFin})</option>)}
-                                </select>
-                                {errorPeriodos && <p className={styles.error} role="alert">{errorPeriodos}</p>}
-                                {!cargandoPeriodos && !errorPeriodos && periodos.length === 0 && <p className={styles.textoSecundario}>No hay periodos registrados. Crea uno para comenzar.</p>}
-                                {!cargandoPeriodos && periodos.length > 0 && !periodos.some((p) => p.estado === "ABIERTO") && <p className={styles.textoSecundario}>No hay periodos abiertos. Los periodos cerrados se pueden consultar, pero no deben recibir nuevas solicitudes.</p>}
-                            </fieldset>
+                            <div className={styles.rejillaFiltros}>
+                                <fieldset className={styles.grupoFiltro}>
+                                    <legend id="titulo-periodo">Periodo de grado</legend>
+                                    <select
+                                        id="periodo-grado"
+                                        className={styles.control}
+                                        aria-labelledby="titulo-periodo"
+                                        value={periodoId}
+                                        onChange={(e) => setPeriodoId(e.target.value)}
+                                        disabled={cargandoPeriodos || periodos.length === 0}
+                                    >
+                                        <option value="">{cargandoPeriodos ? "Cargando periodos..." : "Selecciona un periodo"}</option>
+                                        {periodos.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.estado} ({p.fechaInicio} – {p.fechaFin})</option>)}
+                                    </select>
+                                    {errorPeriodos && <p className={styles.error} role="alert">{errorPeriodos}</p>}
+                                    {!cargandoPeriodos && !errorPeriodos && periodos.length === 0 && <p className={styles.textoSecundario}>No hay periodos registrados. Crea uno para comenzar.</p>}
+                                    {!cargandoPeriodos && periodos.length > 0 && !periodos.some((p) => p.estado === "ABIERTO") && <p className={styles.textoSecundario}>No hay periodos abiertos. Los periodos cerrados se pueden consultar, pero no deben recibir nuevas solicitudes.</p>}
+                                </fieldset>
 
-                            <fieldset className={styles.grupoFiltro}>
-                                <legend id="titulo-nivel">Nivel académico</legend>
-                                <select
-                                    id="nivel-academico"
-                                    className={styles.control}
-                                    aria-labelledby="titulo-nivel"
-                                    value={nivel}
-                                    onChange={(e) => setNivel(e.target.value as NivelAcademico)}
-                                >
-                                    <option value="PREGRADO">Pregrado</option><option value="POSGRADO">Posgrado</option>
-                                </select>
-                            </fieldset>
+                                <fieldset className={styles.grupoFiltro}>
+                                    <legend id="titulo-nivel">Nivel académico</legend>
+                                    <select
+                                        id="nivel-academico"
+                                        className={styles.control}
+                                        aria-labelledby="titulo-nivel"
+                                        value={nivel}
+                                        onChange={(e) => setNivel(e.target.value as NivelAcademico)}
+                                    >
+                                        <option value="PREGRADO">Pregrado</option><option value="POSGRADO">Posgrado</option>
+                                    </select>
+                                </fieldset>
 
-                            <fieldset className={styles.grupoFiltro}>
-                                <legend>Rango de fechas</legend>
-                                <div className={styles.camposFecha}>
-                                    <label className={styles.campo}>Fecha inicial<input className={styles.control} type="date" value={fechaInicial} onChange={(e) => setFechaInicial(e.target.value)} /></label>
-                                    <label className={styles.campo}>Fecha final<input className={styles.control} type="date" min={fechaInicial || undefined} value={fechaFinal} onChange={(e) => setFechaFinal(e.target.value)} /></label>
-                                </div>
-                                <div className={styles.accionesFiltro}>
-                                    <Button onClick={aplicarRango}>Aplicar fechas</Button>
-                                    <Button variante="secundario" onClick={limpiarRango}>Limpiar fechas</Button>
-                                </div>
-                                {errorRango && <p className={styles.error} role="alert">{errorRango}</p>}
-                            </fieldset>
+                                <fieldset className={styles.grupoFiltro}>
+                                    <legend>Rango de fechas</legend>
+                                    <div className={styles.camposFecha}>
+                                        <label className={styles.campo}>Fecha inicial<input className={styles.control} type="date" value={fechaInicial} onChange={(e) => setFechaInicial(e.target.value)} /></label>
+                                        <label className={styles.campo}>Fecha final<input className={styles.control} type="date" min={fechaInicial || undefined} value={fechaFinal} onChange={(e) => setFechaFinal(e.target.value)} /></label>
+                                    </div>
+                                    <div className={styles.accionesFiltro}>
+                                        <Button onClick={aplicarRango}>Aplicar fechas</Button>
+                                        <Button variante="secundario" onClick={limpiarRango}>Limpiar fechas</Button>
+                                    </div>
+                                    {errorRango && <p className={styles.error} role="alert">{errorRango}</p>}
+                                </fieldset>
 
-                            <fieldset className={styles.grupoFiltro}>
-                                <legend>Estado de la solicitud</legend>
-                                <div className={styles.filtros}>
-                                    {(["todos", ...ESTADOS_SOLICITUD] as FiltroEstado[]).map((valor) => <button key={valor} type="button" className={styles.filtro} aria-pressed={filtroEstado === valor} onClick={() => setFiltroEstado(valor)}>{valor === "todos" ? "Todas" : ETIQUETA_PLURAL[valor]}</button>)}
-                                </div>
-                            </fieldset>
+                                <fieldset className={styles.grupoFiltro}>
+                                    <legend>Estado de la solicitud</legend>
+                                    <div className={styles.filtros}>
+                                        {(["todos", ...ESTADOS_SOLICITUD] as FiltroEstado[]).map((valor) => <button key={valor} type="button" className={styles.filtro} aria-pressed={filtroEstado === valor} onClick={() => setFiltroEstado(valor)}>{valor === "todos" ? "Todas" : ETIQUETA_PLURAL[valor]}</button>)}
+                                    </div>
+                                </fieldset>
+                            </div>
                         </div>
                     </div>
                 </Card>
