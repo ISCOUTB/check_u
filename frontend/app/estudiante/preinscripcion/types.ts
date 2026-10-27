@@ -1,3 +1,4 @@
+import type { DatosInformacionEstudiante } from "@/app/components/informacion_estudiante/types";
 /**
  * types.ts — Tipos de dominio para la página de detalle de preinscripción del estudiante.
  *
@@ -32,6 +33,17 @@ export interface ResultadoAnalisis {
 }
 
 export interface DocumentoSolicitud {
+  id?: string;
+  orden?: number;
+  expiraEn?: string;
+  archivoDisponible?: boolean;
+  analisis?: {
+    extracted_data?: Record<string, { value: string | number | boolean | null; confidence: number | null }>;
+    rules?: { rule: string; result: string; message: string }[];
+    errors?: string[];
+    validation_status?: string;
+    estado_procesamiento?: string;
+  } | null;
   /** Clave de negocio */
   tipo: TipoDocumento;
   /** Nombre legible */
@@ -74,6 +86,9 @@ export interface PoliticaReenvios {
 }
 
 export interface SolicitudDetalle {
+  estadoSolicitud: string;
+  estadoAnalisis: "pendiente" | "registrado";
+  informacion: DatosInformacionEstudiante;
   id: string;
   estudiante: InformacionEstudiante;
   documentos: DocumentoSolicitud[];
