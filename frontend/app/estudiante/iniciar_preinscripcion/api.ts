@@ -7,6 +7,7 @@
 
 import { documentosRequeridos, type NivelAcademico as Nivel } from "@/app/estudiante/documentos-requeridos";
 import { errorDeConexion, interpretarErrorGuardado } from "./mensajes-borrador";
+import type { ContextoPeriodo } from "./PeriodoInscripcion";
 import { borradorVacio, type BorradorPreinscripcion } from "./tipos";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -154,7 +155,7 @@ export async function cargarPreinscripcion(
     nivel: Nivel,
     correo: string,
     escenario: Escenario,
-): Promise<{ estado: "sin_borrador" | "borrador" | "enviada"; borrador: BorradorPreinscripcion }> {
+): Promise<{ estado: "sin_borrador" | "borrador" | "enviada"; borrador: BorradorPreinscripcion; periodos?: ContextoPeriodo }> {
     if (escenario !== "ninguno") await esperar();
 
     const estudiante = { nivel, correo };
@@ -176,7 +177,7 @@ export async function cargarPreinscripcion(
     if (datos.estado && datos.estado !== "BORRADOR") {
         return { estado: "enviada", borrador: borradorVacio(nivel, correo) };
     }
-    if (!datos.borrador) return { estado: "sin_borrador", borrador: borradorVacio(nivel, correo) };
+    if (!datos.borrador) return { estado: "sin_borrador", borrador: borradorVacio(nivel, correo), periodos: datos.periodos };
     const base = borradorVacio(datos.borrador.nivel ?? nivel, correo);
     // PostgreSQL usa NULL para textos pendientes; los controles del formulario usan "".
     const normalizar = <T extends object>(vacio: T, guardado: Partial<T> | undefined): T =>
@@ -185,7 +186,7 @@ export async function cargarPreinscripcion(
             return [clave, dato == null ? valor : dato];
         })) as T;
     const guardado = datos.borrador;
-    return { estado: "borrador", borrador: {
+    return { estado: "borrador", periodos: datos.periodos, borrador: {
         ...normalizar(base, guardado), correo, id_solicitud: datos.id_solicitud,
         perfil: normalizar(base.perfil, guardado.perfil),
         pregrado: normalizar(base.pregrado, guardado.pregrado),
@@ -197,10 +198,11 @@ export async function cargarPreinscripcion(
 }
 
 /**
- * Guarda el borrador tal como está, sin exigir nada. Devuelve la fecha del guardado (ISO 8601).
+ * Guarda campos parciales. La primera asignación requiere un periodo disponible en el backend.
+ * Devuelve la fecha del guardado (ISO 8601) y la información de periodos.
  * Solo confirma el guardado después de recibir éxito del backend.
  */
-export async function guardarBorrador(borrador: BorradorPreinscripcion): Promise<{ guardadoEn: string; id_solicitud: number }> {
+export async function guardarBorrador(borrador: BorradorPreinscripcion): Promise<{ guardadoEn: string; id_solicitud: number; periodos?: ContextoPeriodo }> {
     let respuesta: Response;
     try {
         respuesta = await fetch(`${API_URL}/solicitudes/borrador`, {
@@ -219,7 +221,7 @@ export async function guardarBorrador(borrador: BorradorPreinscripcion): Promise
         // Una respuesta ilegible no confirma el guardado; nunca anunciar éxito en este caso.
         throw interpretarErrorGuardado(500, null);
     }
-    return { guardadoEn: datos.guardadoEn, id_solicitud: datos.id_solicitud };
+    return { guardadoEn: datos.guardadoEn, id_solicitud: datos.id_solicitud, ...(datos.periodos ? { periodos: datos.periodos } : {}) };
 }
 
 /**
