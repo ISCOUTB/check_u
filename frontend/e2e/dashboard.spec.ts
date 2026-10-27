@@ -57,9 +57,12 @@ test.describe("dashboard", () => {
         await sesionComo(page, "funcionario");
         await page.goto(DASHBOARD);
         const boton = page.getByRole("button", { name: "Mostrar filtros" });
+        const cabecera = page.getByRole("heading", { name: "Filtros de búsqueda" }).locator("..");
         await expect(boton).toHaveAttribute("aria-expanded", "false");
+        await expect(cabecera).toHaveCSS("margin-bottom", "0px");
         await boton.click();
         await expect(page.getByRole("button", { name: "Ocultar filtros" })).toHaveAttribute("aria-expanded", "true");
+        await expect(cabecera).toHaveCSS("margin-bottom", "16px");
         const panel = page.getByRole("region", { name: "Filtros de búsqueda" });
         await expect(panel).toBeVisible();
         await expect(panel.getByLabel("Periodo de grado")).toBeVisible();
