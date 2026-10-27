@@ -36,6 +36,7 @@ export class DocumentosService {
     const TIMEOUT_MS = Number(process.env.MOTOR_TIMEOUT_MS) || 60_000;
 
     let response: Response;
+    let texto: string;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
@@ -44,6 +45,7 @@ export class DocumentosService {
         body: form,
         signal: controller.signal,
       });
+      texto = await response.text();
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         throw new ServiceUnavailableException(
@@ -57,7 +59,6 @@ export class DocumentosService {
       clearTimeout(timer);
     }
 
-    const texto = await response.text();
     let data: unknown;
     try {
       data = JSON.parse(texto) as unknown;
@@ -68,14 +69,7 @@ export class DocumentosService {
     }
 
     if (!response.ok) {
-      const mensaje =
-        typeof data === 'object' &&
-        data !== null &&
-        'error' in data &&
-        typeof (data as { error: unknown }).error === 'string'
-          ? (data as { error: string }).error
-          : `El motor respondió con HTTP ${response.status}`;
-      throw new BadGatewayException(mensaje);
+      throw new BadGatewayException('El motor no pudo completar el análisis documental. Intenta nuevamente.');
     }
 
     return data as RespuestaAnalisis;
