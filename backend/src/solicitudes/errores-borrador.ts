@@ -104,6 +104,10 @@ export function traducirErrorBorrador(error: unknown): HttpException {
     codigo = 'BORRADOR_IDENTIDAD_REPETIDA';
     message =
       'No pudimos guardar tu borrador porque ese documento de identidad ya está registrado. Verifica su tipo y número; si son correctos, contacta al personal de grados.';
+  } else if (status === 409 && typeof respuesta === 'object' && respuesta !== null &&
+    'codigo' in respuesta && respuesta.codigo === 'SIN_PERIODO_DISPONIBLE') {
+    codigo = 'SIN_PERIODO_DISPONIBLE';
+    message = 'Actualmente no hay un periodo de inscripción disponible para asignar tu solicitud. Consulta las próximas fechas o comunícate con la oficina de grados.';
   } else if (status === 409) {
     codigo = 'BORRADOR_NO_EDITABLE';
     message =

@@ -35,6 +35,8 @@ export function interpretarErrorGuardado(status: number, respuesta: unknown): Er
         "Tu sesión ha expirado. Inicia sesión nuevamente para continuar con tu preinscripción.", "BORRADOR_SESION_EXPIRADA");
     if (status === 403) return new ErrorGuardadoBorrador(
         "Tu cuenta no tiene permiso para guardar esta preinscripción. Verifica que ingresaste como estudiante.", "BORRADOR_SIN_PERMISO");
+    if (status === 409 && datos.codigo === "SIN_PERIODO_DISPONIBLE") return new ErrorGuardadoBorrador(
+        "Actualmente no hay un periodo de inscripción disponible para asignar tu solicitud. Tu información permanece en el formulario. Consulta las próximas fechas o comunícate con la oficina de grados.", "SIN_PERIODO_DISPONIBLE");
     if (status === 409) return datos.codigo === "BORRADOR_IDENTIDAD_REPETIDA"
         ? new ErrorGuardadoBorrador("No pudimos guardar tu borrador porque ese documento de identidad ya está registrado. Verifica su tipo y número; si son correctos, contacta al personal de grados.", "BORRADOR_IDENTIDAD_REPETIDA")
         : new ErrorGuardadoBorrador("La preinscripción ya fue enviada y no permite guardar cambios como borrador. Consulta el estado de tu solicitud.", "BORRADOR_NO_EDITABLE");
