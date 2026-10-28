@@ -29,7 +29,7 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO tablas FROM information_schema.tables
     WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
-    IF tablas <> 12 THEN RAISE EXCEPTION 'Se esperaban 12 tablas, hay %', tablas; END IF;
+    IF tablas <> 14 THEN RAISE EXCEPTION 'Se esperaban 14 tablas, hay %', tablas; END IF;
 
     SELECT id_usuario INTO STRICT estudiante FROM usuarios
     WHERE correo = 'lizapata@utb.edu.co' AND rol = 'ESTUDIANTE'
@@ -90,6 +90,42 @@ BEGIN
          SELECT id_usuario,''PRUEBA'',''ABC123'' FROM usuarios WHERE correo=''rmarriaga@utb.edu.co''
          ON CONFLICT(id_usuario) DO UPDATE SET tipo_documento_identidad=''PRUEBA'', numero_documento=''ABC123'''), '23505');
 
+    -- Discapacidad y asistencia (Tarea 37): respuesta principal y dependientes coherentes.
+    UPDATE perfil_estudiante SET tiene_discapacidad = NULL, tipo_discapacidad = NULL,
+        detalles_necesidades_asistencia = NULL WHERE id_usuario = estudiante;
+    UPDATE perfil_estudiante SET tiene_discapacidad = FALSE WHERE id_usuario = estudiante;
+    PERFORM pg_temp.debe_rechazar(format(
+        'UPDATE perfil_estudiante SET tipo_discapacidad = ''FISICA'' WHERE id_usuario=%s',
+        estudiante), '23514');
+    PERFORM pg_temp.debe_rechazar(format(
+        'UPDATE perfil_estudiante SET detalles_necesidades_asistencia = ''Rampa'' WHERE id_usuario=%s',
+        estudiante), '23514');
+    PERFORM pg_temp.debe_rechazar(format(
+        'UPDATE perfil_estudiante SET tiene_discapacidad = TRUE WHERE id_usuario=%s',
+        estudiante), '23514');
+    PERFORM pg_temp.debe_rechazar(format(
+        'UPDATE perfil_estudiante SET tiene_discapacidad = TRUE, tipo_discapacidad = ''   '' WHERE id_usuario=%s',
+        estudiante), '23514');
+    PERFORM pg_temp.debe_rechazar(format(
+        'UPDATE perfil_estudiante SET tiene_discapacidad = TRUE, tipo_discapacidad = ''OTRA_COSA'' WHERE id_usuario=%s',
+        estudiante), '23514');
+    -- Afirmativa válida: el tipo es obligatorio, los detalles son opcionales.
+    UPDATE perfil_estudiante SET tiene_discapacidad = TRUE, tipo_discapacidad = 'SENSORIAL',
+        detalles_necesidades_asistencia = NULL WHERE id_usuario = estudiante;
+    UPDATE perfil_estudiante SET detalles_necesidades_asistencia = 'Acceso sin escaleras'
+        WHERE id_usuario = estudiante;
+    PERFORM pg_temp.debe_rechazar(format(
+        'UPDATE perfil_estudiante SET detalles_necesidades_asistencia = ''   '' WHERE id_usuario=%s',
+        estudiante), '23514');
+    PERFORM pg_temp.debe_rechazar(format(
+        'UPDATE perfil_estudiante SET tiene_discapacidad = NULL WHERE id_usuario=%s',
+        estudiante), '23514');
+    PERFORM pg_temp.debe_rechazar(format(
+        'UPDATE perfil_estudiante SET tiene_discapacidad = FALSE WHERE id_usuario=%s',
+        estudiante), '23514');
+    UPDATE perfil_estudiante SET tiene_discapacidad = FALSE, tipo_discapacidad = NULL,
+        detalles_necesidades_asistencia = NULL WHERE id_usuario = estudiante;
+
     PERFORM pg_temp.debe_rechazar(format('UPDATE informacion_pregrado SET numero_registro_saber_pro=NULL WHERE id_solicitud=%s', solicitud_p), '23514');
     PERFORM pg_temp.debe_rechazar(format('UPDATE informacion_pregrado SET numero_registro_saber_pro=''  '' WHERE id_solicitud=%s', solicitud_p), '23514');
     PERFORM pg_temp.debe_rechazar(format('UPDATE informacion_pregrado SET conoce_registro_saber_pro=FALSE WHERE id_solicitud=%s', solicitud_p), '23514');
@@ -125,7 +161,7 @@ BEGIN
     WHERE id_usuario = estudiante;
     SELECT fecha_actualizacion INTO fecha_anterior FROM perfil_estudiante WHERE id_usuario=estudiante;
     IF fecha_anterior <> CURRENT_TIMESTAMP THEN RAISE EXCEPTION 'No funciona trigger de auditoria'; END IF;
-    RAISE NOTICE 'ACEPTACION CORRECTA: 12 tablas, solo Lisandro y Rosa, restricciones y auditoria verificadas';
+    RAISE NOTICE 'ACEPTACION CORRECTA: 14 tablas, solo Lisandro y Rosa, restricciones y auditoria verificadas';
 END;
 $$;
 ROLLBACK;
