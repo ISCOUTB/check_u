@@ -20,6 +20,11 @@ test.beforeEach(() => {
     globalThis.fetch = async (_entrada, opciones) => {
         if (opciones?.method === "POST") {
             const guardadoEn = new Date().toISOString();
+            if (opciones.body instanceof FormData) {
+                const enviados = JSON.parse(String(opciones.body.get("datos")));
+                borrador = enviados;
+                return Response.json({ ok: true, id_solicitud: 42, estado: "EN_PROCESO" });
+            }
             borrador = { ...JSON.parse(String(opciones.body)), guardadoEn };
             return Response.json({ ok: true, id_solicitud: 42, estado: "BORRADOR", guardadoEn });
         }
@@ -221,6 +226,10 @@ test("enviarPreinscripcion con rechazo da ok false y al menos un motivo", async 
 
 test("enviarPreinscripcion sin escenario da ok true", async () => {
     const borrador = borradorVacio("PREGRADO", "envio@utb.edu.co");
+    for (const d of documentosRequeridos("PREGRADO", false)) {
+        borrador.documentos[d.id] = { id: d.id, nombre: `${d.id}.pdf`, tamano: 10,
+            archivo: new File(["%PDF-1.4"], `${d.id}.pdf`, { type: "application/pdf" }) };
+    }
     const resultado = await enviarPreinscripcion(borrador, "clave-envio", "ninguno");
     expect(resultado).toEqual({ ok: true });
 });
@@ -235,6 +244,10 @@ test("enviarPreinscripcion con la misma clave de idempotencia devuelve el mismo 
 
 test("tras un envío correcto, cargar da enviada", async () => {
     const borrador = borradorVacio("PREGRADO", "ya-envio@utb.edu.co");
+    for (const d of documentosRequeridos("PREGRADO", false)) {
+        borrador.documentos[d.id] = { id: d.id, nombre: `${d.id}.pdf`, tamano: 10,
+            archivo: new File(["%PDF-1.4"], `${d.id}.pdf`, { type: "application/pdf" }) };
+    }
     await enviarPreinscripcion(borrador, "clave-ya-envio", "ninguno");
     const respuesta = await cargarPreinscripcion("PREGRADO", "ya-envio@utb.edu.co", "ninguno");
     expect(respuesta.estado).toBe("enviada");

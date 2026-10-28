@@ -212,7 +212,7 @@ export async function guardarBorrador(borrador: BorradorPreinscripcion): Promise
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify(borrador),
+            body: JSON.stringify(borrador, (clave, valor) => clave === "archivo" ? undefined : valor),
         });
     } catch {
         throw errorDeConexion();
@@ -255,44 +255,32 @@ export async function enviarPreinscripcion(
         return resultado;
     }
 
-    try {
-        const respuesta = await fetch(`${API_URL}/solicitudes/enviar`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-                ...borrador,
-                claveIdempotencia,
-            }),
-        });
-
-        if (respuesta.ok) {
-            const data = await respuesta.json();
-            if (data.ok) {
-                resultado = { ok: true };
-                solicitudEnviada = { nivel: borrador.nivel, correo: borrador.correo };
-                enviosPorClave.set(claveIdempotencia, resultado);
-                return resultado;
-            }
-        }
-
-        const data = await respuesta.json().catch(() => null);
-        const motivos = Array.isArray(data?.motivos)
-            ? data.motivos
-            : [data?.message || "No fue posible registrar la preinscripción."];
-        resultado = { ok: false, motivos };
+    const requeridos = documentosRequeridos(borrador.nivel, borrador.segundoPrograma === true);
+    const faltantes = requeridos.filter(d => !borrador.documentos[d.id]?.archivo);
+    if (faltantes.length) return { ok: false, motivos: [
+        `Selecciona nuevamente los PDF antes de enviar: ${faltantes.map(d => d.etiqueta).join(", ")}.`
+    ] };
+    const form = new FormData();
+    form.append("datos", JSON.stringify(borrador, (clave, valor) => clave === "archivo" ? undefined : valor));
+    form.append("tipos", requeridos.map(d => d.id).join(","));
+    for (const d of requeridos) form.append("documentos", borrador.documentos[d.id].archivo!);
+    const respuesta = await fetch(`${API_URL}/solicitudes/enviar`, {
+        method: "POST", credentials: "include", body: form,
+    });
+    const data = await respuesta.json().catch(() => null);
+    if (respuesta.ok && data?.ok === true) {
+        resultado = { ok: true };
+        solicitudEnviada = { nivel: borrador.nivel, correo: borrador.correo };
         enviosPorClave.set(claveIdempotencia, resultado);
         return resultado;
-    } catch (error) {
-        // En pruebas unitarias aisladas de Node (sin navegador ni servidor levantado), mantener compatibilidad
-        if (typeof window === "undefined") {
-            resultado = { ok: true };
-            solicitudEnviada = { nivel: borrador.nivel, correo: borrador.correo };
-            enviosPorClave.set(claveIdempotencia, resultado);
-            return resultado;
-        }
-        throw error;
     }
+    // Los fallos NO se almacenan: reintentar debe comunicarse de nuevo con el backend.
+    const mensaje = respuesta.status === 503 ? "El motor o la base de datos no están disponibles. Tu borrador se conserva; intenta nuevamente." :
+        respuesta.status === 502 ? "El motor no pudo completar el análisis. Tu borrador se conserva; revisa los PDF e intenta nuevamente." :
+        respuesta.status === 409 ? "La solicitud ya fue enviada o no hay un periodo disponible. Recarga para comprobar su estado." :
+        respuesta.status === 400 ? "Revisa los datos del formulario y adjunta todos los PDF requeridos." :
+        "No fue posible registrar la preinscripción. Tu borrador se conserva.";
+    return { ok: false, motivos: [mensaje] };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

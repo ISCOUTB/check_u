@@ -193,7 +193,13 @@ describe('Tarea 35: asignación de periodo con PostgreSQL', () => {
   it('no permite saltarse la asignación enviando directamente sin periodo vigente', async () => {
     await agente
       .post('/api/solicitudes/enviar')
-      .send({ nivel: 'PREGRADO', id_periodo: ID })
+      .field('datos', JSON.stringify({ nivel: 'PREGRADO', id_periodo: ID }))
+      .field('tipos', 'identification,academic_evaluation,paz_y_salvo_bib,estampilla_pro_cultura,saber_pro')
+      .attach('documentos', Buffer.from('%PDF-1.4'), 'identification.pdf')
+      .attach('documentos', Buffer.from('%PDF-1.4'), 'academic.pdf')
+      .attach('documentos', Buffer.from('%PDF-1.4'), 'paz.pdf')
+      .attach('documentos', Buffer.from('%PDF-1.4'), 'estampilla.pdf')
+      .attach('documentos', Buffer.from('%PDF-1.4'), 'saber.pdf')
       .expect(409);
     expect(
       (await base.db.query('SELECT * FROM solicitud_grado')).rows,
