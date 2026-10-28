@@ -5,7 +5,14 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { mkdir, writeFile, unlink, readdir, stat } from 'node:fs/promises';
+import {
+  mkdir,
+  writeFile,
+  unlink,
+  readdir,
+  stat,
+  readFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { DatabaseService } from '../database/database.service.js';
@@ -49,6 +56,9 @@ export class ArchivosTemporalesService
     if (!/^[0-9a-f-]{36}\.pdf$/.test(clave))
       throw new Error('Ruta temporal no válida');
     return join(this.raiz, clave);
+  }
+  leer(clave: string) {
+    return readFile(this.ruta(clave));
   }
   async guardar(buffer: Buffer) {
     await mkdir(this.raiz, { recursive: true, mode: 0o700 });
