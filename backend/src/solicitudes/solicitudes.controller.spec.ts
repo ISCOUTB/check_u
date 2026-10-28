@@ -196,7 +196,7 @@ describe('SolicitudesController', () => {
         estado: 'EN_PROCESO',
         mensaje: 'Preinscripción registrada correctamente. Pendiente de análisis.',
       });
-      expect(mockSolicitudesService.enviarPreinscripcion).toHaveBeenCalledWith(1, req.body, [expect.objectContaining({ tipo: 'identification' })]);
+      expect(mockSolicitudesService.enviarPreinscripcion).toHaveBeenCalledWith(1, req.body, [expect.objectContaining({ tipo: 'identification' })], expect.any(Function));
     });
   });
 

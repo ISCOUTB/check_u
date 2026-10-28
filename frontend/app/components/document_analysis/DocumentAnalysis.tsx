@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import VistaPdf from "./VistaPdf";
 import Button from "@/app/components/ui/Button";
 import Dialog from "@/app/components/ui/Dialog";
 import Icono from "@/app/components/ui/Icono";
@@ -25,6 +26,7 @@ export interface DocumentAnalysisData {
     status: "VALIDO" | "NO_VALIDO" | "INCONSISTENTE" | "POR_REVISAR";
     extractedFields: ExtractedField[];
     validations: ValidationResult[];
+    privateDocumentUrl?: string;
     documentUrl?: string;
 }
 
@@ -65,8 +67,8 @@ export default function DocumentAnalysis({ open, onClose, data }: DocumentAnalys
                     <h3 id="analisis-vista" className={styles.tituloSeccion}>
                         Vista del documento
                     </h3>
-                    <p>Los datos y observaciones de este análisis se recuperaron del registro documental.</p>
-                    {!actual.documentUrl && <p>La vista del archivo original no está disponible.</p>}
+                    {actual.privateDocumentUrl && open && !!data && <VistaPdf key={actual.privateDocumentUrl} url={actual.privateDocumentUrl} activo={open && !!data} />}
+                    {!actual.privateDocumentUrl && !actual.documentUrl && <p>El archivo original ya no está disponible. Los resultados del análisis se conservan.</p>}
                     {actual.documentUrl && (
                         <Button
                             variante="secundario"

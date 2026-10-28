@@ -71,3 +71,13 @@ export function obtenerMensaje(
   }
   return plantilla;
 }
+/** Las observaciones específicas del motor tienen prioridad sobre los textos generales de referencia. */
+export function mensajeDelResultado(tipo: TipoDocumento, estado: EstadoDocumento, observacion: string | undefined, confianza?: number): string {
+  if (observacion?.trim() && observacion !== 'Consulta las observaciones del análisis documental.') return observacion;
+  if (estado === 'por_revisar') return obtenerMensaje(tipo, estado, confianza);
+  if (estado === 'valido') return tipo === 'identification' && confianza == null
+    ? 'Las comprobaciones obligatorias del documento se completaron correctamente. El motor no informó un porcentaje de confianza.'
+    : obtenerMensaje(tipo, estado, confianza);
+  // Un NO_VALIDO puede deberse a formato, firma o contenido: no atribuirlo al puntaje sin evidencia.
+  return 'El documento requiere atención. Consulta las comprobaciones del análisis para identificar qué debes corregir.';
+}

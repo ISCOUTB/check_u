@@ -1,3 +1,5 @@
+import { ReenviosService, type ArchivoCorreccion } from './reenvios.service.js';
+import { flujoProgreso, type InformarAvance } from './progreso-envio.js';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import {
@@ -6,6 +8,10 @@ import {
 } from './analisis-preinscripcion.service.js';
 import {
   BadRequestException,
+  HttpException,
+  Param,
+  ParseIntPipe,
+  Res,
   UploadedFiles,
   UseInterceptors,
   Body,
@@ -16,7 +22,7 @@ import {
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { AuthService } from '../auth/auth.service.js';
 import { readSessionId } from '../auth/session.js';
 import { traducirErrorBorrador } from './errores-borrador.js';
@@ -34,6 +40,7 @@ export class SolicitudesController {
     private readonly solicitudesService: SolicitudesService,
     private readonly authService: AuthService,
     private readonly analisis: AnalisisPreinscripcionService,
+    private readonly reenvios: ReenviosService,
   ) {}
 
   @Get('estudiante/solicitud')
@@ -64,7 +71,8 @@ export class SolicitudesController {
     @Req() req: Request,
     @Body() body: { datos?: string; tipos?: string },
     @UploadedFiles() archivos?: Omit<PdfPreinscripcion, 'tipo'>[],
-  ): Promise<RespuestaEnvioPreinscripcion> {
+    @Res() res?: Response,
+  ): Promise<RespuestaEnvioPreinscripcion | void> {
     const user = this.obtenerEstudianteAutenticado(req);
     let datos: DatosEnvioPreinscripcion;
     try {
@@ -83,11 +91,95 @@ export class SolicitudesController {
     const tipos = body.tipos.split(',');
     if (!archivos?.length || archivos.length !== tipos.length)
       throw new BadRequestException('La cantidad de tipos y PDF no coincide.');
-    return this.solicitudesService.enviarPreinscripcion(
-      user.id,
-      datos,
-      archivos.map((a, i) => ({ ...a, tipo: tipos[i] })),
+    return this.ejecutarEnvio(req, res, archivos.length, (informar) =>
+      this.solicitudesService.enviarPreinscripcion(
+        user.id,
+        datos,
+        archivos.map((a, i) => ({ ...a, tipo: tipos[i] })),
+        informar,
+      ),
     );
+  }
+
+  @Get('estudiante/documentos/:id/original')
+  async documentoOriginal(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    const a = await this.reenvios.original(
+      this.obtenerEstudianteAutenticado(req).id,
+      id,
+    );
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename*=UTF-8''${encodeURIComponent(a.nombre)}`,
+    );
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(a.bytes);
+  }
+
+  @Post('solicitudes/:id/correcciones')
+  @UseInterceptors(
+    FilesInterceptor('documentos', 6, {
+      storage: memoryStorage(),
+      limits: { fileSize: 25 * 1024 * 1024, fieldSize: 4096, fields: 2 },
+    }),
+  )
+  async corregir(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { ids?: string; clave?: string },
+    @UploadedFiles() archivos: Omit<ArchivoCorreccion, 'id'>[],
+    @Res() res?: Response,
+  ) {
+    const user = this.obtenerEstudianteAutenticado(req);
+    let ids: unknown;
+    try {
+      ids = JSON.parse(body?.ids ?? 'null');
+    } catch {
+      throw new BadRequestException('Lista de documentos inválida.');
+    }
+    if (
+      !Array.isArray(ids) ||
+      !archivos?.length ||
+      ids.length !== archivos.length ||
+      typeof body.clave !== 'string'
+    )
+      throw new BadRequestException(
+        'Adjunta los PDF seleccionados y sus identificadores.',
+      );
+    const corregidos = archivos.map((a, i) => ({ ...a, id: ids[i] as number }));
+    return this.ejecutarEnvio(req, res, archivos.length, (informar) =>
+      this.reenvios.reenviar(user.id, id, body.clave!, corregidos, informar),
+    );
+  }
+
+  private async ejecutarEnvio<T>(
+    req: Request,
+    res: Response | undefined,
+    cantidad: number,
+    accion: (informar: InformarAvance) => Promise<T>,
+  ): Promise<T | void> {
+    if (!res) return accion(() => {}); // invocaciones unitarias del controlador
+    if (!req.headers.accept?.includes('application/x-ndjson')) {
+      const resultado = await accion(() => {});
+      res.status(201).json(resultado);
+      return;
+    }
+    const flujo = flujoProgreso(res, cantidad);
+    try {
+      flujo.confirmar(await accion(flujo.informar));
+    } catch (error) {
+      const codigo = error instanceof HttpException ? error.getStatus() : 500;
+      const mensaje =
+        error instanceof HttpException && codigo < 500
+          ? error.message
+          : 'No fue posible completar el análisis. Los resultados anteriores se conservan. Revisa los documentos e intenta nuevamente.';
+      flujo.fallar(mensaje, codigo);
+    }
   }
 
   @Get('solicitudes/borrador')

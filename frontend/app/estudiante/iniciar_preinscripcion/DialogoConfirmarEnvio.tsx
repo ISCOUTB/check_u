@@ -1,5 +1,7 @@
 "use client";
 
+import ProgresoDocumental from "@/app/components/ui/ProgresoDocumental";
+import type { ProgresoEnvio } from "../envio-documental";
 import Button from "@/app/components/ui/Button";
 import Dialog from "@/app/components/ui/Dialog";
 import { MODALIDADES, TIPOS_DOCUMENTO, type Opcion } from "./constantes";
@@ -28,6 +30,7 @@ function datosDelEnvio(borrador: BorradorPreinscripcion, avance: Progreso): [str
 }
 
 export interface DialogoConfirmarEnvioProps {
+    progresoEnvio?: ProgresoEnvio | null;
     abierto: boolean;
     borrador: BorradorPreinscripcion | null;
     avance: Progreso | null;
@@ -46,6 +49,7 @@ export interface DialogoConfirmarEnvioProps {
  */
 export default function DialogoConfirmarEnvio({
     abierto,
+    progresoEnvio,
     borrador,
     avance,
     enviando,
@@ -61,6 +65,7 @@ export default function DialogoConfirmarEnvio({
             descripcion="Después de enviarla, tu preinscripción queda de solo consulta."
             compacto
         >
+            <ProgresoDocumental progreso={progresoEnvio ?? null} />
             <dl className={styles.datosEnvio}>
                 {borrador &&
                     avance &&

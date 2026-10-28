@@ -316,7 +316,7 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
     await limpieza.limpiar();
     expect(await readdir(carpeta)).toHaveLength(5); // recalcula según el periodo vigente, no la fecha obsoleta
     await base.db.exec(
-      'UPDATE periodos_grado SET fecha_inicio = CURRENT_DATE - 90, fecha_fin = CURRENT_DATE - 16',
+      "UPDATE periodos_grado SET fecha_inicio = CURRENT_DATE - 90, fecha_fin = ((CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date - 16)",
     );
     const reiniciado = new ArchivosTemporalesService(
       base.servicio as unknown as DatabaseService,
@@ -407,6 +407,44 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
         .expect(200);
       expect(consulta.body.documentos).toHaveLength(5);
       expect(respuestas).toHaveLength(4);
+      if (process.env.VERIFICAR_TAREA38 === '1') {
+        const identidad = consulta.body.documentos.find(
+          (d: { tipo: string }) => d.tipo === 'identification',
+        );
+        await agente
+          .get(`/api/estudiante/documentos/${identidad.id}/original`)
+          .expect(200)
+          .expect('Content-Type', /application\/pdf/);
+        const correccion = await agente
+          .post('/api/solicitudes/1/correcciones')
+          .set('Accept', 'application/x-ndjson')
+          .field('ids', JSON.stringify([Number(identidad.id)]))
+          .field('clave', 'tarea38-motor-real')
+          .attach('documentos', pdf, {
+            filename: 'identidad-corregida.pdf',
+            contentType: 'application/pdf',
+          });
+        expect(correccion.status, correccion.text).toBe(200);
+        const eventos = correccion.text
+          .trim()
+          .split('\n')
+          .map((l: string) => JSON.parse(l));
+        expect(eventos.at(-1).resultado.ok).toBe(true);
+        expect(eventos.at(-2).porcentaje).toBe(100);
+        const actualizada = await agente
+          .get('/api/estudiante/solicitud/analisis')
+          .expect(200);
+        expect(
+          actualizada.body.documentos.find(
+            (d: { tipo: string }) => d.tipo === 'identification',
+          ).version,
+        ).toBe(2);
+        expect(actualizada.body.politicaReenvios.usados).toBe(1);
+        await agente
+          .get(`/api/estudiante/documentos/${identidad.id}/original`)
+          .expect(200);
+      }
+
       if (process.env.CAPTURAR_UI_REAL === '1' && process.env.EVIDENCIAS_DIR) {
         app.enableCors({ origin: 'http://localhost:3004', credentials: true });
         await app.listen(3000, '0.0.0.0');

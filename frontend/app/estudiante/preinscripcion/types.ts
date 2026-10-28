@@ -33,6 +33,7 @@ export interface ResultadoAnalisis {
 }
 
 export interface DocumentoSolicitud {
+  version?: number;
   id?: string;
   orden?: number;
   expiraEn?: string;

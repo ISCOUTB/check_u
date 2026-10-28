@@ -1,3 +1,4 @@
+import { transportarEnvio, type AlProgreso } from "../envio-documental";
 /**
  * api.ts — API de la preinscripción (borrador y envío).
  *
@@ -236,8 +237,9 @@ export async function enviarPreinscripcion(
     borrador: BorradorPreinscripcion,
     claveIdempotencia: string,
     escenario: Escenario,
+    alProgreso?: AlProgreso,
 ): Promise<ResultadoEnvio> {
-    await esperar();
+    if (escenario !== "ninguno") await esperar();
 
     const anterior = enviosPorClave.get(claveIdempotencia);
     if (anterior) return anterior;
@@ -264,6 +266,15 @@ export async function enviarPreinscripcion(
     form.append("datos", JSON.stringify(borrador, (clave, valor) => clave === "archivo" ? undefined : valor));
     form.append("tipos", requeridos.map(d => d.id).join(","));
     for (const d of requeridos) form.append("documentos", borrador.documentos[d.id].archivo!);
+    if (alProgreso) {
+        const r = await transportarEnvio(`${API_URL}/solicitudes/enviar`, form, alProgreso, requeridos.length);
+        if (r.ok) {
+            solicitudEnviada = { nivel: borrador.nivel, correo: borrador.correo };
+            enviosPorClave.set(claveIdempotencia, { ok: true });
+            return { ok: true };
+        }
+        return { ok: false, motivos: [r.mensaje] };
+    }
     const respuesta = await fetch(`${API_URL}/solicitudes/enviar`, {
         method: "POST", credentials: "include", body: form,
     });
