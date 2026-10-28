@@ -2,8 +2,11 @@ import { errorValidacionBorrador } from './errores-borrador.js';
 import { z } from 'zod';
 
 const texto = z.string().max(500).optional();
+const textoLargo = z.string().max(1000).optional();
 const fecha = z.union([z.literal(''), z.iso.date()]).optional();
 const respuesta = z.boolean().nullable().optional();
+const TIPOS_DISCAPACIDAD = ['SENSORIAL', 'FISICA', 'INTELECTUAL', 'ORGANOS', 'OTRA'] as const;
+const tipoDiscapacidad = z.enum(['', ...TIPOS_DISCAPACIDAD]).optional();
 const orden = z.union([z.literal(1), z.literal(2)]);
 const programa = z.object({
   orden,
@@ -46,6 +49,9 @@ const esquema = z.object({
       direccion: texto,
       telefonoFijo: texto,
       celular: texto,
+      tieneDiscapacidad: respuesta,
+      tipoDiscapacidad,
+      detallesAsistencia: textoLargo,
     })
     .optional(),
   segundoPrograma: respuesta,
@@ -71,6 +77,15 @@ const esquema = z.object({
   documentos: z
     .union([z.array(documento), z.record(z.string(), documento)])
     .optional(),
+}).superRefine((datos, ctx) => {
+  const perfil = datos.perfil;
+  if (perfil?.tieneDiscapacidad === true && !perfil.tipoDiscapacidad) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['perfil', 'tipoDiscapacidad'],
+      message: 'El tipo de discapacidad es obligatorio cuando se responde Sí',
+    });
+  }
 });
 
 export function validarBorrador(payload: unknown) {
@@ -89,6 +104,18 @@ export function validarBorrador(payload: unknown) {
     throw errorValidacionBorrador(campos);
   }
   const datos = resultado.data;
+  if (datos.perfil) {
+    // Un guardado parcial no toca los campos de discapacidad: solo se normalizan cuando el
+    // cliente envió la respuesta principal o alguno de sus campos dependientes.
+    if (datos.perfil.tieneDiscapacidad === undefined) {
+      delete datos.perfil.tipoDiscapacidad;
+      delete datos.perfil.detallesAsistencia;
+    } else if (datos.perfil.tieneDiscapacidad !== true) {
+      // Los campos dependientes no sobreviven a una respuesta negativa.
+      datos.perfil.tipoDiscapacidad = '';
+      datos.perfil.detallesAsistencia = '';
+    }
+  }
   if (
     datos.nivel &&
     datos.tipo_solicitud &&
@@ -110,6 +137,9 @@ export const PERFIL = {
   direccion: 'direccion_residencia',
   telefonoFijo: 'telefono_fijo',
   celular: 'telefono_celular',
+  tieneDiscapacidad: 'tiene_discapacidad',
+  tipoDiscapacidad: 'tipo_discapacidad',
+  detallesAsistencia: 'detalles_necesidades_asistencia',
 };
 export const PREGRADO = {
   conoceRegistroSaberPro: 'conoce_registro_saber_pro',
