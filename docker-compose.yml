@@ -1,14 +1,23 @@
+
 # Check_U (github.com/ISCOUTB/check_u) adaptado al servidor del laboratorio.
 #
-# El repositorio no trae Dockerfile ni compose (se ejecuta en Windows con iniciar.ps1), así que cada servicio
-# se construye desde el contexto git con el Dockerfile definido en línea, sin modificar el repositorio:
-#   - panel:    webapp/ Flask (OCR con Tesseract + PDF417 + consulta RUI) con gunicorn, no el servidor de
-#               desarrollo (app.py arranca con debug=True, que expondría la consola de Werkzeug);
-#   - backend:  NestJS (api con prefijo /api);
-#   - frontend: Next.js; NEXT_PUBLIC_API_URL se incorpora al compilar y las page.tsx vacías del repositorio
-#               (hoy preinscripcion/) reciben un componente mínimo para que "next build" compile.
-# Sin "ports:" ni "container_name": el tráfico público entra por Traefik (dominios en Dokploy).
-# Variables (Dokploy → Environment): DOMINIO, CHECKU_REF.
+# Servicios:
+#   panel:      Aplicacion Flask webapp (puerto interno 5000).
+#   backend:    NestJS (puerto interno 3000).
+#   frontend:   Next.js (puerto interno 3000).
+#   ocr:        Motor de analisis documental (puerto interno 5001).
+#   db:         PostgreSQL.
+#   db-migrate: Inicializacion del esquema SQL.
+#
+# Variables en Dokploy:
+#   DOMINIO
+#   CHECKU_REF
+#   DB_USER
+#   DB_PASSWORD
+#   DB_NAME
+#
+# Los dominios se configuran desde Dokploy, en Domains.
+# No se publican puertos directamente en el host.
 
 services:
   panel:
@@ -17,10 +26,15 @@ services:
       dockerfile_inline: |
         FROM python:3.12-slim
         RUN apt-get update -y \
-            && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa poppler-utils libglib2.0-0 \
+            && apt-get install -y --no-install-recommends \
+                tesseract-ocr \
+                tesseract-ocr-spa \
+                poppler-utils \
+                libglib2.0-0 \
             && rm -rf /var/lib/apt/lists/*
-        RUN pip install --no-cache-dir gunicorn pdf2image pytesseract pillow opencv-python-headless numpy flask requests \
-            pymupdf pdfplumber pypdf zxing-cpp rapidfuzz
+        RUN pip install --no-cache-dir \
+            gunicorn pdf2image pytesseract pillow opencv-python-headless \
+            numpy flask requests pymupdf pdfplumber pypdf zxing-cpp rapidfuzz
         WORKDIR /app
         COPY modules ./modules
         COPY webapp ./webapp
@@ -33,7 +47,11 @@ services:
     expose:
       - "5000"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5000/').status==200 else 1)"]
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:5000/', timeout=5)"
       interval: 30s
       timeout: 10s
       retries: 3
@@ -61,10 +79,15 @@ services:
     environment:
       PORT: "3000"
       NODE_OPTIONS: --max-old-space-size=192
+      OCR_URL: http://ocr:5001
     expose:
       - "3000"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/api').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
       interval: 30s
       timeout: 5s
       retries: 3
@@ -89,8 +112,6 @@ services:
         ARG NEXT_PUBLIC_API_URL
         ENV NEXT_PUBLIC_API_URL=$${NEXT_PUBLIC_API_URL}
         ENV NEXT_TELEMETRY_DISABLED=1
-        # app/estudiante/preinscripcion/page.tsx está vacío en main y "next build" falla con TS2306:
-        # las páginas vacías reciben un componente mínimo (el repositorio no se modifica).
         RUN find app -name 'page.tsx' -empty -exec sh -c 'echo "export default function Page() { return null; }" > "$1"' _ {} \;
         RUN npm run build
         ENV NODE_ENV=production
@@ -102,7 +123,11 @@ services:
     depends_on:
       - backend
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       interval: 30s
       timeout: 5s
       retries: 3
@@ -112,6 +137,54 @@ services:
         limits:
           cpus: "0.50"
           memory: 384M
+
+  # Motor de analisis documental OCR.
+  # Dominio asociado en Dokploy al servicio ocr, puerto 5001.
+  ocr:
+    build:
+      context: https://github.com/ISCOUTB/check_u.git#${CHECKU_REF:-main}
+      dockerfile_inline: |
+        FROM python:3.11-slim
+
+        ENV PYTHONUNBUFFERED=1
+
+        RUN apt-get update \
+            && apt-get install -y --no-install-recommends \
+                tesseract-ocr \
+                tesseract-ocr-spa \
+                poppler-utils \
+                libgl1 \
+                libglib2.0-0 \
+            && rm -rf /var/lib/apt/lists/*
+
+        WORKDIR /app
+
+        COPY modules/requirements.txt /app/modules/requirements.txt
+        RUN pip install --no-cache-dir -r /app/modules/requirements.txt
+
+        COPY modules/ /app/modules/
+
+        EXPOSE 5001
+
+        CMD ["python", "modules/api/app.py"]
+    restart: unless-stopped
+    expose:
+      - "5001"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/salud', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
 
   db:
     image: postgres:16
@@ -125,7 +198,9 @@ services:
     expose:
       - "5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      test:
+        - CMD-SHELL
+        - 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"'
       interval: 10s
       timeout: 5s
       retries: 5
@@ -151,7 +226,11 @@ services:
       PGUSER: ${DB_USER:?define DB_USER}
       PGPASSWORD: ${DB_PASSWORD:?define DB_PASSWORD}
       PGDATABASE: ${DB_NAME:?define DB_NAME}
-    command: ["sh", "-c", "for f in /sql/*.sql; do echo \"Aplicando $$f\"; psql -v ON_ERROR_STOP=1 -f \"$$f\" || exit 1; done"]
+    command:
+      - sh
+      - -c
+      - 'for f in /sql/*.sql; do echo "Aplicando $$f"; psql -v ON_ERROR_STOP=1 -f "$$f" || exit 1; done'
+
 volumes:
   casos:
   postgres_data:
