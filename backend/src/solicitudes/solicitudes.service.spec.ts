@@ -145,9 +145,11 @@ describe('SolicitudesService', () => {
 
       beforeEach(() => {
         mockClient.query
+          .mockResolvedValueOnce({ rows: [] }) // bloqueo de usuario
           .mockResolvedValueOnce({
             rows: [{ id_solicitud: 102, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
           })
+          .mockResolvedValueOnce({ rows: [{ fecha_actualizacion: new Date() }] })
           .mockResolvedValue({ rows: [] });
       });
 
@@ -166,6 +168,82 @@ describe('SolicitudesService', () => {
         expect(guardoPrograma(1)).toBe(true);
         expect(guardoPrograma(2)).toBe(true);
         expect(borroPrograma2()).toBe(false);
+      });
+    });
+
+    describe('discapacidad y asistencia (Tarea 37)', () => {
+      const llamadas = () => mockClient.query.mock.calls as [string, unknown[]][];
+      const insertPerfil = () =>
+        llamadas().find(([sql]) => sql.includes('INSERT INTO perfil_estudiante'));
+
+      beforeEach(() => {
+        mockClient.query
+          .mockResolvedValueOnce({ rows: [] }) // bloqueo de usuario
+          .mockResolvedValueOnce({
+            rows: [{ id_solicitud: 102, tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+          })
+          .mockResolvedValueOnce({ rows: [{ fecha_actualizacion: new Date() }] })
+          .mockResolvedValue({ rows: [] });
+      });
+
+      it('guarda la respuesta afirmativa con su tipo y detalles', async () => {
+        await service.guardarBorrador(1, {
+          perfil: {
+            tieneDiscapacidad: true,
+            tipoDiscapacidad: 'FISICA',
+            detallesAsistencia: '  Requiere rampa  ',
+          },
+        });
+
+        const insert = insertPerfil();
+        expect(insert).toBeDefined();
+        const [sql, params] = insert!;
+        expect(sql).toContain('tiene_discapacidad');
+        expect(sql).toContain('tipo_discapacidad');
+        expect(sql).toContain('detalles_necesidades_asistencia');
+        expect(params).toContain(true);
+        expect(params).toContain('FISICA');
+        expect(params).toContain('Requiere rampa');
+      });
+
+      it.each([false, null])(
+        'con respuesta %s no conserva tipo ni detalles residuales',
+        async (tieneDiscapacidad) => {
+          await service.guardarBorrador(1, {
+            perfil: {
+              tieneDiscapacidad,
+              tipoDiscapacidad: 'FISICA',
+              detallesAsistencia: 'Valor residual',
+            },
+          });
+
+          const [, params] = insertPerfil()!;
+          expect(params).toContain(tieneDiscapacidad);
+          expect(params).not.toContain('FISICA');
+          expect(params).not.toContain('Valor residual');
+        },
+      );
+
+      it('no toca las columnas de discapacidad en un guardado parcial del perfil', async () => {
+        await service.guardarBorrador(1, { perfil: { ciudad: 'Cartagena' } });
+
+        const [sql, params] = insertPerfil()!;
+        expect(sql).not.toContain('tiene_discapacidad');
+        expect(sql).not.toContain('tipo_discapacidad');
+        expect(sql).not.toContain('detalles_necesidades_asistencia');
+        expect(params).not.toContain(false);
+        expect(params).not.toContain(null);
+      });
+
+      it('rechaza una respuesta afirmativa sin tipo antes de abrir la transacción', async () => {
+        await expect(
+          service.guardarBorrador(1, {
+            perfil: { tieneDiscapacidad: true, detallesAsistencia: 'Sin tipo' },
+          }),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(mockDatabaseService.transaction).not.toHaveBeenCalled();
+        expect(insertPerfil()).toBeUndefined();
       });
     });
   });

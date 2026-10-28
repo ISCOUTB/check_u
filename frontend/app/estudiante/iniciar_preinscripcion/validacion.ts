@@ -43,6 +43,9 @@ export const ID_CAMPOS = {
     departamento: "campo-departamento",
     ciudad: "campo-ciudad",
     direccion: "campo-direccion",
+    tieneDiscapacidad: "campo-tiene-discapacidad",
+    tipoDiscapacidad: "campo-tipo-discapacidad",
+    detallesAsistencia: "campo-detalles-asistencia",
     codigoEstudiantil: "campo-codigo-estudiantil",
     segundoPrograma: "campo-segundo-programa",
     conoceRegistroSaberPro: "campo-conoce-registro-saber-pro",
@@ -158,6 +161,11 @@ export function faltantes(borrador: BorradorPreinscripcion): CampoFaltante[] {
     exigir(borrador.perfil.numeroDocumento, ID_CAMPOS.numeroDocumento, "identificacion", "Número de documento");
     exigir(borrador.codigoEstudiantil, ID_CAMPOS.codigoEstudiantil, "academico", "Código estudiantil");
 
+    // El tipo solo se exige cuando la respuesta es afirmativa; los detalles son opcionales.
+    if (borrador.perfil.tieneDiscapacidad === true) {
+        exigir(borrador.perfil.tipoDiscapacidad, ID_CAMPOS.tipoDiscapacidad, "contacto", "Tipo de discapacidad");
+    }
+
     // El segundo programa solo cuenta si el estudiante respondió que sí.
     const ordenes: Orden[] = borrador.segundoPrograma === true ? [1, 2] : [1];
 
@@ -228,6 +236,8 @@ export function progreso(borrador: BorradorPreinscripcion): Progreso {
 
     const cargados = requeridos.filter((documento) => documentoCargado(borrador, documento.id)).length;
     const conObligatorios = seccionesConObligatorios(borrador.nivel);
+    // La respuesta afirmativa vuelve obligatorio el tipo de discapacidad en Contacto.
+    if (borrador.perfil.tieneDiscapacidad === true) conObligatorios.add("contacto");
 
     const secciones = seccionesDelNivel(borrador.nivel).map((id) => ({
         id,

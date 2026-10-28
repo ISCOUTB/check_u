@@ -15,6 +15,24 @@ export const USUARIOS: Record<Rol, { id: number; username: string; name: string;
 
 export const TEMAS = ["light", "dark"] as const;
 
+export interface PeriodoDemo {
+    id: string;
+    nombre: string;
+    fechaInicio: string;
+    fechaFin: string;
+    fechaGraduacion: string;
+    estado: "ABIERTO" | "CERRADO";
+}
+
+export const PERIODO_DEMO: PeriodoDemo = {
+    id: "periodo-2026-1",
+    nombre: "Grado octubre 2026",
+    fechaInicio: "2026-10-01",
+    fechaFin: "2026-10-31",
+    fechaGraduacion: "2026-11-15",
+    estado: "ABIERTO",
+};
+
 /** 320 px equivale a un zoom del 400 % en 1280 (WCAG 1.4.10, reflujo). */
 export const ANCHOS = [320, 360, 768, 1280] as const;
 
@@ -28,6 +46,44 @@ export async function sesionComo(page: Page, rol: Rol | null, nombre?: string): 
     await page.route(`${API}/auth/logout`, (ruta) =>
         ruta.fulfill({ status: 201, json: { message: "Sesión cerrada correctamente" } }),
     );
+    let periodos: PeriodoDemo[] = [{ ...PERIODO_DEMO }];
+    await page.route(`${API}/periodos-grado`, async (ruta) => {
+        if (rol !== "funcionario") {
+            await ruta.fulfill({ status: 403, json: { message: "Acceso restringido a funcionarios" } });
+            return;
+        }
+        const metodo = ruta.request().method();
+        if (metodo === "GET") {
+            await ruta.fulfill({ status: 200, json: periodos });
+            return;
+        }
+        if (metodo === "POST") {
+            const nuevo = { id: `periodo-${periodos.length + 1}`, ...ruta.request().postDataJSON() } as PeriodoDemo;
+            periodos = [...periodos, nuevo];
+            await ruta.fulfill({ status: 201, json: nuevo });
+            return;
+        }
+        await ruta.fulfill({ status: 405, json: { message: "Método no permitido" } });
+    });
+    await page.route(`${API}/periodos-grado/*`, async (ruta) => {
+        if (rol !== "funcionario") {
+            await ruta.fulfill({ status: 403, json: { message: "Acceso restringido a funcionarios" } });
+            return;
+        }
+        if (ruta.request().method() !== "PATCH") {
+            await ruta.fulfill({ status: 405, json: { message: "Método no permitido" } });
+            return;
+        }
+        const id = new URL(ruta.request().url()).pathname.split("/").pop();
+        const indice = periodos.findIndex((p) => p.id === id);
+        if (indice === -1) {
+            await ruta.fulfill({ status: 404, json: { message: "Periodo no encontrado" } });
+            return;
+        }
+        const actualizado = { ...periodos[indice], ...ruta.request().postDataJSON() } as PeriodoDemo;
+        periodos = periodos.map((p, i) => (i === indice ? actualizado : p));
+        await ruta.fulfill({ status: 200, json: actualizado });
+    });
     await page.route(`${API}/health`, (ruta) =>
         ruta.fulfill({
             status: 200,

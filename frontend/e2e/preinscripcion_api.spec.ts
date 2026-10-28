@@ -72,7 +72,12 @@ test("borradorVacio deja todo sin llenar y con el correo", () => {
     expect(vacio.pregrado.conoceRegistroSaberPro).toBeNull();
     expect(vacio.pregrado.esEmpleadoUtb).toBeNull();
     expect(vacio.posgrado.esEgresadoPregradoUtb).toBeNull();
-    expect(Object.values(vacio.perfil).every((valor) => valor === "")).toBe(true);
+    expect(vacio.perfil.tieneDiscapacidad).toBeNull();
+    expect(
+        Object.entries(vacio.perfil)
+            .filter(([clave]) => clave !== "tieneDiscapacidad")
+            .every(([, valor]) => valor === ""),
+    ).toBe(true);
     expect(vacio.documentos).toEqual({});
     expect(vacio.guardadoEn).toBeNull();
 });

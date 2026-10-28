@@ -47,6 +47,12 @@ export interface PerfilEstudianteDTO {
   direccion?: string;
   telefonoFijo?: string;
   celular?: string;
+  /** ¿Posee alguna discapacidad? null = sin responder. */
+  tieneDiscapacidad?: boolean | null;
+  /** Solo si tieneDiscapacidad es true. */
+  tipoDiscapacidad?: string;
+  /** Condiciones y apoyos para asistir a la ceremonia presencial. */
+  detallesAsistencia?: string;
 }
 
 export interface ProgramaSolicitudDTO {

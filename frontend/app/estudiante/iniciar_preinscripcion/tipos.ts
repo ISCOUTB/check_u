@@ -30,6 +30,12 @@ export interface PerfilEstudiante {
     departamento: string;
     ciudad: string;
     direccion: string;
+    /** ¿Posee alguna discapacidad? null = sin responder. */
+    tieneDiscapacidad: boolean | null;
+    /** Valor de `TIPOS_DISCAPACIDAD`; solo si `tieneDiscapacidad` es true. */
+    tipoDiscapacidad: string;
+    /** Condiciones y apoyos para asistir a la ceremonia de graduación presencial. */
+    detallesAsistencia: string;
 }
 
 /** Un programa por el que se solicita grado: el primero, o el segundo si hay doble grado. */
@@ -135,6 +141,9 @@ export function borradorVacio(nivel: Nivel, correo: string): BorradorPreinscripc
             departamento: "",
             ciudad: "",
             direccion: "",
+            tieneDiscapacidad: null,
+            tipoDiscapacidad: "",
+            detallesAsistencia: "",
         },
         segundoPrograma: null,
         programas: [programaVacio(1), programaVacio(2)],

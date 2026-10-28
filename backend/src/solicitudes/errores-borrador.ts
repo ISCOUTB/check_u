@@ -10,6 +10,7 @@ const CAMPOS: Record<string, string> = {
   'perfil.numeroDocumento': 'el número de documento de identidad',
   'perfil.fechaNacimiento': 'la fecha de nacimiento',
   'perfil.ciudad': 'la ciudad de residencia',
+  'perfil.tipoDiscapacidad': 'el tipo de discapacidad',
   nombres: 'los nombres',
   apellidos: 'los apellidos',
   codigoEstudiantil: 'el código estudiantil',

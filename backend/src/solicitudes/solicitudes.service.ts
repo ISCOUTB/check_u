@@ -34,6 +34,14 @@ const DOCUMENTOS_REQUERIDOS_POSGRADO = [
   'estampilla_pro_cultura',
 ];
 
+const TIPOS_DISCAPACIDAD = [
+  'SENSORIAL',
+  'FISICA',
+  'INTELECTUAL',
+  'ORGANOS',
+  'OTRA',
+] as const;
+
 function normalizarTipoDocumento(tipo: string): string {
   const limpio = tipo.trim().toLowerCase();
   if (limpio === 'estampilla2' || limpio === 'estampilla_pro_cultura-2') return 'estampilla_pro_cultura';
@@ -377,12 +385,18 @@ export class SolicitudesService {
           datos.perfil,
         );
       if (datos.programas) {
+        const conSegundoPrograma = datos.segundoPrograma === true;
         await client.query(
           'DELETE FROM solicitud_programa WHERE id_solicitud = $1',
           [id],
         );
+        if (!conSegundoPrograma)
+          await client.query(
+            'DELETE FROM solicitud_programa WHERE id_solicitud = $1 AND orden = 2',
+            [id],
+          );
         for (const programa of datos.programas) {
-          if (programa.orden === 2 && datos.segundoPrograma === false) continue;
+          if (programa.orden === 2 && !conSegundoPrograma) continue;
           await this.guardarCampos(
             client,
             'solicitud_programa',

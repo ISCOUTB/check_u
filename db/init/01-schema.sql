@@ -275,6 +275,11 @@ CREATE TABLE IF NOT EXISTS perfil_estudiante (
     direccion_residencia TEXT,
     telefono_fijo TEXT,
     telefono_celular TEXT,
+    -- Información para la ceremonia de graduación presencial.
+    -- NULL = sin responder; FALSE = no posee discapacidad; TRUE = requiere apoyos.
+    tiene_discapacidad BOOLEAN,
+    tipo_discapacidad TEXT,
+    detalles_necesidades_asistencia TEXT,
     fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fecha_actualizacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT pk_perfil_estudiante PRIMARY KEY (id_usuario),
@@ -285,8 +290,58 @@ CREATE TABLE IF NOT EXISTS perfil_estudiante (
     CONSTRAINT chk_perfil_tipo_documento_no_vacio
         CHECK (btrim(tipo_documento_identidad) <> ''),
     CONSTRAINT chk_perfil_numero_documento
-        CHECK (numero_documento ~ '^[A-Za-z0-9]+$')
+        CHECK (numero_documento ~ '^[A-Za-z0-9]+$'),
+    CONSTRAINT chk_perfil_discapacidad CHECK (
+        (tiene_discapacidad IS TRUE AND
+         tipo_discapacidad IS NOT NULL AND
+         btrim(tipo_discapacidad) <> '' AND
+         tipo_discapacidad IN ('SENSORIAL', 'FISICA', 'INTELECTUAL', 'ORGANOS', 'OTRA'))
+        OR
+        (tiene_discapacidad IS NOT TRUE AND
+         tipo_discapacidad IS NULL AND
+         detalles_necesidades_asistencia IS NULL)
+    ),
+    CONSTRAINT chk_perfil_detalles_asistencia CHECK (
+        detalles_necesidades_asistencia IS NULL OR
+        btrim(detalles_necesidades_asistencia) <> ''
+    )
 );
+
+-- Compatibilidad con bases existentes: agregar las columnas sin perder perfiles.
+ALTER TABLE perfil_estudiante
+    ADD COLUMN IF NOT EXISTS tiene_discapacidad BOOLEAN;
+ALTER TABLE perfil_estudiante
+    ADD COLUMN IF NOT EXISTS tipo_discapacidad TEXT;
+ALTER TABLE perfil_estudiante
+    ADD COLUMN IF NOT EXISTS detalles_necesidades_asistencia TEXT;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_perfil_discapacidad'
+    ) THEN
+        ALTER TABLE perfil_estudiante
+            ADD CONSTRAINT chk_perfil_discapacidad CHECK (
+                (tiene_discapacidad IS TRUE AND
+                 tipo_discapacidad IS NOT NULL AND
+                 btrim(tipo_discapacidad) <> '' AND
+                 tipo_discapacidad IN ('SENSORIAL', 'FISICA', 'INTELECTUAL', 'ORGANOS', 'OTRA'))
+                OR
+                (tiene_discapacidad IS NOT TRUE AND
+                 tipo_discapacidad IS NULL AND
+                 detalles_necesidades_asistencia IS NULL)
+            );
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_perfil_detalles_asistencia'
+    ) THEN
+        ALTER TABLE perfil_estudiante
+            ADD CONSTRAINT chk_perfil_detalles_asistencia CHECK (
+                detalles_necesidades_asistencia IS NULL OR
+                btrim(detalles_necesidades_asistencia) <> ''
+            );
+    END IF;
+END $$;
 
 -- 10. SOLICITUD_PROGRAMA
 CREATE TABLE IF NOT EXISTS solicitud_programa (

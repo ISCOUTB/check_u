@@ -38,6 +38,15 @@ test.describe("detalle", () => {
         await expect(page.getByRole("tab", { name: "Documentos" })).toHaveAttribute("aria-selected", "true");
     });
 
+    test("el funcionario consulta la discapacidad y las necesidades de asistencia", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        await page.goto(DETALLE);
+        await page.getByRole("tab", { name: "Información del estudiante" }).click();
+        await expect(page.getByLabel("¿Posee alguna discapacidad?")).toHaveValue("true");
+        await expect(page.getByLabel("Tipo de discapacidad")).toHaveValue("Física");
+        await expect(page.getByLabel("Detalles y necesidades de asistencia")).toHaveValue(/silla de ruedas/);
+    });
+
     test("el análisis atrapa el foco, cierra con Esc y devuelve el foco al botón que lo abrió", async ({ page }) => {
         await sesionComo(page, "funcionario");
         await page.goto(DETALLE);

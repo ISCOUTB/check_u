@@ -25,3 +25,8 @@
     font: inherit; font-weight: 700; cursor: pointer;
 }
 .ayuda:hover { background: var(--color-surface-muted); }
+
+/* El cuerpo del modal ya aporta el espacio superior. */
+.detalles > :first-child {
+    margin-block-start: 0;
+}
