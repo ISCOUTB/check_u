@@ -32,6 +32,14 @@ const DOCUMENTOS_REQUERIDOS_POSGRADO = [
   'estampilla_pro_cultura',
 ];
 
+const TIPOS_DISCAPACIDAD = [
+  'SENSORIAL',
+  'FISICA',
+  'INTELECTUAL',
+  'ORGANOS',
+  'OTRA',
+] as const;
+
 function normalizarTipoDocumento(tipo: string): string {
   const limpio = tipo.trim().toLowerCase();
   if (limpio === 'estampilla2' || limpio === 'estampilla_pro_cultura-2') return 'estampilla_pro_cultura';
@@ -359,12 +367,18 @@ export class SolicitudesService {
           datos.perfil,
         );
       if (datos.programas) {
+        const conSegundoPrograma = datos.segundoPrograma === true;
         await client.query(
           'DELETE FROM solicitud_programa WHERE id_solicitud = $1',
           [id],
         );
+        if (!conSegundoPrograma)
+          await client.query(
+            'DELETE FROM solicitud_programa WHERE id_solicitud = $1 AND orden = 2',
+            [id],
+          );
         for (const programa of datos.programas) {
-          if (programa.orden === 2 && datos.segundoPrograma === false) continue;
+          if (programa.orden === 2 && !conSegundoPrograma) continue;
           await this.guardarCampos(
             client,
             'solicitud_programa',
@@ -533,12 +547,31 @@ export class SolicitudesService {
     // Persistir perfil_estudiante
     if (payload.perfil) {
       const p = payload.perfil;
+      const tieneDiscapacidad = p.tieneDiscapacidad === true;
+      const tipoDiscapacidad =
+        tieneDiscapacidad && typeof p.tipoDiscapacidad === 'string'
+          ? p.tipoDiscapacidad.trim().toUpperCase() || null
+          : null;
+      if (
+        tieneDiscapacidad &&
+        (!tipoDiscapacidad ||
+          !TIPOS_DISCAPACIDAD.includes(
+            tipoDiscapacidad as (typeof TIPOS_DISCAPACIDAD)[number],
+          ))
+      ) {
+        throw new BadRequestException('Debe indicar el tipo de discapacidad');
+      }
+      const detallesAsistencia =
+        tieneDiscapacidad && typeof p.detallesAsistencia === 'string'
+          ? p.detallesAsistencia.trim() || null
+          : null;
       await client.query(
         `INSERT INTO perfil_estudiante (
            id_usuario, tipo_documento_identidad, numero_documento,
            fecha_nacimiento, genero, departamento_residencia, ciudad_residencia,
-           direccion_residencia, telefono_fijo, telefono_celular
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           direccion_residencia, telefono_fijo, telefono_celular,
+           tiene_discapacidad, tipo_discapacidad, detalles_necesidades_asistencia
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          ON CONFLICT (id_usuario) DO UPDATE SET
            tipo_documento_identidad = EXCLUDED.tipo_documento_identidad,
            numero_documento = EXCLUDED.numero_documento,
@@ -548,7 +581,10 @@ export class SolicitudesService {
            ciudad_residencia = COALESCE(EXCLUDED.ciudad_residencia, perfil_estudiante.ciudad_residencia),
            direccion_residencia = COALESCE(EXCLUDED.direccion_residencia, perfil_estudiante.direccion_residencia),
            telefono_fijo = COALESCE(EXCLUDED.telefono_fijo, perfil_estudiante.telefono_fijo),
-           telefono_celular = COALESCE(EXCLUDED.telefono_celular, perfil_estudiante.telefono_celular);`,
+           telefono_celular = COALESCE(EXCLUDED.telefono_celular, perfil_estudiante.telefono_celular),
+           tiene_discapacidad = EXCLUDED.tiene_discapacidad,
+           tipo_discapacidad = EXCLUDED.tipo_discapacidad,
+           detalles_necesidades_asistencia = EXCLUDED.detalles_necesidades_asistencia;`,
         [
           idEstudiante,
           p.tipoDocumento?.trim() || null,
@@ -560,6 +596,9 @@ export class SolicitudesService {
           p.direccion?.trim() || null,
           p.telefonoFijo?.trim() || null,
           p.celular?.trim() || null,
+          p.tieneDiscapacidad ?? null,
+          tipoDiscapacidad,
+          detallesAsistencia,
         ],
       );
     }

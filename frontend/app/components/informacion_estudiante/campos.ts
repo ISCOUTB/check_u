@@ -4,6 +4,8 @@ export interface DefinicionCampo {
   clave: keyof DatosInformacionEstudiante;
   etiqueta: string;
   formato: FormatoCampo;
+  /** Traduce el valor almacenado a una etiqueta legible. */
+  etiquetas?: Record<string, string>;
   /** Si no se define, el campo se muestra siempre dentro del grupo */
   visibleSi?: (datos: DatosInformacionEstudiante) => boolean;
 }
@@ -39,6 +41,37 @@ const contacto: DefinicionGrupo = {
     { clave: "departamento", etiqueta: "Departamento de residencia", formato: "texto" },
     { clave: "ciudad", etiqueta: "Ciudad / municipio de residencia", formato: "texto" },
     { clave: "direccion", etiqueta: "Dirección de residencia", formato: "texto" },
+  ],
+};
+
+const asistencia: DefinicionGrupo = {
+  id: "asistencia",
+  titulo: "Discapacidad y asistencia a la ceremonia",
+  campos: [
+    {
+      clave: "tieneDiscapacidad",
+      etiqueta: "¿Posee alguna discapacidad?",
+      formato: "texto",
+    },
+    {
+      clave: "tipoDiscapacidad",
+      etiqueta: "Tipo de discapacidad",
+      formato: "texto",
+      etiquetas: {
+        SENSORIAL: "Sensorial",
+        FISICA: "Física",
+        INTELECTUAL: "Intelectual",
+        ORGANOS: "Órganos",
+        OTRA: "Otra",
+      },
+      visibleSi: (d) => d.tieneDiscapacidad === true,
+    },
+    {
+      clave: "detallesAsistencia",
+      etiqueta: "Detalles y necesidades de asistencia",
+      formato: "parrafo",
+      visibleSi: (d) => d.tieneDiscapacidad === true,
+    },
   ],
 };
 
@@ -132,7 +165,7 @@ const experienciaLaboral: DefinicionGrupo = {
 /** Grupos según nivel. Agregar/quitar campos solo aquí. */
 export function gruposPorNivel(nivel: NivelAcademico): DefinicionGrupo[] {
   if (nivel === "POSGRADO") {
-    return [identificacion, contacto, academicaPosgrado, experienciaLaboral];
+    return [identificacion, contacto, asistencia, academicaPosgrado, experienciaLaboral];
   }
-  return [identificacion, contacto, academicaPregrado, segundoPrograma, saberPro, vinculacionUtb];
+  return [identificacion, contacto, asistencia, academicaPregrado, segundoPrograma, saberPro, vinculacionUtb];
 }

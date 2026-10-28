@@ -231,6 +231,44 @@ test("lo opcional no se exige", () => {
     expect(faltantes(borrador)).toEqual([]);
 });
 
+test("el tipo de discapacidad solo se exige cuando la respuesta es Sí", () => {
+    const borrador = completo("PREGRADO");
+    borrador.perfil.tieneDiscapacidad = true;
+    borrador.perfil.tipoDiscapacidad = "";
+    borrador.perfil.detallesAsistencia = "";
+
+    expect(ids(borrador)).toEqual([ID_CAMPOS.tipoDiscapacidad]);
+    const pendiente = progreso(borrador);
+    expect(pendiente.secciones.find((seccion) => seccion.id === "contacto")).toMatchObject({
+        faltan: 1,
+        opcional: false,
+    });
+    expect(pendiente.seccionesPendientes).toBe(1);
+    expect(pendiente.listo).toBe(false);
+
+    // Los detalles son opcionales; con el tipo completo, la sección queda completa.
+    borrador.perfil.tipoDiscapacidad = "FISICA";
+    borrador.perfil.detallesAsistencia = "Requiere rampa";
+    expect(faltantes(borrador)).toEqual([]);
+    expect(progreso(borrador).secciones.find((seccion) => seccion.id === "contacto")).toMatchObject({
+        faltan: 0,
+        opcional: false,
+    });
+    expect(progreso(borrador).listo).toBe(true);
+});
+
+test("al responder No o dejar sin responder no se exige el tipo y Contacto es opcional", () => {
+    for (const respuesta of [false, null]) {
+        const borrador = completo("PREGRADO");
+        borrador.perfil.tieneDiscapacidad = respuesta;
+        borrador.perfil.tipoDiscapacidad = "";
+        borrador.perfil.detallesAsistencia = "";
+
+        expect(faltantes(borrador)).toEqual([]);
+        expect(progreso(borrador).secciones.find((seccion) => seccion.id === "contacto")?.opcional).toBe(true);
+    }
+});
+
 test("la fecha se guarda tal cual", () => {
     const borrador = completo("PREGRADO");
     borrador.perfil.fechaNacimiento = "2000-01-01";

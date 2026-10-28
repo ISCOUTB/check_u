@@ -84,6 +84,25 @@ test.describe("decisión de bienvenida basada en solicitud_grado", () => {
             await expect(page.getByRole("heading", { name: "Detalle de mi preinscripción" })).toBeVisible();
         });
 
+        test("la pestaña Tu información muestra la discapacidad y las necesidades de asistencia", async ({ page }) => {
+            await sesionComo(page, "estudiante");
+            await page.route(`${API}/estudiante/solicitud`, (ruta) =>
+                ruta.fulfill({
+                    status: 200,
+                    json: {
+                        tiene_solicitud: true,
+                        solicitud: { id_solicitud: 1, tipo_solicitud: "PREGRADO", estado: "BORRADOR" },
+                    },
+                }),
+            );
+
+            await page.goto(RUTA_PREINSCRIPCION);
+            await page.getByRole("tab", { name: "Tu información" }).click();
+            await expect(page.getByLabel("¿Posee alguna discapacidad?")).toHaveValue("true");
+            await expect(page.getByLabel("Tipo de discapacidad")).toHaveValue("Física");
+            await expect(page.getByLabel("Detalles y necesidades de asistencia")).toHaveValue(/silla de ruedas/);
+        });
+
         test("si la consulta falla (error de BD), no redirige y muestra error con opción de reintentar", async ({ page }) => {
             await sesionComo(page, "estudiante");
             await page.route(`${API}/estudiante/solicitud`, (ruta) =>

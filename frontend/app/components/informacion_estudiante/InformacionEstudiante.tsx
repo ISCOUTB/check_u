@@ -56,6 +56,7 @@ const CLAVES_BOOLEANAS = new Set([
   'esEmpleadoUtb',
   'esHijoEmpleadoUtb',
   'esEgresadoPregradoUtb',
+  'tieneDiscapacidad',
 ]);
 
 export default function InformacionEstudiante({
@@ -100,7 +101,8 @@ export default function InformacionEstudiante({
                   esLista ||
                   campo.clave === 'direccion' ||
                   campo.clave === 'programa' ||
-                  campo.clave === 'segundoPrograma';
+                  campo.clave === 'segundoPrograma' ||
+                  campo.clave === 'detallesAsistencia';
 
                 // Caso especial: lista de cargos
                 if (esLista) {
@@ -177,8 +179,32 @@ export default function InformacionEstudiante({
                   );
                 }
 
+                // Texto largo → textarea de solo lectura
+                if (campo.formato === 'parrafo') {
+                  const valor = obtenerValorParaInput(bruto, campo.formato);
+                  return (
+                    <div
+                      key={String(campo.clave)}
+                      className={`${styles.campo} ${styles.campoAncho}`}
+                    >
+                      <label className={styles.etiqueta} htmlFor={String(campo.clave)}>
+                        {campo.etiqueta}
+                      </label>
+                      <textarea
+                        id={String(campo.clave)}
+                        className={styles.input}
+                        value={valor}
+                        disabled
+                        rows={4}
+                        readOnly
+                      />
+                    </div>
+                  );
+                }
+
                 // Resto de campos → input
                 const valorInput = obtenerValorParaInput(bruto, campo.formato);
+                const valorVisible = campo.etiquetas?.[valorInput] ?? valorInput;
                 const tipoInput = campo.formato === 'fecha' ? 'date' : 'text';
 
                 return (
@@ -197,7 +223,7 @@ export default function InformacionEstudiante({
                       id={campo.clave}
                       type={tipoInput}
                       className={styles.input}
-                      value={valorInput}
+                      value={valorVisible}
                       disabled
                       readOnly
                     />

@@ -55,6 +55,15 @@ export const NIVELES_ESTUDIO: readonly Opcion[] = [
     { valor: "DOCTORADO", etiqueta: "Doctorado" },
 ];
 
+/** Tipos de discapacidad para la ceremonia de graduación presencial. */
+export const TIPOS_DISCAPACIDAD: readonly Opcion[] = [
+    { valor: "SENSORIAL", etiqueta: "Sensorial" },
+    { valor: "FISICA", etiqueta: "Física" },
+    { valor: "INTELECTUAL", etiqueta: "Intelectual" },
+    { valor: "ORGANOS", etiqueta: "Órganos" },
+    { valor: "OTRA", etiqueta: "Otra" },
+];
+
 /** Los valores son los del modelo de datos (#40): VIRTUAL y PRESENCIAL. */
 export const MODALIDADES: readonly Opcion<Modalidad>[] = [
     { valor: "VIRTUAL", etiqueta: "Virtual" },

@@ -182,6 +182,48 @@ test.describe("iniciar preinscripción", () => {
         await expect(contrato).toHaveCount(0);
     });
 
+    test("discapacidad: al responder Sí aparecen tipo y detalles; al responder No se ocultan y se limpian", async ({
+        page,
+    }) => {
+        await abrir(page, PREGRADO);
+        const tipo = page.locator("#campo-tipo-discapacidad");
+        const detalles = page.locator("#campo-detalles-asistencia");
+        await expect(tipo).toHaveCount(0);
+        await expect(detalles).toHaveCount(0);
+
+        await responder(page, "¿Posee alguna discapacidad?", "Sí");
+        await expect(tipo).toBeVisible();
+        await expect(detalles).toBeVisible();
+
+        await page.getByLabel("Tipo de discapacidad (obligatorio)").selectOption({ label: "Física" });
+        await detalles.fill("Requiere rampa y espacio para silla de ruedas.");
+
+        await responder(page, "¿Posee alguna discapacidad?", "No");
+        await expect(tipo).toHaveCount(0);
+        await expect(detalles).toHaveCount(0);
+
+        // Al volver a Sí, los valores residuales no reaparecen.
+        await responder(page, "¿Posee alguna discapacidad?", "Sí");
+        await expect(page.getByLabel("Tipo de discapacidad (obligatorio)")).toHaveValue("");
+        await expect(detalles).toHaveValue("");
+    });
+
+    test("discapacidad en posgrado: los campos adicionales también aparecen y se limpian", async ({ page }) => {
+        await abrir(page, POSGRADO);
+        await expect(page.locator("#campo-tipo-discapacidad")).toHaveCount(0);
+
+        await responder(page, "¿Posee alguna discapacidad?", "Sí");
+        await page.getByLabel("Tipo de discapacidad (obligatorio)").selectOption({ label: "Otra" });
+        await page.locator("#campo-detalles-asistencia").fill("Requiere intérprete de lengua de señas.");
+        await expect(page.locator("#campo-detalles-asistencia")).toHaveValue(
+            "Requiere intérprete de lengua de señas.",
+        );
+
+        await responder(page, "¿Posee alguna discapacidad?", "No");
+        await expect(page.locator("#campo-tipo-discapacidad")).toHaveCount(0);
+        await expect(page.locator("#campo-detalles-asistencia")).toHaveCount(0);
+    });
+
     test("registro y fecha Saber Pro solo si los conoce", async ({ page }) => {
         await abrir(page, PREGRADO);
         const registro = page.locator("#campo-numero-registro-saber-pro");
@@ -206,7 +248,7 @@ test.describe("iniciar preinscripción", () => {
         await campo.pressSequentially("1.043 640-743");
         await expect(campo).toHaveValue("1043640743");
         await expect(campo).toHaveAttribute("aria-invalid", "true");
-        await expect(page.locator("#campo-numeroDocumento-error")).toHaveText(AVISO_NUMERO);
+        await expect(page.locator("#campo-numero-documento-error")).toHaveText(AVISO_NUMERO);
         await expect(campo).toHaveAccessibleDescription(AVISO_NUMERO);
         await expect(anuncio(page)).toHaveText(AVISO_NUMERO);
     });
@@ -221,7 +263,7 @@ test.describe("iniciar preinscripción", () => {
         await page.keyboard.press("ControlOrMeta+V");
         await expect(campo).toHaveValue("1043640743");
         // Se ve una sola vez, en el error del campo, y se anuncia en la región viva (que ya existía).
-        await expect(page.locator("#campo-numeroDocumento-error")).toHaveText(AVISO_NUMERO);
+        await expect(page.locator("#campo-numero-documento-error")).toHaveText(AVISO_NUMERO);
         await expect(campo).toHaveAccessibleDescription(AVISO_NUMERO);
         await expect(anuncio(page)).toHaveText(AVISO_NUMERO);
     });
@@ -369,7 +411,7 @@ test.describe("iniciar preinscripción", () => {
             "#campo-nombres",
             "#campo-apellidos",
             "#campo-tipo-documento",
-            "#campo-numeroDocumento",
+            "#campo-numero-documento",
             "#campo-codigo-estudiantil",
             "#campo-programa-1",
         ]) {
@@ -813,6 +855,37 @@ test.describe("iniciar preinscripción", () => {
                 });
 });
 
+
+test("Tarea 37: guarda la discapacidad y no envía valores residuales al responder No", async ({ page }) => {
+    await abrir(page, PREGRADO);
+
+    await responder(page, "¿Posee alguna discapacidad?", "Sí");
+    await page.getByLabel("Tipo de discapacidad (obligatorio)").selectOption({ label: "Física" });
+    await page.locator("#campo-detalles-asistencia").fill("Requiere rampa");
+
+    const primerGuardado = page.waitForRequest(
+        (peticion) => peticion.url() === `${API}/solicitudes/borrador` && peticion.method() === "POST",
+    );
+    await page.getByRole("button", { name: "Guardar para continuar después" }).click();
+    const primero = (await primerGuardado).postDataJSON();
+    expect(primero.perfil).toMatchObject({
+        tieneDiscapacidad: true,
+        tipoDiscapacidad: "FISICA",
+        detallesAsistencia: "Requiere rampa",
+    });
+
+    await responder(page, "¿Posee alguna discapacidad?", "No");
+    const segundoGuardado = page.waitForRequest(
+        (peticion) => peticion.url() === `${API}/solicitudes/borrador` && peticion.method() === "POST",
+    );
+    await page.getByRole("button", { name: "Guardar para continuar después" }).click();
+    const segundo = (await segundoGuardado).postDataJSON();
+    expect(segundo.perfil).toMatchObject({
+        tieneDiscapacidad: false,
+        tipoDiscapacidad: "",
+        detallesAsistencia: "",
+    });
+});
 
 test("Tarea 28: guarda sin documentos y restaura desde GET después de F5", async ({ page }) => {
     await abrir(page, PREGRADO);

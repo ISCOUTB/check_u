@@ -447,4 +447,103 @@ describe('Borrador de solicitud (Tarea 28, PostgreSQL)', () => {
       antes,
     );
   });
+
+  describe('Tarea 37: discapacidad y necesidades de asistencia', () => {
+    const perfilAfirmativo = {
+      tieneDiscapacidad: true,
+      tipoDiscapacidad: 'FISICA',
+      detallesAsistencia: 'Rampa y espacio para silla de ruedas',
+    };
+    const leerPerfil = async () =>
+      (
+        await base.db.query(
+          `SELECT tiene_discapacidad, tipo_discapacidad, detalles_necesidades_asistencia
+           FROM perfil_estudiante`,
+        )
+      ).rows;
+
+    it('guarda y recupera la respuesta afirmativa con su tipo y detalles', async () => {
+      await agente
+        .post('/api/solicitudes/borrador')
+        .send({ perfil: perfilAfirmativo })
+        .expect(201);
+
+      const res = await agente.get('/api/solicitudes/borrador').expect(200);
+      expect(res.body.borrador.perfil).toMatchObject(perfilAfirmativo);
+      expect(await leerPerfil()).toEqual([
+        {
+          tiene_discapacidad: true,
+          tipo_discapacidad: 'FISICA',
+          detalles_necesidades_asistencia:
+            'Rampa y espacio para silla de ruedas',
+        },
+      ]);
+    });
+
+    it('al cambiar la respuesta a No borra tipo y detalles en la base de datos', async () => {
+      await agente
+        .post('/api/solicitudes/borrador')
+        .send({ perfil: perfilAfirmativo })
+        .expect(201);
+      await agente
+        .post('/api/solicitudes/borrador')
+        .send({
+          perfil: {
+            tieneDiscapacidad: false,
+            tipoDiscapacidad: 'SENSORIAL',
+            detallesAsistencia: 'Valor residual',
+          },
+        })
+        .expect(201);
+
+      const res = await agente.get('/api/solicitudes/borrador').expect(200);
+      expect(res.body.borrador.perfil).toMatchObject({
+        tieneDiscapacidad: false,
+        tipoDiscapacidad: null,
+        detallesAsistencia: null,
+      });
+      expect(await leerPerfil()).toEqual([
+        {
+          tiene_discapacidad: false,
+          tipo_discapacidad: null,
+          detalles_necesidades_asistencia: null,
+        },
+      ]);
+    });
+
+    it('un guardado parcial del perfil no borra la información ya registrada', async () => {
+      await agente
+        .post('/api/solicitudes/borrador')
+        .send({ perfil: perfilAfirmativo })
+        .expect(201);
+      await agente
+        .post('/api/solicitudes/borrador')
+        .send({ perfil: { ciudad: 'Cartagena' } })
+        .expect(201);
+
+      const res = await agente.get('/api/solicitudes/borrador').expect(200);
+      expect(res.body.borrador.perfil).toMatchObject({
+        ...perfilAfirmativo,
+        ciudad: 'Cartagena',
+      });
+    });
+
+    it('rechaza una respuesta afirmativa sin tipo de discapacidad', async () => {
+      const res = await agente
+        .post('/api/solicitudes/borrador')
+        .send({
+          perfil: { tieneDiscapacidad: true, detallesAsistencia: 'Sin tipo' },
+        })
+        .expect(400);
+
+      expect(res.body).toMatchObject({
+        codigo: 'BORRADOR_CAMPO_REQUERIDO',
+        campos: [{ campo: 'perfil.tipoDiscapacidad', motivo: 'FALTANTE' }],
+      });
+      expect(res.body.message).toContain('el tipo de discapacidad');
+      expect((await base.db.query('SELECT * FROM solicitud_grado')).rows).toHaveLength(
+        0,
+      );
+    });
+  });
 });

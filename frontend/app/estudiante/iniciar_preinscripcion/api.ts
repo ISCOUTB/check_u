@@ -103,6 +103,9 @@ function borradorCompleto(nivel: Nivel, correo: string): BorradorPreinscripcion 
         telefonoFijo: "6050000000",
         celular: "3000000000",
         direccion: "Calle de ejemplo 1",
+        tieneDiscapacidad: true,
+        tipoDiscapacidad: "SENSORIAL",
+        detallesAsistencia: "Requiere ubicación cercana al intérprete de lengua de señas.",
     };
     borrador.segundoPrograma = false;
 
