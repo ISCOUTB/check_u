@@ -18,15 +18,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
-  ocr:
-    build:
-      context: .
-      dockerfile: modules/api/Dockerfile
-    container_name: checku-ocr-local
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:5001:5001"
-    init: true
 
 volumes:
   checku_db_data:

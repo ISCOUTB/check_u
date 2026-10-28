@@ -15,7 +15,7 @@ export interface ExtractedField {
 
 export interface ValidationResult {
     description: string;
-    result: boolean | null;
+    result: boolean;
     detail?: string;
 }
 
@@ -65,8 +65,27 @@ export default function DocumentAnalysis({ open, onClose, data }: DocumentAnalys
                     <h3 id="analisis-vista" className={styles.tituloSeccion}>
                         Vista del documento
                     </h3>
-                    <p>Los datos y observaciones de este análisis se recuperaron del registro documental.</p>
-                    {!actual.documentUrl && <p>La vista del archivo original no está disponible.</p>}
+                    <div className={styles.vistaPrevia} aria-hidden="true">
+                        <div className={styles.pagina}>
+                            <p className={styles.membrete}>
+                                UNIVERSIDAD TECNOLÓGICA <strong>DE BOLÍVAR</strong>
+                            </p>
+                            <span className={styles.linea} />
+                            <p className={styles.tituloPagina}>RESULTADOS DE LA PRUEBA</p>
+                            <dl className={styles.filasPagina}>
+                                <dt>Nombre</dt>
+                                <dd>Juan Pérez Gómez</dd>
+                                <dt>Identificación</dt>
+                                <dd>1000123456</dd>
+                                <dt>Puntaje global</dt>
+                                <dd>287</dd>
+                                <dt>Número de registro</dt>
+                                <dd>123456789</dd>
+                                <dt>Fecha de aplicación</dt>
+                                <dd>15/09/2025</dd>
+                            </dl>
+                        </div>
+                    </div>
                     {actual.documentUrl && (
                         <Button
                             variante="secundario"
@@ -102,16 +121,16 @@ export default function DocumentAnalysis({ open, onClose, data }: DocumentAnalys
                                 <li
                                     key={`${regla.description}-${indice}`}
                                     className={styles.regla}
-                                    data-cumple={regla.result ?? undefined}
+                                    data-cumple={regla.result}
                                 >
                                     <span className={styles.reglaIcono}>
-                                        <Icono nombre={regla.result === null ? "por_revisar" : regla.result ? "valido" : "no_valido"} />
+                                        <Icono nombre={regla.result ? "valido" : "no_valido"} />
                                     </span>
                                     <div>
                                         <p className={styles.reglaTitulo}>
                                             {regla.description}
                                             <span className={styles.reglaResultado}>
-                                                {regla.result === null ? "No evaluable" : regla.result ? "Cumple" : "No cumple"}
+                                                {regla.result ? "Cumple" : "No cumple"}
                                             </span>
                                         </p>
                                         {regla.detail && <p className={styles.reglaDetalle}>{regla.detail}</p>}

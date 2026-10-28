@@ -80,7 +80,6 @@ export default function Documentos({
         }
 
         const cargado: DocumentoCargado = {
-            archivo,
             id: documento.id,
             nombre: archivo.name,
             tamano: archivo.size,
@@ -121,7 +120,7 @@ export default function Documentos({
     return (
         <Seccion
             id="documentos"
-            descripcion="Cada documento va en su propio archivo PDF. Si recargas un borrador, selecciona nuevamente los PDF antes de enviar."
+            descripcion="Cada documento va en su propio archivo PDF."
         >
             <p className={styles.contador}>
                 {cargados} de {requeridos} documentos cargados

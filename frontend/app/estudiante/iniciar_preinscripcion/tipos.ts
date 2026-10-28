@@ -79,8 +79,6 @@ export interface ExperienciaLaboral {
 
 /** Un PDF ya cargado, sin su contenido. */
 export interface DocumentoCargado {
-    /** PDF de esta visita. Al recargar se debe seleccionar nuevamente. */
-    archivo?: File;
     /** El id de la zona de carga (`DocumentoDelFormulario.id`) */
     id: string;
     nombre: string;

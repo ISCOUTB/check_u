@@ -22,6 +22,8 @@ import type {
 
 import {
   InformacionEstudiante,
+  DEMO_PREGRADO,
+  DEMO_POSGRADO,
 } from "@/app/components/informacion_estudiante";
 
 
@@ -110,21 +112,66 @@ function iniciales(nombre: string): string {
     .toUpperCase();
 }
 
-/** El modal utiliza exclusivamente la evidencia persistida del motor. */
-function analisisPersistido(doc: DocumentoSolicitud): DocumentAnalysisData {
-  const estados: Record<EstadoDocumento, DocumentAnalysisData["status"]> = {
-    valido: "VALIDO", no_valido: "NO_VALIDO", inconsistente: "INCONSISTENTE", por_revisar: "POR_REVISAR",
+/** Mock de análisis para el modal (SIMULADO — TODO: endpoint real) */
+function mockAnalisis(
+  doc: DocumentoSolicitud,
+  estudiante: { nombre: string; numeroDocumento: string; codigo: string }
+): DocumentAnalysisData {
+  const primerEstado = doc.resultados[0]?.estado ?? "por_revisar";
+  const statusMap: Record<EstadoDocumento, DocumentAnalysisData["status"]> = {
+    valido: "VALIDO",
+    no_valido: "NO_VALIDO",
+    inconsistente: "INCONSISTENTE",
+    por_revisar: "POR_REVISAR",
   };
-  return {
-    documentType: doc.nombre, fileName: doc.fileName ?? doc.nombre,
-    status: estados[doc.resultados[0]?.estado ?? "por_revisar"],
-    extractedFields: Object.entries(doc.analisis?.extracted_data ?? {}).map(([campo, dato]) => ({
-      label: campo, value: dato.value == null ? "No disponible" : String(dato.value), source: "Análisis documental registrado",
-    })),
-    validations: [
-      ...(doc.analisis?.rules ?? []).map(r => ({ description: r.rule, result: r.result === "no_evaluable" ? null : r.result === "cumple", detail: r.message })),
-      ...(doc.analisis?.errors ?? []).map(error => ({ description: "Observación del análisis", result: false, detail: error })),
+
+  const camposPorTipo: Record<
+    TipoDocumento,
+    DocumentAnalysisData["extractedFields"]
+  > = {
+    identification: [
+      { label: "Nombre completo", value: estudiante.nombre, source: "Página 1 · OCR" },
+      { label: "Número de documento", value: estudiante.numeroDocumento, source: "Página 1 · OCR" },
+      { label: "Tipo de documento", value: "Cédula de ciudadanía", source: "Página 1 · OCR" },
     ],
+    academic_evaluation: [
+      { label: "Código estudiantil", value: estudiante.codigo, source: "Página 1 · OCR" },
+      { label: "Nombre del estudiante", value: estudiante.nombre, source: "Página 1 · OCR" },
+      { label: "Programa académico", value: "Ingeniería de Sistemas y Computación", source: "Página 1 · OCR" },
+      { label: "Estado académico", value: primerEstado === "valido" ? "Cumple" : "Revisar", source: "Página 1 · OCR" },
+    ],
+    estampilla_pro_cultura: [
+      { label: "Nombre", value: estudiante.nombre, source: "Página 1 · OCR" },
+      { label: "Número de identificación", value: estudiante.numeroDocumento, source: "Página 1 · OCR" },
+      { label: "Referencia de pago", value: "PC-2026-009845", source: "Página 1 · OCR" },
+    ],
+    saber_pro: [
+      { label: "Nombre del estudiante", value: estudiante.nombre, source: "Página 1 · OCR" },
+      { label: "Identificación", value: estudiante.numeroDocumento, source: "Página 1 · OCR" },
+      { label: "Puntaje global", value: primerEstado === "valido" ? "287" : "85", source: "Página 1 · OCR" },
+      { label: "Número de registro", value: "123456789", source: "Página 1 · OCR" },
+      { label: "Fecha de aplicación", value: "15/09/2025", source: "Página 1 · OCR" },
+    ],
+    paz_y_salvo_bib: [
+      { label: "Nombre del estudiante", value: estudiante.nombre, source: "Página 1 · OCR" },
+      { label: "Código estudiantil", value: estudiante.codigo, source: "Página 1 · OCR" },
+      { label: "Estado", value: "Paz y salvo", source: "Página 1 · OCR" },
+      { label: "Firma electrónica", value: primerEstado === "valido" ? "Verificada" : "No encontrada", source: "Metadatos del documento" },
+    ],
+  };
+
+  return {
+    documentType: doc.nombre,
+    fileName: doc.fileName ?? `${doc.tipo}.pdf`,
+    status: statusMap[primerEstado],
+    extractedFields: camposPorTipo[doc.tipo] ?? [
+      { label: "Tipo de documento", value: doc.nombre, source: "Metadatos" },
+    ],
+    validations: doc.resultados.map((r) => ({
+      description: r.mensaje,
+      result: r.estado === "valido",
+      detail: `Estado: ${etiquetaEstado(r.estado)}`,
+    })),
   };
 }
 
@@ -258,9 +305,7 @@ export default function PreinscripcionPage() {
   }
 
   const { estudiante, documentos, politicaReenvios } = solicitud;
-  const estadoGeneral = solicitud.estadoAnalisis === "pendiente" || documentos.length === 0
-    ? { tipo: "por_revisar" as const, titulo: "Análisis documental pendiente", frase: "Todavía no hay resultados completos registrados para esta preinscripción.", cantidadProblemas: 0 }
-    : derivarEstadoGeneral(documentos);
+  const estadoGeneral = derivarEstadoGeneral(documentos);
   const reenviosRestantes = politicaReenvios.limite - politicaReenvios.usados;
   const docsConProblema = documentos.filter((d) =>
     d.resultados.some((r) => r.estado !== "valido")
@@ -273,7 +318,7 @@ export default function PreinscripcionPage() {
     seleccionadosList.length > 0 && reenviosRestantes > 0 && !enviando;
 
   function abrirAnalisis(doc: DocumentoSolicitud) {
-    setAnalysisData(analisisPersistido(doc));
+    setAnalysisData(mockAnalisis(doc, estudiante));
     setAnalysisOpen(true);
   }
 
@@ -475,7 +520,7 @@ export default function PreinscripcionPage() {
                 </p>
                 <ul className={styles.alertasList}>
                   {docsConProblema.map((doc) => (
-                    <li key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`} className={styles.alertaItem}>
+                    <li key={doc.tipo} className={styles.alertaItem}>
                       <div className={styles.alertaMain}>
                         <strong>{doc.nombre}</strong>
                         <div className={styles.alertaChips}>
@@ -500,7 +545,7 @@ export default function PreinscripcionPage() {
               </section>
             ) : (
               <p className={styles.textoOk}>
-                {solicitud.estadoAnalisis === "pendiente" ? "Todavía no hay resultados del análisis registrados." : "Todos los documentos fueron validados correctamente."}
+                Todos los documentos fueron validados correctamente.
               </p>
             )}
 
@@ -510,7 +555,7 @@ export default function PreinscripcionPage() {
               <p className={styles.panelSubtitle}>Vista rápida del resultado de cada documento.</p>
               <ul className={styles.estadoList}>
                 {documentos.map((doc) => (
-                  <li key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`} className={styles.estadoRow}>
+                  <li key={doc.tipo} className={styles.estadoRow}>
                     <div className={styles.estadoLeft}>
                       <span className={styles.pdfBadge}>PDF</span>
                       <div>
@@ -544,9 +589,13 @@ export default function PreinscripcionPage() {
               Información suministrada durante el proceso de preinscripción.
             </p>
 
+            {/*
+              SIMULADO: DEMO_PREGRADO hasta que exista endpoint de perfil.
+              TODO: mapear solicitud.estudiante → DatosInformacionEstudiante
+            */}
             <InformacionEstudiante
               nivel={estudiante.nivel === "POSGRADO" ? "POSGRADO" : "PREGRADO"}
-              datos={solicitud.informacion}
+              datos={estudiante.nivel === "POSGRADO" ? DEMO_POSGRADO : DEMO_PREGRADO}
               variante="estudiante"
             />
           </div>
@@ -564,14 +613,14 @@ export default function PreinscripcionPage() {
             <h2 className={styles.panelTitle}>Tus documentos</h2>
             <p className={styles.panelSubtitle}>
               Resultado del análisis automático de cada documento requerido para
-              {estudiante.nivel.toLowerCase()}.
+              pregrado.
             </p>
 
             <div className={styles.docCards}>
               {documentos.map((doc) => {
                 const archivo = seleccionados[doc.tipo];
                 return (
-                  <article key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`} className={styles.docCard}>
+                  <article key={doc.tipo} className={styles.docCard}>
                     <div className={styles.docCardHeader}>
                       <h3>{doc.nombre}</h3>
                       <div className={styles.alertaChips}>
@@ -631,8 +680,8 @@ export default function PreinscripcionPage() {
               })}
             </div>
 
-            {/* El backend habilitará las correcciones cuando exista el flujo real. */}
-            {politicaReenvios.limite > 0 && <section className={styles.proximoEnvio} aria-labelledby="hdr-envio">
+            {/* Franja próximo envío */}
+            <section className={styles.proximoEnvio} aria-labelledby="hdr-envio">
               <div>
                 <h3 id="hdr-envio">Tu próximo envío</h3>
                 <p>
@@ -665,7 +714,7 @@ export default function PreinscripcionPage() {
                   {mensajeEnvio}
                 </p>
               )}
-            </section>}
+            </section>
           </div>
         )}
 

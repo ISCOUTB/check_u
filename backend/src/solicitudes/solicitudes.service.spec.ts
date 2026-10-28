@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import type { PoolClient, QueryResult } from 'pg';
 import type { DatabaseService } from '../database/database.service.js';
-import type { AnalisisPreinscripcionService } from './analisis-preinscripcion.service.js';
 import { SolicitudesService } from './solicitudes.service.js';
 import type { SolicitudResumen } from './solicitudes.types.js';
 
@@ -27,7 +26,6 @@ describe('SolicitudesService', () => {
     };
     service = new SolicitudesService(
       mockDatabaseService as unknown as DatabaseService,
-      { procesar: vi.fn(), descartar: vi.fn() } as unknown as AnalisisPreinscripcionService,
     );
   });
 
@@ -96,12 +94,206 @@ describe('SolicitudesService', () => {
   });
 
   describe('enviarPreinscripcion', () => {
-    // El flujo completo y sus variantes se comprueban con PostgreSQL en
-    // test/analisis-preinscripcion.e2e-spec.ts. Los mocks secuenciales del envío
-    // de solo metadatos ya no representan el transporte multipart.
-    it('rechaza un envío sin archivos reales antes de modificar la base', async () => {
+    it('lanza BadRequestException si no existe solicitud ni datos para crearla', async () => {
+      mockClient.query.mockResolvedValueOnce({ rows: [] }); // SELECT solicitud
+
       await expect(service.enviarPreinscripcion(1)).rejects.toThrow(BadRequestException);
-      expect(mockDatabaseService.transaction).not.toHaveBeenCalled();
+    });
+
+    it('lanza ConflictException si la solicitud ya fue enviada (estado EN_PROCESO)', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ id_solicitud: 10, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'EN_PROCESO' }],
+      });
+
+      await expect(service.enviarPreinscripcion(1)).rejects.toThrow(ConflictException);
+    });
+
+    it('lanza BadRequestException si faltan datos obligatorios de usuario o perfil', async () => {
+      mockClient.query
+        .mockResolvedValueOnce({
+          rows: [{ id_solicitud: 10, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+        }) // solicitud
+        .mockResolvedValueOnce({
+          rows: [{ nombres: 'Lisandro', apellidos: '', codigo_estudiante: 'T00000001' }],
+        }); // usuario con apellidos vacíos
+
+      await expect(service.enviarPreinscripcion(1)).rejects.toThrow(BadRequestException);
+    });
+
+    it('lanza BadRequestException si faltan documentos obligatorios en PREGRADO (menos de 5)', async () => {
+      mockClient.query
+        .mockResolvedValueOnce({
+          rows: [{ id_solicitud: 10, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+        }) // solicitud
+        .mockResolvedValueOnce({
+          rows: [{ nombres: 'Lisandro', apellidos: 'Zapata', codigo_estudiante: 'T00000001' }],
+        }) // usuario
+        .mockResolvedValueOnce({
+          rows: [{ tipo_documento_identidad: 'CC', numero_documento: '1047123456' }],
+        }) // perfil
+        .mockResolvedValueOnce({
+          rows: [{ orden: 1, programa: 'Ingeniería de Sistemas', modalidad: 'PRESENCIAL', tipo_opcion_grado: 'TRABAJO' }],
+        }) // programa
+        .mockResolvedValueOnce({
+          rows: [{ conoce_registro_saber_pro: false, numero_registro_saber_pro: null }],
+        }) // pregrado
+        .mockResolvedValueOnce({
+          rows: [
+            { tipo_documento: 'identification' },
+            { tipo_documento: 'academic_evaluation' },
+          ],
+        }); // documentos (solo 2 de 5)
+
+      await expect(service.enviarPreinscripcion(1)).rejects.toThrow(BadRequestException);
+    });
+
+    it('completa el flujo exitoso en PREGRADO (5 documentos)', async () => {
+      mockClient.query
+        .mockResolvedValueOnce({
+          rows: [{ id_solicitud: 102, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+        }) // solicitud
+        .mockResolvedValueOnce({
+          rows: [{ nombres: 'Lisandro', apellidos: 'Zapata', codigo_estudiante: 'T00000001' }],
+        }) // usuario
+        .mockResolvedValueOnce({
+          rows: [{ tipo_documento_identidad: 'CC', numero_documento: '1047123456' }],
+        }) // perfil
+        .mockResolvedValueOnce({
+          rows: [{ orden: 1, programa: 'Ingeniería de Sistemas', modalidad: 'PRESENCIAL', tipo_opcion_grado: 'TRABAJO' }],
+        }) // programa
+        .mockResolvedValueOnce({
+          rows: [{ conoce_registro_saber_pro: false, numero_registro_saber_pro: null }],
+        }) // pregrado
+        .mockResolvedValueOnce({
+          rows: [
+            { tipo_documento: 'cedula' },
+            { tipo_documento: 'academic_evaluation' },
+            { tipo_documento: 'paz_y_salvo_bib' },
+            { tipo_documento: 'estampilla_pro_cultura' },
+            { tipo_documento: 'saber-pro' },
+          ],
+        }) // documentos (los 5 con mapeos)
+        .mockResolvedValueOnce({
+          rows: [{ id_entrega: 1 }],
+        }) // INSERT entregas
+        .mockResolvedValueOnce({ rows: [] }) // UPDATE documentos
+        .mockResolvedValueOnce({ rows: [] }); // UPDATE solicitud_grado
+
+      const res = await service.enviarPreinscripcion(1);
+
+      expect(res).toEqual({
+        ok: true,
+        id_solicitud: 102,
+        id_entrega: 1,
+        estado: 'EN_PROCESO',
+        mensaje: 'Preinscripción registrada correctamente. Pendiente de análisis.',
+      });
+
+      // Verificar que se insertó en entregas con tipo_entrega = 'INICIAL' y numero_entrega = 1
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO entregas'),
+        [102],
+      );
+
+      // Verificar que se asociaron los documentos a la entrega 1 y pasaron a POR_VALIDAR
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE documentos\n         SET id_entrega = $1, estado = 'POR_VALIDAR'"),
+        [1, 102],
+      );
+
+      // Verificar que la solicitud pasó a EN_PROCESO
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining("UPDATE solicitud_grado\n         SET estado = 'EN_PROCESO'"),
+        [102],
+      );
+    });
+
+    describe('doble programa en PREGRADO: una estampilla por programa', () => {
+      const conSegundoPrograma = (documentos: { tipo_documento: string; orden?: number }[]) =>
+        mockClient.query
+          .mockResolvedValueOnce({
+            rows: [{ id_solicitud: 103, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+          }) // solicitud
+          .mockResolvedValueOnce({
+            rows: [{ nombres: 'Ana', apellidos: 'Prueba', codigo_estudiante: 'T00000002' }],
+          }) // usuario
+          .mockResolvedValueOnce({
+            rows: [{ tipo_documento_identidad: 'CC', numero_documento: '1000000001' }],
+          }) // perfil
+          .mockResolvedValueOnce({
+            rows: [
+              { orden: 1, programa: 'Ingeniería de Sistemas', modalidad: 'PRESENCIAL', tipo_opcion_grado: 'TRABAJO' },
+              { orden: 2, programa: 'Ingeniería Industrial', modalidad: 'PRESENCIAL', tipo_opcion_grado: 'TRABAJO' },
+            ],
+          }) // programas (el 2 existe)
+          .mockResolvedValueOnce({
+            rows: [{ conoce_registro_saber_pro: false, numero_registro_saber_pro: null }],
+          }) // pregrado
+          .mockResolvedValueOnce({ rows: documentos }) // documentos
+          .mockResolvedValueOnce({ rows: [{ id_entrega: 7 }] }) // INSERT entregas
+          .mockResolvedValue({ rows: [] }); // UPDATE documentos / solicitud_grado
+
+      const cinco = [
+        { tipo_documento: 'identification', orden: 1 },
+        { tipo_documento: 'academic_evaluation', orden: 1 },
+        { tipo_documento: 'paz_y_salvo_bib', orden: 1 },
+        { tipo_documento: 'estampilla_pro_cultura', orden: 1 },
+        { tipo_documento: 'saber_pro', orden: 1 },
+      ];
+
+      it('rechaza el envío si falta la estampilla del segundo programa (orden 2)', async () => {
+        conSegundoPrograma(cinco);
+        await expect(service.enviarPreinscripcion(1)).rejects.toThrow(
+          /estampilla_pro_cultura \(segundo programa\)/,
+        );
+      });
+
+      it('completa el envío con las dos estampillas', async () => {
+        conSegundoPrograma([...cinco, { tipo_documento: 'estampilla_pro_cultura', orden: 2 }]);
+        const res = await service.enviarPreinscripcion(1);
+        expect(res).toMatchObject({ ok: true, id_solicitud: 103, id_entrega: 7, estado: 'EN_PROCESO' });
+      });
+    });
+
+    it('completa el flujo exitoso en POSGRADO (3 documentos)', async () => {
+      mockClient.query
+        .mockResolvedValueOnce({
+          rows: [{ id_solicitud: 200, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'POSGRADO', estado: 'BORRADOR' }],
+        }) // solicitud
+        .mockResolvedValueOnce({
+          rows: [{ nombres: 'Ana', apellidos: 'Prueba', codigo_estudiante: 'T00000002' }],
+        }) // usuario
+        .mockResolvedValueOnce({
+          rows: [{ tipo_documento_identidad: 'CC', numero_documento: '98765432' }],
+        }) // perfil
+        .mockResolvedValueOnce({
+          rows: [{ orden: 1, programa: 'Maestría en TI', modalidad: 'VIRTUAL', tipo_opcion_grado: null }],
+        }) // programa
+        .mockResolvedValueOnce({
+          rows: [{ nivel_estudios_alcanzado: 'PROFESIONAL', titulo_obtenido: 'Ingeniero' }],
+        }) // posgrado
+        .mockResolvedValueOnce({
+          rows: [
+            { tipo_documento: 'identification' },
+            { tipo_documento: 'paz_y_salvo_bib' },
+            { tipo_documento: 'estampilla_pro_cultura' },
+          ],
+        }) // documentos (los 3 de posgrado)
+        .mockResolvedValueOnce({
+          rows: [{ id_entrega: 5 }],
+        }) // INSERT entregas
+        .mockResolvedValueOnce({ rows: [] }) // UPDATE documentos
+        .mockResolvedValueOnce({ rows: [] }); // UPDATE solicitud_grado
+
+      const res = await service.enviarPreinscripcion(2);
+
+      expect(res).toEqual({
+        ok: true,
+        id_solicitud: 200,
+        id_entrega: 5,
+        estado: 'EN_PROCESO',
+        mensaje: 'Preinscripción registrada correctamente. Pendiente de análisis.',
+      });
     });
   });
 

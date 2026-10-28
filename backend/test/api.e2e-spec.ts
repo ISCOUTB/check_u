@@ -103,12 +103,42 @@ describe('API (e2e)', () => {
       await agente.post('/api/solicitudes/enviar').expect(403);
     });
 
-    it('POST /api/solicitudes/enviar rechaza metadatos sin PDF reales', async () => {
+    it('POST /api/solicitudes/enviar registra formalmente la entrega, vincula documentos y actualiza a EN_PROCESO', async () => {
       const agente = request.agent(app.getHttpServer());
       await agente.post('/api/auth/login').send(ESTUDIANTE).expect(201);
-      await agente.post('/api/solicitudes/enviar').send({ claveIdempotencia: 'idem-test' }).expect(400);
-      expect(mockDb.estado.entregas).toHaveLength(0);
+
+      // Verificamos estado inicial antes del envío
       expect(mockDb.estado.solicitudes[0].estado).toBe('BORRADOR');
+      expect(mockDb.estado.entregas).toHaveLength(0);
+      expect(mockDb.estado.documentos.every((d) => d.id_entrega === null && d.estado === 'CARGADO')).toBe(true);
+
+      const respuesta = await agente
+        .post('/api/solicitudes/enviar')
+        .send({ claveIdempotencia: 'idem-test-123' })
+        .expect(201);
+
+      expect(respuesta.body).toEqual({
+        ok: true,
+        id_solicitud: 1,
+        id_entrega: 1,
+        estado: 'EN_PROCESO',
+        mensaje: 'Preinscripción registrada correctamente. Pendiente de análisis.',
+      });
+
+      // Trazabilidad de entregas en BD: registro creado con tipo INICIAL y numero 1
+      expect(mockDb.estado.entregas).toHaveLength(1);
+      expect(mockDb.estado.entregas[0]).toEqual({
+        id_entrega: 1,
+        id_solicitud: 1,
+        numero_entrega: 1,
+        tipo_entrega: 'INICIAL',
+      });
+
+      // Documentos vinculados a id_entrega 1 y en estado POR_VALIDAR
+      expect(mockDb.estado.documentos.every((d) => d.id_entrega === 1 && d.estado === 'POR_VALIDAR')).toBe(true);
+
+      // Solicitud en estado EN_PROCESO
+      expect(mockDb.estado.solicitudes[0].estado).toBe('EN_PROCESO');
     });
 
     it('Inmutabilidad post-envío: POST /api/solicitudes/borrador responde 409 cuando la solicitud está en EN_PROCESO', async () => {
@@ -116,7 +146,7 @@ describe('API (e2e)', () => {
       await agente.post('/api/auth/login').send(ESTUDIANTE).expect(201);
 
       // Enviamos la preinscripción
-      mockDb.estado.solicitudes[0].estado = 'EN_PROCESO';
+      await agente.post('/api/solicitudes/enviar').expect(201);
 
       // Intentar editar borrador tras envío debe ser rechazado
       const respuesta = await agente
@@ -127,7 +157,16 @@ describe('API (e2e)', () => {
       expect(respuesta.body.message).toContain('La preinscripción ya fue enviada');
     });
 
+    it('Reintento de envío: POST /api/solicitudes/enviar responde 409 si ya no está en BORRADOR', async () => {
+      const agente = request.agent(app.getHttpServer());
+      await agente.post('/api/auth/login').send(ESTUDIANTE).expect(201);
 
+      // Primer envío exitoso
+      await agente.post('/api/solicitudes/enviar').expect(201);
+
+      // Segundo envío rechazado
+      await agente.post('/api/solicitudes/enviar').expect(409);
+    });
   });
 });
 

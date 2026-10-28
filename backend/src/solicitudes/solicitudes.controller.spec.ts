@@ -2,7 +2,6 @@ import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
 import type { AuthService } from '../auth/auth.service.js';
 import { COOKIE_NAME } from '../auth/session.js';
-import type { AnalisisPreinscripcionService } from './analisis-preinscripcion.service.js';
 import { SolicitudesController } from './solicitudes.controller.js';
 import type { SolicitudesService } from './solicitudes.service.js';
 
@@ -30,7 +29,6 @@ describe('SolicitudesController', () => {
     controller = new SolicitudesController(
       mockSolicitudesService as unknown as SolicitudesService,
       mockAuthService as unknown as AuthService,
-      {} as AnalisisPreinscripcionService,
     );
   });
 
@@ -186,8 +184,7 @@ describe('SolicitudesController', () => {
         mensaje: 'Preinscripción registrada correctamente. Pendiente de análisis.',
       });
 
-      const archivo = { buffer: Buffer.from('%PDF-1.4'), originalname: 'prueba.pdf', mimetype: 'application/pdf' };
-      const respuesta = await controller.enviarPreinscripcion(req, { datos: JSON.stringify(req.body), tipos: 'identification' }, [archivo]);
+      const respuesta = await controller.enviarPreinscripcion(req, req.body);
 
       expect(respuesta).toEqual({
         ok: true,
@@ -196,7 +193,7 @@ describe('SolicitudesController', () => {
         estado: 'EN_PROCESO',
         mensaje: 'Preinscripción registrada correctamente. Pendiente de análisis.',
       });
-      expect(mockSolicitudesService.enviarPreinscripcion).toHaveBeenCalledWith(1, req.body, [expect.objectContaining({ tipo: 'identification' })]);
+      expect(mockSolicitudesService.enviarPreinscripcion).toHaveBeenCalledWith(1, req.body);
     });
   });
 
