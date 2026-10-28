@@ -7,6 +7,7 @@ export type FormatoCampo =
   | "documento"
   | "fecha"
   | "mayusculas"
+  | "parrafo"
   | "lista"; // experiencia laboral: varias líneas
 
 export interface CargoLaboral {
@@ -32,6 +33,11 @@ export interface DatosInformacionEstudiante {
   departamento: string;
   ciudad: string;
   direccion: string;
+
+  // Asistencia a la ceremonia de graduación presencial
+  tieneDiscapacidad?: boolean;
+  tipoDiscapacidad?: string;
+  detallesAsistencia?: string;
 
   // Académica común
   codigoEstudiantil: string;
