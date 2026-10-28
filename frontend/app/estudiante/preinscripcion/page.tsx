@@ -10,13 +10,12 @@ import { tamanoMaximoPdfBytes } from "../iniciar_preinscripcion/api";
 import Link from "next/link";
 
 import Navbar from "@/app/components/navbar/Navbar";
-import { useRequiereSolicitud } from "@/app/lib/useSolicitudActiva";
 import DocumentAnalysis, {
   type DocumentAnalysisData,
 } from "@/app/components/document_analysis/DocumentAnalysis";
 import styles from "./preinscripcion.module.css";
 
-import { obtenerSolicitudDetalle, enviarDocumentosReenvio } from "./api";
+import { obtenerSolicitudDetalle, enviarDocumentosReenvio, ErrorConsultaSolicitud } from "./api";
 import type {
   SolicitudDetalle,
   EstadoDocumento,
@@ -158,17 +157,11 @@ export default function PreinscripcionPage() {
   const tabsId = useId();
 
   const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [cargandoSesion, setCargandoSesion] = useState(true);
+  const [cargando, setCargando] = useState(true);
+  const [intento, setIntento] = useState(0);
   const [solicitud, setSolicitud] = useState<SolicitudDetalle | null>(null);
-  const [errorDatos, setErrorDatos] = useState(false);
+  const [errorDatos, setErrorDatos] = useState<string | null>(null);
   const [pestana, setPestana] = useState<Pestana>("documentos");
-
-  const {
-    cargando: cargandoSolicitud,
-    error: errorSolicitud,
-    tiene_solicitud,
-    reintentar: reintentarSolicitud,
-  } = useRequiereSolicitud(Boolean(usuario));
 
   // Análisis automático
   const [analysisOpen, setAnalysisOpen] = useState(false);
@@ -183,78 +176,101 @@ export default function PreinscripcionPage() {
   const [mensajeEnvio, setMensajeEnvio] = useState<string | null>(null);
   const [docParaCargar, setDocParaCargar] = useState<string | null>(null);
 
-  // Sesión
+  // La consulta de detalle ya comprueba propiedad y devuelve 404 si no hay solicitud.
+  // No esperar una consulta adicional de resumen antes de solicitar el detalle.
   useEffect(() => {
-    async function verificarSesion() {
+    const controlador = new AbortController();
+    let vigente = true;
+    let agotado = false;
+    let redirigiendo = false;
+    const limite = setTimeout(() => {
+      agotado = true;
+      controlador.abort();
+    }, 15_000);
+
+    async function cargar() {
       try {
         const response = await fetch(`${API_URL}/auth/me`, {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
+          credentials: "include", cache: "no-store", signal: controlador.signal,
         });
-        if (!response.ok) {
+        if (!vigente) return;
+        if (response.status === 401) {
+          redirigiendo = true;
           router.replace("/");
           return;
         }
+        if (!response.ok) throw new Error("No fue posible verificar la sesión.");
         const data = await response.json();
         const u: Usuario = data.user;
+        if (!vigente) return;
+        if (!u || !["estudiante", "funcionario"].includes(u.role))
+          throw new Error("Respuesta de sesión inválida.");
         if (u.role !== "estudiante") {
+          redirigiendo = true;
           router.replace("/funcionario/dashboard");
           return;
         }
         setUsuario(u);
-      } catch {
-        router.replace("/");
+        const detalle = await obtenerSolicitudDetalle(controlador.signal);
+        if (vigente) setSolicitud(detalle);
+      } catch (error) {
+        if (!vigente) return;
+        if (error instanceof ErrorConsultaSolicitud && [401, 404].includes(error.status)) {
+          redirigiendo = true;
+          router.replace(error.status === 401 ? "/" : "/estudiante/bienvenida");
+          return;
+        }
+        setErrorDatos(agotado
+          ? "La consulta tardó demasiado. Comprueba la conexión e intenta nuevamente."
+          : "No fue posible cargar la preinscripción. Intenta recargar la página.");
       } finally {
-        setCargandoSesion(false);
+        clearTimeout(limite);
+        if (vigente && !redirigiendo) setCargando(false);
       }
     }
-    verificarSesion();
-  }, [router]);
+    void cargar();
+    return () => {
+      vigente = false;
+      clearTimeout(limite);
+      controlador.abort();
+    };
+  }, [router, intento]);
 
-  // Datos
-  useEffect(() => {
-    if (!usuario || tiene_solicitud !== true) return;
-    obtenerSolicitudDetalle()
-      .then(setSolicitud)
-      .catch(() => {
-        setSolicitud(null);
-        setErrorDatos(true);
-      });
-  }, [usuario, tiene_solicitud]);
-
-  const cargando = cargandoSesion || cargandoSolicitud;
-
-  if (cargando || !usuario || (!errorSolicitud && tiene_solicitud === false)) {
+  if (cargando) {
     return (
-      <div className={styles.cargando} aria-live="polite">
-        <span className={styles.spinner} aria-hidden="true" />
-        <p>Verificando sesión y preinscripción...</p>
-      </div>
+      <>
+        {usuario && <Navbar tipoUsuario={usuario.role} nombreUsuario={usuario.name} />}
+        <main id="contenido" tabIndex={-1} className={styles.page} aria-busy="true">
+          <header className={styles.header}>
+            <h1>Detalle de mi preinscripción</h1>
+            <p>Revisión documental de tu solicitud de grado.</p>
+          </header>
+          <div className={styles.cargando} role="status">
+            <span className={styles.spinner} aria-hidden="true" />
+            <p>Cargando tu preinscripción…</p>
+          </div>
+        </main>
+      </>
     );
   }
 
-  if (errorSolicitud || errorDatos || !solicitud) {
+  if (errorDatos || !solicitud || !usuario) {
     return (
       <>
-        <Navbar tipoUsuario={usuario.role} nombreUsuario={usuario.name} />
-        <main className={styles.page}>
-          <p className={styles.textoError}>
-            No fue posible cargar la preinscripción. Intenta recargar la página.
+        {usuario && <Navbar tipoUsuario={usuario.role} nombreUsuario={usuario.name} />}
+        <main id="contenido" tabIndex={-1} className={styles.page} aria-busy="false">
+          <h1>Detalle de mi preinscripción</h1>
+          <p role="alert" className={styles.textoError}>
+            {errorDatos ?? "No fue posible cargar la preinscripción. Intenta recargar la página."}
           </p>
           <div style={{ marginTop: "1rem" }}>
             <button
               type="button"
               className={styles.btnSecundario}
               onClick={() => {
-                setErrorDatos(false);
-                void reintentarSolicitud();
-                obtenerSolicitudDetalle()
-                  .then(setSolicitud)
-                  .catch(() => {
-                    setSolicitud(null);
-                    setErrorDatos(true);
-                  });
+                setErrorDatos(null);
+                setCargando(true);
+                setIntento(v => v + 1);
               }}
             >
               Reintentar
@@ -356,7 +372,7 @@ export default function PreinscripcionPage() {
         nivel={estudiante.nivel}
       />
 
-      <main className={styles.page}>
+      <main id="contenido" tabIndex={-1} className={styles.page} aria-busy="false">
         {/* Header */}
         <header className={styles.header}>
           <nav className={styles.breadcrumb} aria-label="Miga de pan">
