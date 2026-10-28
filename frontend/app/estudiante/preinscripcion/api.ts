@@ -3,18 +3,34 @@ import { mensajeDelResultado } from "./messages";
 import type { DocumentoSolicitud, SolicitudDetalle } from "./types";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
+export class ErrorConsultaSolicitud extends Error {
+  constructor(readonly status: number) {
+    super("No fue posible consultar el análisis documental.");
+  }
+}
+
 /** Siempre recupera resultados persistidos para la sesión actual. */
-export async function obtenerSolicitudDetalle(): Promise<SolicitudDetalle> {
-  const respuesta = await fetch(`${API_URL}/estudiante/solicitud/analisis`, {
-    credentials: "include", cache: "no-store",
-  });
-  if (!respuesta.ok) throw new Error("No fue posible consultar el análisis documental.");
-  const datos = await respuesta.json();
-  if (!datos || !Array.isArray(datos.documentos) || !datos.estudiante || !datos.informacion)
-    throw new Error("Respuesta de análisis inválida.");
-  return { ...datos, documentos: datos.documentos.map((d: DocumentoSolicitud) => ({ ...d,
-    resultados: d.resultados.map(r => ({ ...r, mensaje: mensajeDelResultado(d.tipo, r.estado, r.mensaje, r.confianza) })),
-  })) };
+export async function obtenerSolicitudDetalle(signal?: AbortSignal): Promise<SolicitudDetalle> {
+  const controlador = new AbortController();
+  const cancelar = () => controlador.abort();
+  const limite = setTimeout(cancelar, 15_000);
+  signal?.addEventListener("abort", cancelar, { once: true });
+  if (signal?.aborted) cancelar();
+  try {
+    const respuesta = await fetch(`${API_URL}/estudiante/solicitud/analisis`, {
+      credentials: "include", cache: "no-store", signal: controlador.signal,
+    });
+    if (!respuesta.ok) throw new ErrorConsultaSolicitud(respuesta.status);
+    const datos = await respuesta.json();
+    if (!datos || !Array.isArray(datos.documentos) || !datos.estudiante || !datos.informacion)
+      throw new Error("Respuesta de análisis inválida.");
+    return { ...datos, documentos: datos.documentos.map((d: DocumentoSolicitud) => ({ ...d,
+      resultados: d.resultados.map(r => ({ ...r, mensaje: mensajeDelResultado(d.tipo, r.estado, r.mensaje, r.confianza) })),
+    })) };
+  } finally {
+    clearTimeout(limite);
+    signal?.removeEventListener("abort", cancelar);
+  }
 }
 
 /** Envía nuevas versiones por identificador del documento, con clave estable por intento. */
