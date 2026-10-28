@@ -20,48 +20,6 @@
 # No se publican puertos directamente en el host.
 
 services:
-  panel:
-    build:
-      context: https://github.com/ISCOUTB/check_u.git#${CHECKU_REF:-main}
-      dockerfile_inline: |
-        FROM python:3.12-slim
-        RUN apt-get update -y \
-            && apt-get install -y --no-install-recommends \
-                tesseract-ocr \
-                tesseract-ocr-spa \
-                poppler-utils \
-                libglib2.0-0 \
-            && rm -rf /var/lib/apt/lists/*
-        RUN pip install --no-cache-dir \
-            gunicorn pdf2image pytesseract pillow opencv-python-headless \
-            numpy flask requests pymupdf pdfplumber pypdf zxing-cpp rapidfuzz
-        WORKDIR /app
-        COPY modules ./modules
-        COPY webapp ./webapp
-        WORKDIR /app/webapp
-        EXPOSE 5000
-        CMD ["gunicorn", "-w", "1", "--threads", "8", "--timeout", "300", "-b", "0.0.0.0:5000", "app:app"]
-    restart: unless-stopped
-    volumes:
-      - casos:/app/webapp/data
-    expose:
-      - "5000"
-    healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - "import urllib.request; urllib.request.urlopen('http://localhost:5000/', timeout=5)"
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: "1.00"
-          memory: 768M
-
   backend:
     build:
       context: https://github.com/ISCOUTB/check_u.git#${CHECKU_REF:-main}:backend
@@ -232,5 +190,4 @@ services:
       - 'for f in /sql/*.sql; do echo "Aplicando $$f"; psql -v ON_ERROR_STOP=1 -f "$$f" || exit 1; done'
 
 volumes:
-  casos:
   postgres_data:
