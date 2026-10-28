@@ -1,3 +1,4 @@
+import { ReenviosService } from './reenvios.service.js';
 import { DocumentosModule } from '../documentos/documentos.module.js';
 import { ArchivosTemporalesService } from './archivos-temporales.service.js';
 import { AnalisisPreinscripcionService } from './analisis-preinscripcion.service.js';
@@ -11,6 +12,7 @@ import { SolicitudesService } from './solicitudes.service.js';
   imports: [DatabaseModule, AuthModule, DocumentosModule],
   controllers: [SolicitudesController],
   providers: [
+    ReenviosService,
     SolicitudesService,
     AnalisisPreinscripcionService,
     ArchivosTemporalesService,
