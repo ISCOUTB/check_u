@@ -2,6 +2,11 @@
 
 import { useEffect, useState, useRef, useId } from "react";
 import { useRouter } from "next/navigation";
+import ProgresoDocumental from "@/app/components/ui/ProgresoDocumental";
+import type { ProgresoEnvio } from "../envio-documental";
+import { etiquetaPropiedad, valorVisible } from "./etiquetas";
+import { validarPdf, tieneFirmaPdf } from "../iniciar_preinscripcion/validacion";
+import { tamanoMaximoPdfBytes } from "../iniciar_preinscripcion/api";
 import Link from "next/link";
 
 import Navbar from "@/app/components/navbar/Navbar";
@@ -16,7 +21,6 @@ import type {
   SolicitudDetalle,
   EstadoDocumento,
   EstadoGeneral,
-  TipoDocumento,
   DocumentoSolicitud,
 } from "./types";
 
@@ -36,7 +40,7 @@ interface Usuario {
   role: "estudiante" | "funcionario";
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -117,12 +121,13 @@ function analisisPersistido(doc: DocumentoSolicitud): DocumentAnalysisData {
   };
   return {
     documentType: doc.nombre, fileName: doc.fileName ?? doc.nombre,
-    status: estados[doc.resultados[0]?.estado ?? "por_revisar"],
-    extractedFields: Object.entries(doc.analisis?.extracted_data ?? {}).map(([campo, dato]) => ({
-      label: campo, value: dato.value == null ? "No disponible" : String(dato.value), source: "Análisis documental registrado",
+    status: estados[doc.resultados.find(r => r.estado === 'no_valido' || r.estado === 'inconsistente')?.estado ?? doc.resultados[0]?.estado ?? "por_revisar"],
+    privateDocumentUrl: doc.archivoDisponible && doc.id ? `${API_URL}/estudiante/documentos/${encodeURIComponent(doc.id)}/original` : undefined,
+    extractedFields: Object.entries(doc.analisis?.extracted_data ?? {}).map(([campo, dato], indice) => ({
+      label: etiquetaPropiedad(campo, indice), value: valorVisible(dato.value), source: "Análisis documental registrado",
     })),
     validations: [
-      ...(doc.analisis?.rules ?? []).map(r => ({ description: r.rule, result: r.result === "no_evaluable" ? null : r.result === "cumple", detail: r.message })),
+      ...(doc.analisis?.rules ?? []).map(r => ({ description: r.message || "Comprobación documental", result: r.result === "no_evaluable" ? null : r.result === "cumple", detail: undefined })),
       ...(doc.analisis?.errors ?? []).map(error => ({ description: "Observación del análisis", result: false, detail: error })),
     ],
   };
@@ -170,10 +175,13 @@ export default function PreinscripcionPage() {
   const [analysisData, setAnalysisData] = useState<DocumentAnalysisData | null>(null);
 
   // Reenvío
-  const [seleccionados, setSeleccionados] = useState<Partial<Record<TipoDocumento, File>>>({});
+  const [seleccionados, setSeleccionados] = useState<Record<string, File>>({});
+  const envioRef = useRef(false);
+  const claveCorreccion = useRef<string | null>(null);
+  const [progresoEnvio, setProgresoEnvio] = useState<ProgresoEnvio | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [mensajeEnvio, setMensajeEnvio] = useState<string | null>(null);
-  const [docParaCargar, setDocParaCargar] = useState<TipoDocumento | null>(null);
+  const [docParaCargar, setDocParaCargar] = useState<string | null>(null);
 
   // Sesión
   useEffect(() => {
@@ -268,7 +276,7 @@ export default function PreinscripcionPage() {
   const docsValidos = documentos.filter((d) =>
     d.resultados.every((r) => r.estado === "valido")
   );
-  const seleccionadosList = Object.keys(seleccionados) as TipoDocumento[];
+  const seleccionadosList = Object.keys(seleccionados);
   const puedeEnviar =
     seleccionadosList.length > 0 && reenviosRestantes > 0 && !enviando;
 
@@ -282,14 +290,19 @@ export default function PreinscripcionPage() {
     setAnalysisData(null);
   }
 
-  function iniciarCarga(tipo: TipoDocumento) {
+  function iniciarCarga(tipo: string) {
     setDocParaCargar(tipo);
     fileInputRef.current?.click();
   }
 
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file && docParaCargar) {
+      const error = validarPdf(file, tamanoMaximoPdfBytes());
+      if (error) { setMensajeEnvio(error); e.target.value = ''; return; }
+      try { if (!await tieneFirmaPdf(file)) { setMensajeEnvio('El archivo debe ser un PDF válido.'); e.target.value = ''; return; } }
+      catch { setMensajeEnvio('No fue posible leer el PDF seleccionado.'); return; }
+      claveCorreccion.current = null;
       setSeleccionados((prev) => ({ ...prev, [docParaCargar]: file }));
       setMensajeEnvio(null);
     }
@@ -297,7 +310,8 @@ export default function PreinscripcionPage() {
     setDocParaCargar(null);
   }
 
-  function quitarArchivo(tipo: TipoDocumento) {
+  function quitarArchivo(tipo: string) {
+    claveCorreccion.current = null;
     setSeleccionados((prev) => {
       const next = { ...prev };
       delete next[tipo];
@@ -306,23 +320,30 @@ export default function PreinscripcionPage() {
   }
 
   async function handleEnviar() {
-    if (!puedeEnviar || !solicitud) return;
+    if (!puedeEnviar || !solicitud || envioRef.current) return;
+    envioRef.current = true;
     setEnviando(true);
     setMensajeEnvio(null);
-    const key = `idem-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     try {
+      claveCorreccion.current ??= `correccion-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+      const key = claveCorreccion.current;
       const res = await enviarDocumentosReenvio(
         solicitud.id,
-        seleccionadosList,
-        key
+        seleccionadosList.map(id => ({ id, archivo: seleccionados[id] })),
+        key,
+        setProgresoEnvio
       );
       setMensajeEnvio(res.mensaje);
       if (res.ok) {
         setSeleccionados({});
+        claveCorreccion.current = null;
+        try { setSolicitud(await obtenerSolicitudDetalle()); }
+        catch { setMensajeEnvio('La corrección quedó registrada, pero no fue posible actualizar la vista. Recarga la página para consultar los resultados.'); }
       }
     } catch {
       setMensajeEnvio("No fue posible enviar los documentos. Intenta de nuevo.");
     } finally {
+      envioRef.current = false;
       setEnviando(false);
     }
   }
@@ -563,17 +584,19 @@ export default function PreinscripcionPage() {
           >
             <h2 className={styles.panelTitle}>Tus documentos</h2>
             <p className={styles.panelSubtitle}>
-              Resultado del análisis automático de cada documento requerido para
+              Resultado del análisis automático de cada documento requerido para{" "}
               {estudiante.nivel.toLowerCase()}.
             </p>
 
+            <ProgresoDocumental progreso={progresoEnvio} />
             <div className={styles.docCards}>
               {documentos.map((doc) => {
-                const archivo = seleccionados[doc.tipo];
+                const archivo = seleccionados[doc.id ?? ""];
                 return (
                   <article key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`} className={styles.docCard}>
                     <div className={styles.docCardHeader}>
                       <h3>{doc.nombre}</h3>
+                      {doc.version && <span>Versión {doc.version}</span>}
                       <div className={styles.alertaChips}>
                         {doc.resultados.map((r, i) => (
                           <StatusBadge key={i} estado={r.estado} />
@@ -607,7 +630,8 @@ export default function PreinscripcionPage() {
                         <button
                           type="button"
                           className={styles.btnSecundario}
-                          onClick={() => iniciarCarga(doc.tipo)}
+                          disabled={enviando || !doc.id}
+                          onClick={() => iniciarCarga(doc.id!)}
                         >
                           Volver a cargar
                         </button>
@@ -619,7 +643,8 @@ export default function PreinscripcionPage() {
                           <button
                             type="button"
                             className={styles.btnSecundario}
-                            onClick={() => quitarArchivo(doc.tipo)}
+                            disabled={enviando}
+                            onClick={() => quitarArchivo(doc.id!)}
                           >
                             Quitar
                           </button>
@@ -640,7 +665,7 @@ export default function PreinscripcionPage() {
                     ? "Ningún documento seleccionado."
                     : `${seleccionadosList.length} documento${seleccionadosList.length !== 1 ? "s" : ""} seleccionado${seleccionadosList.length !== 1 ? "s" : ""}.`}{" "}
                   Puedes volver a enviar documentos que estén{" "}
-                  <strong>Por revisar</strong>; el sistema seguirá validándolos.
+                  <strong>No válido, Inconsistente o Por revisar</strong>; el sistema seguirá validándolos.
                   Un envío con varios documentos cuenta como un solo reenvío.
                 </p>
               </div>
@@ -673,7 +698,7 @@ export default function PreinscripcionPage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,application/pdf,image/*"
+          accept=".pdf,application/pdf"
           className={styles.hiddenInput}
           onChange={onFileChange}
           aria-hidden="true"
