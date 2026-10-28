@@ -121,10 +121,12 @@ services:
         RUN pip install --no-cache-dir -r /app/modules/requirements.txt
 
         COPY modules/ /app/modules/
+        COPY firma_electronica/ /app/firma_electronica/
 
         EXPOSE 5001
 
         CMD ["python", "modules/api/app.py"]
+
     restart: unless-stopped
     expose:
       - "5001"
