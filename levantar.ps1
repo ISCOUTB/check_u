@@ -1,4 +1,3 @@
-
 # ============================================================
 # CHECKU - ENTORNO LOCAL
 # Backend:  http://localhost:3000
@@ -11,7 +10,7 @@
 # Utiliza exclusivamente docker-compose.local.yml.
 # No inicia el docker-compose.yml del servidor.
 # La base de datos se respalda y reconstruye en cada ejecucion.
-# El motor OCR solo se inicia si no esta ejecutandose.
+# El motor OCR se crea si no existe y se inicia si esta detenido.
 # Antes de continuar, verifica que el OCR responda en /salud.
 # ============================================================
 
@@ -161,51 +160,45 @@ try {
     Invoke-Docker -Argumentos @('info')
 
     # --------------------------------------------------------
-    # 1. Levantar el OCR si no esta ejecutandose y comprobarlo.
+    # 1. Crear/iniciar el OCR y comprobarlo.
     # --------------------------------------------------------
 
-    Write-Host "`n[1/7] Verificando motor OCR..." -ForegroundColor Yellow
+    Write-Host "`n[1/7] Preparando motor OCR..." -ForegroundColor Yellow
 
-    $estadoOCR = docker inspect `
-        --format '{{.State.Status}}' `
-        $contenedorOCR 2>$null
+    # Compose crea el contenedor si no existe y lo inicia si esta detenido.
+    # --build construye la imagen si hace falta.
+    Invoke-Docker -Argumentos @(
+        'compose', '-f', $compose, 'up', '-d', '--build', 'ocr'
+    )
 
-    if ($LASTEXITCODE -ne 0 -or $estadoOCR -ne 'running') {
-        Write-Host 'El motor OCR no esta ejecutandose. Iniciandolo...' `
-            -ForegroundColor Yellow
+    # Esperar a que Compose reporte el servicio OCR como ejecutandose.
+    # Se usa "compose ps" para evitar ejecutar "docker inspect" sobre
+    # un contenedor inexistente, lo que puede detener PowerShell.
+    $ocrIniciado = $false
 
-        Invoke-Docker -Argumentos @(
-            'compose', '-f', $compose, 'up', '-d', 'ocr'
-        )
+    for ($i = 0; $i -lt 30; $i++) {
+        $idOCR = & docker compose -f $compose ps --status running -q ocr 2>$null
 
-        # Esperar a que el contenedor este ejecutandose.
-        $ocrIniciado = $false
-
-        for ($i = 0; $i -lt 30; $i++) {
-            $estadoOCR = docker inspect `
-                --format '{{.State.Status}}' `
-                $contenedorOCR 2>$null
-
-            if ($LASTEXITCODE -eq 0 -and $estadoOCR -eq 'running') {
-                $ocrIniciado = $true
-                break
-            }
-
-            Start-Sleep -Seconds 2
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($idOCR -join '').Trim())) {
+            $ocrIniciado = $true
+            break
         }
 
-        if (-not $ocrIniciado) {
-            throw 'El motor OCR no inicio. Revisa: docker logs checku-ocr-local'
-        }
+        Start-Sleep -Seconds 2
+    }
 
-        Write-Host 'Contenedor OCR iniciado.' -ForegroundColor Green
+    if (-not $ocrIniciado) {
+        Write-Host "`nContenedores del proyecto:" -ForegroundColor Yellow
+        & docker compose -f $compose ps -a
+        throw "El servicio OCR no inicio. Revisa los logs con: docker compose -f `"$compose`" logs --tail 100 ocr"
     }
-    else {
-        Write-Host 'El motor OCR ya esta ejecutandose.' -ForegroundColor Green
-    }
+
+    Write-Host "Contenedor OCR ejecutandose: $contenedorOCR" -ForegroundColor Green
 
     # El contenedor puede estar activo aunque Flask no este listo.
     if (-not (Test-MotorOCR)) {
+        Write-Host "`nUltimos logs del OCR:" -ForegroundColor Yellow
+        & docker compose -f $compose logs --tail 100 ocr
         throw 'El motor OCR no respondio correctamente en /salud. No se continuara con la inicializacion.'
     }
 
@@ -223,9 +216,7 @@ try {
     $saludable = $false
 
     for ($i = 0; $i -lt 30; $i++) {
-        $estado = docker inspect `
-            --format '{{.State.Health.Status}}' `
-            $contenedor 2>$null
+        $estado = & docker inspect --format '{{.State.Health.Status}}' $contenedor 2>$null
 
         if ($LASTEXITCODE -eq 0 -and $estado -eq 'healthy') {
             $saludable = $true
@@ -236,7 +227,7 @@ try {
     }
 
     if (-not $saludable) {
-        throw 'PostgreSQL no alcanzo el estado healthy. Revisa docker logs checku-db-local.'
+        throw "PostgreSQL no alcanzo el estado healthy. Revisa: docker logs $contenedor"
     }
 
     # --------------------------------------------------------
@@ -364,6 +355,34 @@ try {
 
     $backend = Join-Path $raiz 'backend'
     $frontend = Join-Path $raiz 'frontend'
+
+    if (-not (Test-Path (Join-Path $backend 'node_modules'))) {
+        Write-Host 'Instalando dependencias del backend...' -ForegroundColor Yellow
+        Push-Location $backend
+        try {
+            & npm install
+            if ($LASTEXITCODE -ne 0) {
+                throw 'No se pudieron instalar las dependencias del backend.'
+            }
+        }
+        finally {
+            Pop-Location
+        }
+    }
+
+    if (-not (Test-Path (Join-Path $frontend 'node_modules'))) {
+        Write-Host 'Instalando dependencias del frontend...' -ForegroundColor Yellow
+        Push-Location $frontend
+        try {
+            & npm install
+            if ($LASTEXITCODE -ne 0) {
+                throw 'No se pudieron instalar las dependencias del frontend.'
+            }
+        }
+        finally {
+            Pop-Location
+        }
+    }
 
     Start-Process powershell.exe -ArgumentList @(
         '-NoExit', '-Command',
