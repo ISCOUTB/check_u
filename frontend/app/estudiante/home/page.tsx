@@ -7,7 +7,6 @@ import Card from '@/app/components/ui/Card';
 import Icono from '@/app/components/ui/Icono';
 import PageHeader from '@/app/components/ui/PageHeader';
 import StatusBadge from '@/app/components/ui/StatusBadge';
-import { useRequiereSolicitud } from '@/app/lib/useSolicitudActiva';
 import { useSesion } from '@/app/lib/useSesion';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEstadoNavegacion } from '@/app/lib/useEstadoNavegacion';
@@ -50,14 +49,10 @@ function documentosCargados(solicitud: Solicitud): number {
 
 export default function Home() {
   const { usuario, cargando: cargandoSesion } = useSesion('estudiante');
-  const {
-    cargando: cargandoSolicitud,
-    error: errorSolicitud,
-    tiene_solicitud,
-    reintentar: reintentarSolicitud,
-  } = useRequiereSolicitud(Boolean(usuario));
   const router = useRouter();
   const pathname = usePathname();
+  const idListaNotificaciones = useId();
+
   const {
     cargando: cargandoEstado,
     error: errorEstado,
@@ -71,7 +66,6 @@ export default function Home() {
       router.replace(estadoNav.destino);
     }
   }, [estadoNav, pathname, router]);
-  const idListaNotificaciones = useId();
 
   const [nivel, setNivel] = useState<NivelAcademico | null>(null);
   const [solicitud, setSolicitud] = useState<Solicitud | null | undefined>(
@@ -85,14 +79,12 @@ export default function Home() {
   const [verTodas, setVerTodas] = useState(false);
 
   useEffect(() => {
-    if (!usuario || tiene_solicitud !== true) return;
+    if (!usuario || estadoNav?.estado !== 'ENVIADA') return;
 
     obtenerNivelSimulado().then(setNivel);
     obtenerSolicitudActiva()
       .then(setSolicitud)
-      .catch(() => {
-        setSolicitud(null);
-      });
+      .catch(() => setSolicitud(null));
     obtenerNotificaciones()
       .then(setNotificaciones)
       .catch(() => {
@@ -102,15 +94,12 @@ export default function Home() {
     obtenerPoliticaReenvios()
       .then(setPolitica)
       .catch(() => setPolitica(null));
-  }, [usuario, tiene_solicitud]);
+  }, [usuario, estadoNav?.estado]);
 
   const cargando =
-    cargandoSesion ||
-    cargandoSolicitud ||
-    (Boolean(usuario) && cargandoEstado && !errorEstado);
-  const datosListos = solicitud !== undefined && notificaciones !== null;
+    cargandoSesion || (Boolean(usuario) && cargandoEstado && !errorEstado);
 
-  if (cargando || !usuario || (!errorSolicitud && tiene_solicitud === false)) {
+  if (cargando || !usuario) {
     return (
       <main
         id="contenido"
@@ -124,12 +113,35 @@ export default function Home() {
     );
   }
 
+  if (errorEstado) {
+    return (
+      <main id="contenido" tabIndex={-1} className={styles.pagina}>
+        <p role="alert">{errorEstado}</p>
+        <Button variante="secundario" onClick={() => reintentarEstado()}>
+          Reintentar
+        </Button>
+      </main>
+    );
+  }
+
+  if (estadoNav && estadoNav.destino !== pathname) {
+    return (
+      <main
+        id="contenido"
+        tabIndex={-1}
+        className={styles.cargando}
+        aria-busy="true"
+      >
+        <span className={styles.spinner} aria-hidden="true" />
+        <p>Redirigiendo...</p>
+      </main>
+    );
+  }
+
+  const datosListos = solicitud !== undefined && notificaciones !== null;
   const nivelEfectivo: NivelAcademico = nivel ?? usuario.nivel ?? 'PREGRADO';
   const nombreNivel = nivelEfectivo === 'PREGRADO' ? 'pregrado' : 'posgrado';
   const listaDocs = DOCUMENTOS_POR_NIVEL[nivelEfectivo] || [];
-
-  // TODO: Si la solicitud está en estado "borrador", dirigir a /estudiante/iniciar_preinscripcion.
-  // Actualmente el contrato/tipo Solicitud no distingue el estado "borrador", por lo que se dirige a /estudiante/preinscripcion.
   const hrefContinuar = '/estudiante/preinscripcion';
 
   const tarjetaDocumentos = (
@@ -252,27 +264,19 @@ export default function Home() {
   );
 
   const tarjetaSolicitud = () => {
-    if (solicitud === undefined && !errorSolicitud) {
+    if (solicitud === undefined) {
       return (
         <Card titulo="Mi solicitud de grado" id="mi-solicitud">
           <p className={styles.textoSecundario}>Cargando solicitud...</p>
         </Card>
       );
     }
-    if (errorSolicitud || !solicitud) {
+    if (!solicitud) {
       return (
         <Card titulo="Mi solicitud de grado" id="mi-solicitud">
           <p className={styles.textoError}>
             No fue posible cargar la solicitud. Intenta recargar la página.
           </p>
-          <div style={{ marginTop: '1rem' }}>
-            <Button
-              onClick={() => void reintentarSolicitud()}
-              variante="secundario"
-            >
-              Reintentar
-            </Button>
-          </div>
         </Card>
       );
     }
