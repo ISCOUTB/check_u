@@ -13,6 +13,7 @@ import Navbar from "@/app/components/navbar/Navbar";
 import DocumentAnalysis, {
   type DocumentAnalysisData,
 } from "@/app/components/document_analysis/DocumentAnalysis";
+import PeriodoInscripcion from "../iniciar_preinscripcion/PeriodoInscripcion";
 import styles from "./preinscripcion.module.css";
 
 import { obtenerSolicitudDetalle, enviarDocumentosReenvio, ErrorConsultaSolicitud } from "./api";
@@ -392,6 +393,8 @@ export default function PreinscripcionPage() {
             <span className={styles.codigoBadge}>{estudiante.codigo}</span>
           </div>
         </header>
+
+        <PeriodoInscripcion datos={solicitud.periodos ?? null} />
 
         {/* Tarjeta estudiante */}
         <section className={styles.studentCard} aria-label="Datos del estudiante">

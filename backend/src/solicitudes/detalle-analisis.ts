@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+import { consultarContextoPeriodo } from '../periodos/asignacion-periodo.js';
 import { observacionesDocumento } from './observaciones-documento.js';
 import type { DatabaseService } from '../database/database.service.js';
 
@@ -11,7 +12,8 @@ export async function detalleAnalisis(
       'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY',
     );
     const res = await client.query(
-      `SELECT s.id_solicitud, s.tipo_solicitud, s.estado, s.fecha_creacion AS fecha_solicitud,
+      `SELECT s.id_solicitud, s.tipo_solicitud, s.estado, s.id_periodo,
+      s.fecha_creacion AS fecha_solicitud,
       u.nombres, u.apellidos, u.codigo_estudiante, u.correo, pe.*
       FROM solicitud_grado s JOIN usuarios u ON u.id_usuario = s.id_estudiante
       LEFT JOIN perfil_estudiante pe ON pe.id_usuario = u.id_usuario
@@ -90,6 +92,10 @@ export async function detalleAnalisis(
       resubmission_allowed:
         admite && d.estado !== 'VALIDO' && cuenta.rows[0].usados < 3,
     }));
+    const periodos = await consultarContextoPeriodo(
+      client,
+      s.id_periodo ?? null,
+    );
     const p = programas.rows[0] ?? {},
       p2 = programas.rows[1] ?? {},
       extra = especificos.rows[0] ?? {};
@@ -158,6 +164,7 @@ export async function detalleAnalisis(
       },
       informacion,
       documentos: documentosUi,
+      periodos,
       politicaReenvios: {
         usados: cuenta.rows[0].usados,
         limite: admite ? 3 : 0,
