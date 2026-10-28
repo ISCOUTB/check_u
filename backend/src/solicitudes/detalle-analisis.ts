@@ -1,4 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
+import { consultarContextoPeriodo } from '../periodos/asignacion-periodo.js';
+import { observacionesDocumento } from './observaciones-documento.js';
 import type { DatabaseService } from '../database/database.service.js';
 
 export async function detalleAnalisis(
@@ -10,7 +12,8 @@ export async function detalleAnalisis(
       'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY',
     );
     const res = await client.query(
-      `SELECT s.id_solicitud, s.tipo_solicitud, s.estado, s.fecha_creacion AS fecha_solicitud,
+      `SELECT s.id_solicitud, s.tipo_solicitud, s.estado, s.id_periodo,
+      s.fecha_creacion AS fecha_solicitud,
       u.nombres, u.apellidos, u.codigo_estudiante, u.correo, pe.*
       FROM solicitud_grado s JOIN usuarios u ON u.id_usuario = s.id_estudiante
       LEFT JOIN perfil_estudiante pe ON pe.id_usuario = u.id_usuario
@@ -33,10 +36,23 @@ export async function detalleAnalisis(
       'SELECT * FROM experiencia_laboral WHERE id_solicitud = $1 ORDER BY orden',
       [s.id_solicitud],
     );
+    const cuenta = await client.query<{ usados: number }>(
+      `SELECT COUNT(*)::int AS usados FROM entregas WHERE id_solicitud=$1 AND tipo_entrega='CORRECCION'
+      AND fecha_entrega_bogota=(CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date`,
+      [s.id_solicitud],
+    );
+    const admite = [
+      'EN_PROCESO',
+      'POR_REVISAR',
+      'NO_VALIDA',
+      'INCONSISTENTE',
+    ].includes(s.estado);
     const documentos = await client.query(
       `SELECT d.*, v.detalle, v.mensaje,
       (SELECT MAX(r.expira_en) FROM rutas r WHERE r.id_documento = d.id_documento) AS expira_en,
-      EXISTS (SELECT 1 FROM rutas r WHERE r.id_documento = d.id_documento AND r.activa) AS archivo_disponible
+      EXISTS (SELECT 1 FROM rutas r JOIN solicitud_grado sg ON sg.id_solicitud=d.id_solicitud
+        JOIN periodos_grado p ON p.id=sg.id_periodo WHERE r.id_documento = d.id_documento AND r.activa
+        AND ((p.fecha_fin+16)::timestamp AT TIME ZONE 'America/Bogota') > CURRENT_TIMESTAMP) AS archivo_disponible
       FROM documentos d LEFT JOIN LATERAL (SELECT detalle, mensaje FROM validaciones
         WHERE id_documento = d.id_documento ORDER BY id_validacion DESC LIMIT 1) v ON TRUE
       WHERE d.id_solicitud = $1 AND d.id_entrega IS NOT NULL
@@ -60,25 +76,26 @@ export async function detalleAnalisis(
       id: String(d.id_documento),
       tipo: d.tipo_documento,
       orden: d.orden,
+      version: d.version,
       nombre:
         (etiquetas[d.tipo_documento] ?? d.tipo_documento) +
         (d.orden === 2 ? ' · segundo programa' : ''),
       descripcion: d.nombre_original,
       fileName: d.nombre_original,
-      resultados: [
-        {
-          estado: ['VALIDO', 'NO_VALIDO', 'INCONSISTENTE'].includes(d.estado)
-            ? d.estado.toLowerCase()
-            : 'por_revisar',
-          mensaje:
-            d.mensaje ?? 'Análisis pendiente. No hay resultados registrados.',
-        },
-      ],
+      resultados: observacionesDocumento(
+        d.estado,
+        d.detalle as Record<string, unknown> | null,
+      ),
       analisis: d.detalle ?? null,
       expiraEn: d.expira_en,
       archivoDisponible: d.archivo_disponible,
-      resubmission_allowed: false,
+      resubmission_allowed:
+        admite && d.estado !== 'VALIDO' && cuenta.rows[0].usados < 3,
     }));
+    const periodos = await consultarContextoPeriodo(
+      client,
+      s.id_periodo ?? null,
+    );
     const p = programas.rows[0] ?? {},
       p2 = programas.rows[1] ?? {},
       extra = especificos.rows[0] ?? {};
@@ -147,7 +164,12 @@ export async function detalleAnalisis(
       },
       informacion,
       documentos: documentosUi,
-      politicaReenvios: { usados: 0, limite: 0, zona: 'America/Bogota' },
+      periodos,
+      politicaReenvios: {
+        usados: cuenta.rows[0].usados,
+        limite: admite ? 3 : 0,
+        zona: 'America/Bogota',
+      },
     };
   });
 }

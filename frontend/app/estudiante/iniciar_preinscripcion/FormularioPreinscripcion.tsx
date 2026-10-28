@@ -1,5 +1,7 @@
 "use client";
 
+import type { ProgresoEnvio } from "../envio-documental";
+
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "@/app/components/navbar/Navbar";
@@ -65,6 +67,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
     const [validar, setValidar] = useState(false);
     const [resumen, setResumen] = useState<ContenidoResumen | null>(null);
     const [confirmando, setConfirmando] = useState(false);
+    const [progresoEnvio, setProgresoEnvio] = useState<ProgresoEnvio | null>(null);
     const [enviando, setEnviando] = useState(false);
     const [errorEnvio, setErrorEnvio] = useState(false);
     const enviandoRef = useRef(false);
@@ -168,7 +171,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
             // Una clave por envío. Si falla la conexión, "Reintentar" repite la misma: el backend no la
             // duplica. Va dentro del try: sin contexto seguro (http://IP) crypto.randomUUID no existe.
             claveRef.current ??= crypto.randomUUID();
-            const resultado = await enviarPreinscripcion(borrador, claveRef.current, escenarioDesde(escenario));
+            const resultado = await enviarPreinscripcion(borrador, claveRef.current, escenarioDesde(escenario), setProgresoEnvio);
             claveRef.current = null;
             if (resultado.ok) {
                 setSucio(false);
@@ -222,6 +225,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                  * devuelve el foco al botón, y después el resumen de errores (más abajo) lo toma.
                  */}
                 <DialogoConfirmarEnvio
+                    progresoEnvio={progresoEnvio}
                     abierto={confirmando}
                     borrador={borrador}
                     avance={avance}

@@ -654,7 +654,7 @@
 .proximoEnvio p {
   margin: 0;
   font-size: 0.875rem;
-  color: var(--color-text-secondary);
+  color: var(--color-text);
   max-width: 520px;
 }
 
@@ -675,7 +675,7 @@
 
 .reenviosCount small {
   font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  color: var(--color-text);
   font-weight: 400;
 }
 

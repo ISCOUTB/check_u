@@ -1,4 +1,5 @@
 import type { DatosInformacionEstudiante } from "@/app/components/informacion_estudiante/types";
+import type { ContextoPeriodo } from "../iniciar_preinscripcion/PeriodoInscripcion";
 /**
  * types.ts — Tipos de dominio para la página de detalle de preinscripción del estudiante.
  *
@@ -33,6 +34,7 @@ export interface ResultadoAnalisis {
 }
 
 export interface DocumentoSolicitud {
+  version?: number;
   id?: string;
   orden?: number;
   expiraEn?: string;
@@ -92,6 +94,7 @@ export interface SolicitudDetalle {
   id: string;
   estudiante: InformacionEstudiante;
   documentos: DocumentoSolicitud[];
+  periodos?: ContextoPeriodo | null;
   politicaReenvios: PoliticaReenvios;
 }
 

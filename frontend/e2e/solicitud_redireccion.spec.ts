@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { API, sesionComo } from "./soporte";
+import { DEMO_PREGRADO } from "@/app/components/informacion_estudiante/datos_demo";
 
 const RUTA_BIENVENIDA = "/estudiante/bienvenida";
 const RUTA_HOME = "/estudiante/home";
@@ -56,10 +57,10 @@ test.describe("decisión de bienvenida basada en solicitud_grado", () => {
     test.describe("en /estudiante/preinscripcion", () => {
         test("sin solicitud redirige a /estudiante/bienvenida", async ({ page }) => {
             await sesionComo(page, "estudiante");
-            await page.route(`${API}/estudiante/solicitud`, (ruta) =>
+            await page.route(`${API}/estudiante/solicitud/analisis`, (ruta) =>
                 ruta.fulfill({
-                    status: 200,
-                    json: { tiene_solicitud: false, solicitud: null },
+                    status: 404,
+                    json: { message: "No hay preinscripción registrada." },
                 }),
             );
 
@@ -69,12 +70,14 @@ test.describe("decisión de bienvenida basada en solicitud_grado", () => {
 
         test("con solicitud permanece en /estudiante/preinscripcion y no redirige", async ({ page }) => {
             await sesionComo(page, "estudiante");
-            await page.route(`${API}/estudiante/solicitud`, (ruta) =>
+            await page.route(`${API}/estudiante/solicitud/analisis`, (ruta) =>
                 ruta.fulfill({
                     status: 200,
                     json: {
-                        tiene_solicitud: true,
-                        solicitud: { id_solicitud: 1, tipo_solicitud: "PREGRADO", estado: "BORRADOR" },
+                        id: "1", estadoSolicitud: "BORRADOR", estadoAnalisis: "pendiente",
+                        estudiante: { codigo: "T00000001", nombre: "Ana Prueba", nivel: "PREGRADO", programa: "Ingeniería" },
+                        informacion: DEMO_PREGRADO, documentos: [],
+                        politicaReenvios: { usados: 0, limite: 3, zona: "America/Bogota" },
                     },
                 }),
             );
@@ -86,12 +89,14 @@ test.describe("decisión de bienvenida basada en solicitud_grado", () => {
 
         test("la pestaña Tu información muestra la discapacidad y las necesidades de asistencia", async ({ page }) => {
             await sesionComo(page, "estudiante");
-            await page.route(`${API}/estudiante/solicitud`, (ruta) =>
+            await page.route(`${API}/estudiante/solicitud/analisis`, (ruta) =>
                 ruta.fulfill({
                     status: 200,
                     json: {
-                        tiene_solicitud: true,
-                        solicitud: { id_solicitud: 1, tipo_solicitud: "PREGRADO", estado: "BORRADOR" },
+                        id: "1", estadoSolicitud: "BORRADOR", estadoAnalisis: "pendiente",
+                        estudiante: { codigo: "T00000001", nombre: "Ana Prueba", nivel: "PREGRADO", programa: "Ingeniería" },
+                        informacion: DEMO_PREGRADO, documentos: [],
+                        politicaReenvios: { usados: 0, limite: 3, zona: "America/Bogota" },
                     },
                 }),
             );
@@ -105,7 +110,7 @@ test.describe("decisión de bienvenida basada en solicitud_grado", () => {
 
         test("si la consulta falla (error de BD), no redirige y muestra error con opción de reintentar", async ({ page }) => {
             await sesionComo(page, "estudiante");
-            await page.route(`${API}/estudiante/solicitud`, (ruta) =>
+            await page.route(`${API}/estudiante/solicitud/analisis`, (ruta) =>
                 ruta.fulfill({
                     status: 503,
                     json: { message: "Base de datos no disponible" },

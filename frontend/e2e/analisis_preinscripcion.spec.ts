@@ -67,6 +67,7 @@ for (const tema of ['light', 'dark'] as const) {
     await expect(page.getByText('Validación pendiente de integración.', { exact: false })).toBeVisible();
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Detalle de mi preinscripción' })).toBeVisible();
+    await expect(page.getByText('Validación pendiente de integración.', { exact: false })).toBeVisible();
     expect(consultas).toBeGreaterThanOrEqual(2);
     await page.getByRole('button', { name: 'Ver análisis automático' }).first().click();
     await expect(page.getByRole('dialog')).toContainText('T00000001');

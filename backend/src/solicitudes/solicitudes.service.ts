@@ -1,3 +1,4 @@
+import type { InformarAvance } from './progreso-envio.js';
 import {
   BadRequestException,
   ConflictException,
@@ -90,8 +91,11 @@ export class SolicitudesService {
     idEstudiante: number,
     payload?: DatosEnvioPreinscripcion,
     archivos: PdfPreinscripcion[] = [],
+    informar: InformarAvance = () => {},
   ): Promise<RespuestaEnvioPreinscripcion> {
+    informar('Subiendo documentos.');
     validarArchivos(archivos);
+    informar('Documentos cargados.');
     // Primero guarda el borrador. Un fallo del motor no pierde los campos del estudiante.
     const datos = validarBorrador(payload);
     const tiposPermitidos = datos.nivel === 'POSGRADO' ? DOCUMENTOS_REQUERIDOS_POSGRADO : DOCUMENTOS_REQUERIDOS_PREGRADO;
@@ -99,7 +103,9 @@ export class SolicitudesService {
     if (archivos.length !== esperados.length || esperados.some(t => !archivos.some(a => a.tipo === t)))
       throw new BadRequestException('Adjunta los documentos requeridos para tu nivel académico.');
     const payloadReal = { ...datos, documentos: archivos.map(a => ({ id: a.tipo, nombre: a.originalname, tamano: a.buffer.length })) };
+    informar('Registrando solicitud de preinscripción.');
     await this.guardarBorrador(idEstudiante, payloadReal);
+    informar('Solicitud de preinscripción almacenada.');
     const creados: string[] = [];
     return this.databaseService.transaction<RespuestaEnvioPreinscripcion>(async (client) => {
       // 1. Obtener y bloquear la solicitud activa
@@ -167,8 +173,9 @@ export class SolicitudesService {
         [idEntrega, solicitud.id_solicitud],
       );
 
+      informar('Enviando documentos al motor de análisis documental.');
       await this.analisis.procesar(client, solicitud.id_solicitud, idEntrega, idEstudiante,
-        solicitud.tipo_solicitud, archivos, creados);
+        solicitud.tipo_solicitud, archivos, creados, informar);
 
       // 6. Transicionar el estado de la solicitud a 'EN_PROCESO'
       await client.query(

@@ -1,3 +1,4 @@
+import { etapaDocumento, type InformarAvance } from './progreso-envio.js';
 import {
   BadGatewayException,
   BadRequestException,
@@ -80,14 +81,16 @@ export class AnalisisPreinscripcionService {
     nivel: string,
     archivos: PdfPreinscripcion[],
     creados: string[],
+    informar: InformarAvance = () => {},
   ) {
     validarArchivos(archivos);
     const docs = await client.query<{
       id_documento: number;
       tipo_documento: string;
       orden: number;
+      version: number;
     }>(
-      'SELECT id_documento, tipo_documento, orden FROM documentos WHERE id_solicitud = $1 AND id_entrega = $2 ORDER BY id_documento',
+      'SELECT id_documento, tipo_documento, orden, version FROM documentos WHERE id_solicitud = $1 AND id_entrega = $2 ORDER BY id_documento',
       [idSolicitud, idEntrega],
     );
     const ids = docs.rows.map(
@@ -113,7 +116,25 @@ export class AnalisisPreinscripcionService {
       last_name: u.apellidos,
       identification_number: u.numero_documento,
     };
+    const prioridad = [
+      'identification',
+      'academic_evaluation',
+      'paz_y_salvo_bib',
+      'saber_pro',
+      'estampilla_pro_cultura',
+    ];
+    docs.rows.sort(
+      (a, b) =>
+        prioridad.indexOf(a.tipo_documento) -
+          prioridad.indexOf(b.tipo_documento) || a.orden - b.orden,
+    );
+    const segundo = await client.query<{ doble: boolean }>(
+      `SELECT EXISTS(SELECT 1 FROM solicitud_programa WHERE id_solicitud=$1 AND orden=2) AS doble`,
+      [idSolicitud],
+    );
+    const doble = segundo.rows[0].doble;
     for (const doc of docs.rows) {
+      informar(etapaDocumento(doc.tipo_documento, doc.orden, doble));
       const clave = doc.tipo_documento + (doc.orden === 2 ? '-2' : '');
       const archivo = archivos.find((a) => a.tipo === clave)!;
       let detalle: Record<string, unknown>;
@@ -194,6 +215,8 @@ export class AnalisisPreinscripcionService {
         detalle = {
           ...r,
           document_order: doc.orden,
+          document_version: doc.version,
+          version_motor: r.document_version,
           estado_general_motor: respuesta.estado_general,
           mensaje,
         };
@@ -233,6 +256,7 @@ export class AnalisisPreinscripcionService {
         ],
       );
     }
+    informar('Generando análisis documental.');
   }
   async descartar(claves: string[]) {
     // Los huérfanos no eliminados serán recuperados por el barrido tras 24 h.
