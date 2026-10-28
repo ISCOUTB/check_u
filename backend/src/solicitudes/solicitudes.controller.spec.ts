@@ -9,6 +9,7 @@ describe('SolicitudesController', () => {
   let controller: SolicitudesController;
   let mockSolicitudesService: {
     obtenerSolicitudEstudiante: ReturnType<typeof vi.fn>;
+    obtenerEstadoNavegacion: ReturnType<typeof vi.fn>;
     enviarPreinscripcion: ReturnType<typeof vi.fn>;
     guardarBorrador: ReturnType<typeof vi.fn>;
   };
@@ -19,6 +20,7 @@ describe('SolicitudesController', () => {
   beforeEach(() => {
     mockSolicitudesService = {
       obtenerSolicitudEstudiante: vi.fn(),
+      obtenerEstadoNavegacion: vi.fn(),
       enviarPreinscripcion: vi.fn(),
       guardarBorrador: vi.fn(),
     };
@@ -32,7 +34,11 @@ describe('SolicitudesController', () => {
     );
   });
 
-  function crearRequest(cookie?: string, query?: Record<string, unknown>, body?: unknown): Request {
+  function crearRequest(
+    cookie?: string,
+    query?: Record<string, unknown>,
+    body?: unknown,
+  ): Request {
     return {
       headers: {
         cookie,
@@ -45,14 +51,18 @@ describe('SolicitudesController', () => {
   describe('GET estudiante/solicitud', () => {
     it('sin sesión responde 401 Unauthorized', async () => {
       const req = crearRequest();
-      await expect(controller.obtenerSolicitud(req)).rejects.toThrow(UnauthorizedException);
+      await expect(controller.obtenerSolicitud(req)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('con sesión no válida o expirada responde 401 Unauthorized', async () => {
       const req = crearRequest(`${COOKIE_NAME}=expirada`);
       mockAuthService.getUser.mockReturnValueOnce(null);
 
-      await expect(controller.obtenerSolicitud(req)).rejects.toThrow(UnauthorizedException);
+      await expect(controller.obtenerSolicitud(req)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('con rol funcionario responde 403 Forbidden', async () => {
@@ -64,7 +74,9 @@ describe('SolicitudesController', () => {
         role: 'funcionario',
       });
 
-      await expect(controller.obtenerSolicitud(req)).rejects.toThrow(ForbiddenException);
+      await expect(controller.obtenerSolicitud(req)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('con rol estudiante sin solicitud responde con tiene_solicitud: false', async () => {
@@ -86,7 +98,9 @@ describe('SolicitudesController', () => {
         tiene_solicitud: false,
         solicitud: null,
       });
-      expect(mockSolicitudesService.obtenerSolicitudEstudiante).toHaveBeenCalledWith(1);
+      expect(
+        mockSolicitudesService.obtenerSolicitudEstudiante,
+      ).toHaveBeenCalledWith(1);
     });
 
     it('con rol estudiante con solicitud responde con tiene_solicitud: true y los datos de la solicitud', async () => {
@@ -116,7 +130,9 @@ describe('SolicitudesController', () => {
           estado: 'BORRADOR',
         },
       });
-      expect(mockSolicitudesService.obtenerSolicitudEstudiante).toHaveBeenCalledWith(1);
+      expect(
+        mockSolicitudesService.obtenerSolicitudEstudiante,
+      ).toHaveBeenCalledWith(1);
     });
 
     it('ignora cualquier identificador enviado por el cliente en query, params o body', async () => {
@@ -142,15 +158,21 @@ describe('SolicitudesController', () => {
 
       await controller.obtenerSolicitud(req);
 
-      expect(mockSolicitudesService.obtenerSolicitudEstudiante).toHaveBeenCalledWith(1);
-      expect(mockSolicitudesService.obtenerSolicitudEstudiante).not.toHaveBeenCalledWith(999);
+      expect(
+        mockSolicitudesService.obtenerSolicitudEstudiante,
+      ).toHaveBeenCalledWith(1);
+      expect(
+        mockSolicitudesService.obtenerSolicitudEstudiante,
+      ).not.toHaveBeenCalledWith(999);
     });
   });
 
-  describe('POST solicitudes/enviar', () => {
+  describe('GET solicitudes/estado', () => {
     it('sin sesión responde 401 Unauthorized', async () => {
       const req = crearRequest();
-      await expect(controller.enviarPreinscripcion(req)).rejects.toThrow(UnauthorizedException);
+      await expect(controller.obtenerEstadoNavegacion(req)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('con rol funcionario responde 403 Forbidden', async () => {
@@ -162,7 +184,58 @@ describe('SolicitudesController', () => {
         role: 'funcionario',
       });
 
-      await expect(controller.enviarPreinscripcion(req)).rejects.toThrow(ForbiddenException);
+      await expect(controller.obtenerEstadoNavegacion(req)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('con estudiante delega al service con el id de sesión', async () => {
+      const req = crearRequest(`${COOKIE_NAME}=sesion-valida`);
+      mockAuthService.getUser.mockReturnValueOnce({
+        id: 1,
+        username: 'lizapata@utb.edu.co',
+        name: 'Lisandro Zapata',
+        role: 'estudiante',
+      });
+      mockSolicitudesService.obtenerEstadoNavegacion.mockResolvedValueOnce({
+        ok: true,
+        estado: 'SIN_SOLICITUD',
+        destino: '/estudiante/bienvenida',
+      });
+
+      const respuesta = await controller.obtenerEstadoNavegacion(req);
+
+      expect(respuesta).toEqual({
+        ok: true,
+        estado: 'SIN_SOLICITUD',
+        destino: '/estudiante/bienvenida',
+      });
+      expect(
+        mockSolicitudesService.obtenerEstadoNavegacion,
+      ).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('POST solicitudes/enviar', () => {
+    it('sin sesión responde 401 Unauthorized', async () => {
+      const req = crearRequest();
+      await expect(controller.enviarPreinscripcion(req)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('con rol funcionario responde 403 Forbidden', async () => {
+      const req = crearRequest(`${COOKIE_NAME}=sesion-valida`);
+      mockAuthService.getUser.mockReturnValueOnce({
+        id: 2,
+        username: 'funcionario@utb.edu.co',
+        name: 'Rosa Marriaga',
+        role: 'funcionario',
+      });
+
+      await expect(controller.enviarPreinscripcion(req)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('con estudiante registra la preinscripción exitosamente y devuelve respuesta unificada', async () => {
@@ -181,7 +254,8 @@ describe('SolicitudesController', () => {
         id_solicitud: 102,
         id_entrega: 1,
         estado: 'EN_PROCESO',
-        mensaje: 'Preinscripción registrada correctamente. Pendiente de análisis.',
+        mensaje:
+          'Preinscripción registrada correctamente. Pendiente de análisis.',
       });
 
       const respuesta = await controller.enviarPreinscripcion(req, req.body);
@@ -191,16 +265,22 @@ describe('SolicitudesController', () => {
         id_solicitud: 102,
         id_entrega: 1,
         estado: 'EN_PROCESO',
-        mensaje: 'Preinscripción registrada correctamente. Pendiente de análisis.',
+        mensaje:
+          'Preinscripción registrada correctamente. Pendiente de análisis.',
       });
-      expect(mockSolicitudesService.enviarPreinscripcion).toHaveBeenCalledWith(1, req.body);
+      expect(mockSolicitudesService.enviarPreinscripcion).toHaveBeenCalledWith(
+        1,
+        req.body,
+      );
     });
   });
 
   describe('POST solicitudes/borrador', () => {
     it('sin sesión responde 401 Unauthorized', async () => {
       const req = crearRequest();
-      await expect(controller.guardarBorrador(req)).rejects.toThrow(UnauthorizedException);
+      await expect(controller.guardarBorrador(req)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('con rol funcionario responde 403 Forbidden', async () => {
@@ -212,7 +292,9 @@ describe('SolicitudesController', () => {
         role: 'funcionario',
       });
 
-      await expect(controller.guardarBorrador(req)).rejects.toThrow(ForbiddenException);
+      await expect(controller.guardarBorrador(req)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('con estudiante guarda el borrador', async () => {
@@ -236,7 +318,10 @@ describe('SolicitudesController', () => {
         ok: true,
         guardadoEn: '2026-10-24T18:00:00.000Z',
       });
-      expect(mockSolicitudesService.guardarBorrador).toHaveBeenCalledWith(1, req.body);
+      expect(mockSolicitudesService.guardarBorrador).toHaveBeenCalledWith(
+        1,
+        req.body,
+      );
     });
   });
 });
