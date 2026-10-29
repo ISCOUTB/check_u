@@ -27,6 +27,12 @@ export class ReenviosService {
     private readonly temporales: ArchivosTemporalesService,
   ) {}
 
+  async originalFuncionario(idDocumento: number) {
+    const r = await this.db.query('SELECT s.id_estudiante FROM documentos d JOIN solicitud_grado s ON s.id_solicitud=d.id_solicitud WHERE d.id_documento=$1 AND d.id_entrega IS NOT NULL', [idDocumento]);
+    if (!r.rows.length) throw new NotFoundException('Documento no disponible.');
+    return this.original(r.rows[0].id_estudiante, idDocumento);
+  }
+
   async original(idEstudiante: number, idDocumento: number) {
     const r = await this.db.query(
       `SELECT d.nombre_original, r.ruta_archivo, r.activa,
