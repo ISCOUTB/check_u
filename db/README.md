@@ -1,8 +1,8 @@
 # Base de datos de CheckU
 
 Esquema PostgreSQL para preinscripciones de grado de **pregrado y posgrado**.
-Esta entrega corresponde a la **parte 2: información del formulario**. Parte del
-modelo de siete tablas del equipo y agrega cinco entidades, para un total de doce.
+El esquema vigente contiene **quince tablas**: las siete del modelo original, las
+cinco entidades del formulario, `periodos_grado`, `entregas` y `opciones_campo`.
 
 ## Archivos
 
@@ -11,6 +11,11 @@ db/
   init/
     01-schema.sql
     02-userbase.sql
+  migrations/
+    003-borrador-parcial.sql
+    004-analisis-preinscripcion.sql
+    005-reenvios-idempotentes.sql
+    006-opciones-campos.sql
   tests/
     aceptacion.sql
     verificar.ps1
@@ -20,6 +25,9 @@ db/
 
 - `01-schema.sql`: tablas, restricciones, índices y triggers.
 - `02-userbase.sql`: únicamente los dos usuarios indicados por el equipo.
+- `migrations/*.sql`: cambios idempotentes para bases existentes. La migración
+  `006-opciones-campos.sql` crea `opciones_campo`, ajusta la restricción de
+  discapacidad y carga las 31 opciones iniciales.
 - `tests/aceptacion.sql`: comprueba datos y rechazos esperados; revierte sus cambios.
 - `tests/verificar.ps1`: ejecuta esquema, seed y pruebas dos veces con `psql`.
 - `tests/resultado_verificacion.txt`: registro de la verificación ejecutada.
@@ -54,7 +62,9 @@ las tablas ni se incluyen en esta entrega.
 | Tabla | Función y relación |
 |---|---|
 | `usuarios` | Usuarios y roles `ESTUDIANTE`, `FUNCIONARIO`, `BIBLIOTECA`. Agrega `codigo_estudiante` único, obligatorio para estudiantes. |
-| `solicitud_grado` | Solicitud de un usuario, nivel `PREGRADO` o `POSGRADO`, estado y auditoría. |
+| `solicitud_grado` | Solicitud de un usuario, nivel `PREGRADO` o `POSGRADO`, estado, periodo y auditoría. |
+| `periodos_grado` | Ventanas de recepción con fecha de inicio, fin, graduación y estado `ABIERTO` o `CERRADO`. |
+| `entregas` | Envíos iniciales o de corrección de una solicitud, con número, fecha y clave de idempotencia. |
 | `documentos` | Metadatos y versiones de los archivos de una solicitud. |
 | `rutas` | Ubicaciones de los archivos en el servidor. |
 | `validaciones` | Validaciones documentales y sus resultados. |
@@ -65,6 +75,7 @@ las tablas ni se incluyen en esta entrega.
 | `informacion_pregrado` | Nueva. Saber Pro y vinculación con la UTB. `id_solicitud` es PK y FK. |
 | `informacion_posgrado` | Nueva. Estudios, título y condición de egresado. `id_solicitud` es PK y FK. |
 | `experiencia_laboral` | Nueva. Hasta dos cargos por solicitud de posgrado, con orden 1 o 2. |
+| `opciones_campo` | Catálogo administrable de documento, género, programa, opción de grado y tipo de discapacidad, con orden y valor interno. |
 
 Las siete entidades originales conservan sus columnas funcionales, estados y
 relaciones. Sus fechas de auditoría pasan a `TIMESTAMPTZ`. No se agregan datos
@@ -81,18 +92,21 @@ o `revisiones` en esta tarea.
 | Nombres | A | `usuarios.nombres` | `VARCHAR(100)`, obligatorio. |
 | Apellidos | A | `usuarios.apellidos` | `VARCHAR(100)`, obligatorio. |
 | Código estudiantil | A | `usuarios.codigo_estudiante` | `TEXT`, único; no nulo ni vacío para estudiantes. |
-| Tipo de documento | A | `perfil_estudiante.tipo_documento_identidad` | `TEXT`, obligatorio, sin catálogo cerrado. |
+| Tipo de documento | A | `perfil_estudiante.tipo_documento_identidad` | `TEXT`, obligatorio; opciones administradas en `opciones_campo` (`TIPO_DOCUMENTO`). |
 | Número de documento | A | `perfil_estudiante.numero_documento` | `TEXT`, obligatorio; solo letras ASCII y dígitos; único junto con el tipo. |
 | Fecha de nacimiento | A | `perfil_estudiante.fecha_nacimiento` | `DATE`, permite nulo. |
-| Género | A | `perfil_estudiante.genero` | `TEXT`, permite nulo; catálogo pendiente. |
+| Género | A | `perfil_estudiante.genero` | `TEXT`, permite nulo; opciones administradas en `opciones_campo` (`GENERO`). |
+| ¿Tiene discapacidad? | A | `perfil_estudiante.tiene_discapacidad` | `BOOLEAN`, permite nulo si no responde. |
+| Tipo de discapacidad | A | `perfil_estudiante.tipo_discapacidad` | `TEXT`, obligatorio y no vacío si `tiene_discapacidad`; opciones en `opciones_campo` (`TIPO_DISCAPACIDAD`). |
+| Detalles de necesidades de asistencia | A | `perfil_estudiante.detalles_necesidades_asistencia` | `TEXT`, opcional; solo puede tener valor si `tiene_discapacidad` es verdadero. |
 | Departamento de residencia | A | `perfil_estudiante.departamento_residencia` | `TEXT`, permite nulo. |
 | Ciudad o municipio de residencia | A | `perfil_estudiante.ciudad_residencia` | `TEXT`, permite nulo. |
 | Dirección de residencia | A | `perfil_estudiante.direccion_residencia` | `TEXT`, permite nulo. |
 | Teléfono fijo | A | `perfil_estudiante.telefono_fijo` | `TEXT`, opcional. |
 | Teléfono celular | A | `perfil_estudiante.telefono_celular` | `TEXT`, permite nulo hasta confirmar obligatoriedad. |
-| Programa principal | A | `solicitud_programa.programa`, `orden=1` | `TEXT`, obligatorio y no vacío en la fila. |
+| Programa principal | A | `solicitud_programa.programa`, `orden=1` | `TEXT`, obligatorio y no vacío; opciones administradas en `opciones_campo` (`PROGRAMA`). |
 | Modalidad | A | `solicitud_programa.modalidad` | `VARCHAR(20)`, `VIRTUAL` o `PRESENCIAL`, obligatoria. |
-| Tipo de opción de grado | P | `solicitud_programa.tipo_opcion_grado` | `TEXT`, catálogo pendiente; siempre nulo en posgrado. |
+| Tipo de opción de grado | P | `solicitud_programa.tipo_opcion_grado` | `TEXT`, opciones administradas en `opciones_campo` (`OPCION_GRADO`); siempre nulo en posgrado. |
 | Segundo programa, modalidad y opción | A | Otra fila de `solicitud_programa`, `orden=2` | Opcional; mismas columnas que la fila principal. |
 | ¿Conoce el registro Saber Pro? | P | `informacion_pregrado.conoce_registro_saber_pro` | `BOOLEAN`, permite nulo si no responde. |
 | Número de registro Saber Pro | P | `informacion_pregrado.numero_registro_saber_pro` | `TEXT`, requerido y no vacío si conoce el registro; nulo en otro caso. |
@@ -133,6 +147,13 @@ No se duplican la confirmación de correo, el correo repetido ni el campo
   disponibles y sin repetir orden dentro de una misma solicitud.
 - `chk_experiencia_laboral_orden` y `uq_experiencia_laboral_orden`: igual límite
   para cargos, sin restringir que dos cargos puedan tener textos iguales.
+- `uq_opciones_campo_valor`: el valor interno no se repite dentro de un campo.
+  `uq_opciones_campo_etiqueta` aplica la misma regla a la etiqueta sin distinguir
+  mayúsculas. `chk_opciones_campo_campo` limita el campo a los cinco catálogos y
+  `chk_opciones_campo_orden` exige posiciones desde 1.
+- `chk_perfil_discapacidad` ya no impone una lista cerrada de tipos. Exige un
+  tipo no vacío cuando la respuesta es verdadera y nulos cuando no lo es. Los
+  valores válidos se administran en `opciones_campo`.
 - Los triggers de nivel impiden datos de pregrado en solicitudes de posgrado,
   datos/cargos de posgrado en solicitudes de pregrado y opción de grado en posgrado.
   También impiden cambiar el nivel dejando datos incompatibles.
@@ -141,8 +162,9 @@ No se duplican la confirmación de correo, el correo repetido ni el campo
 - Las PK y restricciones `UNIQUE` de las tablas nuevas crean índices sobre sus
   claves. Todas las tablas hijas nuevas tienen un índice cuyo primer campo es
   `id_solicitud`; no se agregan índices equivalentes redundantes.
-- Las doce tablas utilizan fechas de auditoría con zona horaria. Nacimiento y
-  examen usan `DATE`. El trigger de actualización se extiende a las cinco tablas nuevas.
+- Las quince tablas utilizan fechas de auditoría con zona horaria. Nacimiento y
+  examen usan `DATE`. El trigger de actualización se extiende a las cinco tablas
+  del formulario.
 
 El perfil referencia `usuarios`, pero no se añadió una regla que compruebe su rol;
 ese control sigue perteneciendo a la aplicación. Tampoco se cambió la revisión
@@ -154,10 +176,16 @@ El esquema usa `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS` y
 `CREATE OR REPLACE` en funciones y triggers. Cada archivo tiene una transacción.
 El seed utiliza `INSERT ... ON CONFLICT DO NOTHING` en todas sus inserciones.
 
+El seed de `opciones_campo` inserta 31 opciones iniciales: las listas que antes
+estaban fijas en el frontend y catorce programas de ejemplo. Repetirlo no duplica
+ni reordena las filas existentes. Si el funcionario elimina una opción inicial,
+volver a ejecutar el seed puede restaurarla porque el `ON CONFLICT` solo evita
+duplicados, no conserva bajas.
+
 Los usuarios se identifican por correo; no se escriben IDs a mano. Repetir el
 seed conserva las filas existentes mediante `ON CONFLICT (correo) DO NOTHING`.
-No crea perfiles, solicitudes, programas, resultados Saber Pro ni experiencia
-laboral. Los contadores de identidad pueden avanzar al intentar inserciones con
+No crea perfiles, solicitudes, filas de `solicitud_programa`, resultados Saber Pro
+ni experiencia laboral. Los contadores de identidad pueden avanzar al intentar inserciones con
 conflicto; esto es normal y no representa duplicación de usuarios.
 
 ## Usuarios iniciales
@@ -233,10 +261,11 @@ revierten con `ROLLBACK`; los errores esperados se capturan dentro de PL/pgSQL.
 
 ## Verificado y pendiente
 
-**Verificado ejecutando:** las dos pasadas con `psql` terminaron sin errores
-inesperados, se crearon las doce tablas, las restricciones de aceptación
-respondieron correctamente y la comparación de todas las filas confirmó que
-la segunda ejecución no duplicó ni cambió los datos.
+**Verificado ejecutando (entrega inicial del formulario):** las dos pasadas con
+`psql` terminaron sin errores inesperados, se crearon las doce tablas de esa
+entrega, las restricciones de aceptación respondieron correctamente y la
+comparación de todas las filas confirmó que la segunda ejecución no duplicó ni
+cambió los datos.
 
 Entorno de la verificación: cliente **psql 16.15**, conectado por TCP a
 **PostgreSQL 18.6 compilado en WebAssembly mediante PGlite 0.5.11**. Fue una base
@@ -246,10 +275,19 @@ concurrencia ni de despliegue nativo con Docker/Compose. El archivo PowerShell
 se entrega para reproducir la verificación en Windows; no se ejecutó aquí,
 porque el entorno de prueba es Linux. Las invocaciones a psql sí se ejecutaron.
 
+**Prueba de aceptación vigente:** `db/tests/aceptacion.sql` espera 15 tablas,
+31 opciones iniciales en los cinco campos de `opciones_campo` y acepta `AUDITIVA`
+como tipo de discapacidad. El registro `resultado_verificacion.txt` corresponde a
+la ejecución anterior; debe regenerarse con `db/tests/verificar.ps1` en el
+PostgreSQL del equipo.
+
 **Pendiente del equipo:**
 
 1. Repetir la verificación en su servicio PostgreSQL de Compose, con su versión real.
-2. Confirmar catálogos de documento, género, opción de grado, contrato y nivel de estudios.
+2. Confirmar la lista inicial de documento, género, opción de grado, contrato y
+   nivel de estudios. Documento, género, programa, opción de grado y tipo de
+   discapacidad se pueden ajustar desde `/funcionario/opciones`; falta cargar el
+   catálogo real de programas.
 3. Confirmar los formatos del código estudiantil y del registro Saber Pro. Los
    ejemplos usan `T` más 8 dígitos y `EK` más 12 dígitos; no se imponen aún como regex.
 4. Confirmar si el correo del formulario coincide con el de la cuenta. Por ahora
@@ -291,10 +329,10 @@ ningún comando que borre el volumen o los usuarios existentes.
 
 ## Fuera de alcance
 
-Endpoints, ORM, migraciones de la tarea 03, lectura desde la pantalla "Mi
-información", el flujo de entregas/reenvíos y cambios funcionales en
-`documentos`, `validaciones` y `revisiones`. El límite del esquema no equivale
-a una implementación del frontend o del backend.
+Quedan fuera de este documento los endpoints de otros módulos, el ORM, las
+migraciones de la tarea 03, la lectura desde la pantalla "Mi información" y los
+cambios funcionales en `documentos`, `validaciones` y `revisiones`. El límite del
+esquema no equivale a una implementación del frontend o del backend.
 
 ## Referencias técnicas
 
@@ -319,4 +357,32 @@ El cuerpo de creación/edición usa `nombre`, `fechaInicio`, `fechaFin`, `fechaG
 `estado` acepta únicamente `ABIERTO` o `CERRADO` y, si se omite en la creación, queda `ABIERTO`.
 Las operaciones requieren una sesión autenticada de funcionario.
 
-**Limitación conocida:** el repositorio todavía no contiene una entidad ni endpoints reales para solicitudes de grado. Por ello el dashboard sigue utilizando datos de demostración; el listado de solicitudes todavía no se relaciona por clave foránea con `periodos_grado`. Antes de aceptar solicitudes reales, el endpoint que las cree deberá validar que el periodo esté `ABIERTO` y dentro de las fechas permitidas, y guardar `periodo_id` en la solicitud. El estado por sí solo no bloquea solicitudes hasta que esa validación se implemente en el flujo de creación de solicitudes.
+La asignación del periodo al borrador se implementó en la Tarea 35. Al guardar,
+el backend elige un periodo `ABIERTO` cuya ventana permita recibir la solicitud y
+persiste `solicitud_grado.id_periodo`. Un borrador que ya tiene periodo lo conserva;
+si no hay uno elegible, el guardado responde `409 SIN_PERIODO_DISPONIBLE`. Los
+detalles de fechas y zona horaria están en `docs/tarea35_periodo_inscripcion.md`.
+
+## Opciones del formulario (Tarea 40)
+
+`opciones_campo` guarda los valores visibles de cinco campos: `TIPO_DOCUMENTO`,
+`GENERO`, `PROGRAMA`, `OPCION_GRADO` y `TIPO_DISCAPACIDAD`. Cada fila tiene un
+`valor` interno estable, una `etiqueta` visible y un `orden` dentro del campo.
+
+El funcionario las administra en `/funcionario/opciones`. El formulario del
+estudiante consulta el catálogo y muestra las opciones en ese orden. Bajo `/api`:
+
+- `GET /opciones-campo` y `GET /opciones-campo?campo=PROGRAMA`.
+- `POST /opciones-campo` y `POST /opciones-campo/importar`.
+- `PATCH /opciones-campo/orden` y `PATCH /opciones-campo/:id`.
+- `DELETE /opciones-campo/:id`.
+
+La consulta requiere sesión; las mutaciones exigen rol `funcionario`. La
+importación acepta CSV separado por coma o punto y coma, hasta 1 MB, con encabezado
+opcional. La primera columna es la etiqueta y la segunda, opcional, el valor
+interno; si falta, se genera desde la etiqueta. Las filas duplicadas, vacías o
+inválidas no se insertan y se informan con su número de línea.
+
+Aplicar `db/migrations/006-opciones-campos.sql` en una base existente. La
+migración es idempotente y no borra datos. Los detalles de la API, el CSV y la
+integración con el formulario están en `docs/tarea40_opciones_formulario.md`.

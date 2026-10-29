@@ -29,7 +29,7 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO tablas FROM information_schema.tables
     WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
-    IF tablas <> 14 THEN RAISE EXCEPTION 'Se esperaban 14 tablas, hay %', tablas; END IF;
+    IF tablas <> 15 THEN RAISE EXCEPTION 'Se esperaban 15 tablas, hay %', tablas; END IF;
 
     SELECT id_usuario INTO STRICT estudiante FROM usuarios
     WHERE correo = 'lizapata@utb.edu.co' AND rol = 'ESTUDIANTE'
@@ -48,6 +48,22 @@ BEGIN
        OR EXISTS (SELECT 1 FROM informacion_posgrado)
        OR EXISTS (SELECT 1 FROM experiencia_laboral) THEN
         RAISE EXCEPTION 'La inicializacion debe cargar solo usuarios, sin datos inventados';
+    END IF;
+
+    -- Tarea 40: los cinco campos administrables traen sus opciones iniciales.
+    IF (SELECT COUNT(DISTINCT campo) FROM opciones_campo) <> 5 THEN
+        RAISE EXCEPTION 'Faltan campos en opciones_campo';
+    END IF;
+    IF (SELECT COUNT(*) FROM opciones_campo) <> 31 THEN
+        RAISE EXCEPTION 'Se esperaban 31 opciones iniciales, hay %',
+            (SELECT COUNT(*) FROM opciones_campo);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM opciones_campo
+        WHERE campo = 'PROGRAMA' AND valor = 'INGENIERIA_DE_SISTEMAS_Y_COMPUTACION'
+          AND etiqueta = 'Ingeniería de Sistemas y Computación' AND orden = 1
+    ) THEN
+        RAISE EXCEPTION 'Falta el programa inicial de Ingeniería de Sistemas';
     END IF;
 
     -- Fixtures de prueba: SOLO dentro de esta transaccion, que termina en ROLLBACK.
@@ -106,9 +122,9 @@ BEGIN
     PERFORM pg_temp.debe_rechazar(format(
         'UPDATE perfil_estudiante SET tiene_discapacidad = TRUE, tipo_discapacidad = ''   '' WHERE id_usuario=%s',
         estudiante), '23514');
-    PERFORM pg_temp.debe_rechazar(format(
-        'UPDATE perfil_estudiante SET tiene_discapacidad = TRUE, tipo_discapacidad = ''OTRA_COSA'' WHERE id_usuario=%s',
-        estudiante), '23514');
+    -- Tarea 40: el catálogo de tipos de discapacidad ya no está cerrado en el perfil.
+    UPDATE perfil_estudiante SET tiene_discapacidad = TRUE, tipo_discapacidad = 'AUDITIVA'
+        WHERE id_usuario = estudiante;
     -- Afirmativa válida: el tipo es obligatorio, los detalles son opcionales.
     UPDATE perfil_estudiante SET tiene_discapacidad = TRUE, tipo_discapacidad = 'SENSORIAL',
         detalles_necesidades_asistencia = NULL WHERE id_usuario = estudiante;
@@ -161,7 +177,7 @@ BEGIN
     WHERE id_usuario = estudiante;
     SELECT fecha_actualizacion INTO fecha_anterior FROM perfil_estudiante WHERE id_usuario=estudiante;
     IF fecha_anterior <> CURRENT_TIMESTAMP THEN RAISE EXCEPTION 'No funciona trigger de auditoria'; END IF;
-    RAISE NOTICE 'ACEPTACION CORRECTA: 14 tablas, solo Lisandro y Rosa, restricciones y auditoria verificadas';
+    RAISE NOTICE 'ACEPTACION CORRECTA: 15 tablas, solo Lisandro y Rosa, restricciones y auditoria verificadas';
 END;
 $$;
 ROLLBACK;
