@@ -1,359 +1,172 @@
 'use client';
 
-import { useState } from 'react';
-import DocumentAnalysis, {
-  type DocumentAnalysisData,
-} from '@/app/components/document_analysis/DocumentAnalysis';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useParams } from 'next/navigation';
+import DocumentAnalysis, { type DocumentAnalysisData } from '@/app/components/document_analysis/DocumentAnalysis';
 import Navbar from '@/app/components/navbar/Navbar';
 import Button from '@/app/components/ui/Button';
 import Card from '@/app/components/ui/Card';
-import Icono from '@/app/components/ui/Icono';
+import Dialog from '@/app/components/ui/Dialog';
 import PageHeader from '@/app/components/ui/PageHeader';
 import StatusBadge from '@/app/components/ui/StatusBadge';
-import Tabs from '@/app/components/ui/Tabs';
+import { InformacionEstudiante } from '@/app/components/informacion_estudiante';
 import { useSesion } from '@/app/lib/useSesion';
-import {
-  type Documento,
-  documentAnalysisMock,
-  documentos,
-  estudiante,
-} from './datos';
+import { etiquetaPropiedad, valorVisible } from '@/app/estudiante/preinscripcion/etiquetas';
+import type { DocumentoSolicitud } from '@/app/estudiante/preinscripcion/types';
+import { obtenerDetalle, registrarRevision, type AccionRevision, type DetalleFuncionaria } from '../../solicitudes-api';
 import styles from './detalle.module.css';
-import {
-  InformacionEstudiante,
-  DEMO_PREGRADO,
-  DEMO_POSGRADO,
-} from '@/app/components/informacion_estudiante';
 
-const CON_PROBLEMAS = documentos.filter((d) => d.estado !== 'valido');
-const VALIDOS = documentos.filter((d) => d.estado === 'valido');
-
-const ESTADO_GENERAL = documentos.some((d) => d.estado === 'por_revisar')
-  ? {
-      titulo: 'Por revisar',
-      tono: 'revisar' as const,
-      icono: 'por_revisar' as const,
-    }
-  : CON_PROBLEMAS.length > 0
-    ? {
-        titulo: 'Se requiere corregir documentos',
-        tono: 'corregir' as const,
-        icono: 'inconsistente' as const,
-      }
-    : {
-        titulo: 'Preinscripción lista para continuar',
-        tono: 'lista' as const,
-        icono: 'valido' as const,
-      };
-
-const INICIALES = estudiante.nombre
-  .split(' ')
-  .slice(0, 2)
-  .map((parte) => parte[0])
-  .join('');
-
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api';
+const ACCIONES: Record<AccionRevision, string> = {
+    comentario: 'Enviar comentario', recarga: 'Solicitar corrección', aceptada: 'Aceptar solicitud', anulada: 'Anular solicitud',
+};
+const RESULTADOS: Record<string, string> = {
+    APROBADA: 'Solicitud aceptada', RECHAZADA: 'Solicitud anulada',
+    CORRECCION_REQUERIDA: 'Corrección solicitada', POR_REVISAR: 'Comentario',
+};
+const ESTADOS: Record<string, string> = {
+    BORRADOR: 'Borrador', EN_PROCESO: 'En proceso', POR_REVISAR: 'Por revisar',
+    VALIDA: 'Aceptada', CERRADA: 'Anulada', NO_VALIDA: 'No válida', INCONSISTENTE: 'Inconsistente',
+};
+function estadoDocumento(doc: DocumentoSolicitud) {
+    return doc.resultados.find(r => r.estado === 'no_valido' || r.estado === 'inconsistente')?.estado ?? doc.resultados[0]?.estado ?? 'por_revisar';
+}
+function analisisPersistido(doc: DocumentoSolicitud): DocumentAnalysisData {
+    const estados = { valido: 'VALIDO', no_valido: 'NO_VALIDO', inconsistente: 'INCONSISTENTE', por_revisar: 'POR_REVISAR' } as const;
+    return {
+        documentType: doc.nombre, fileName: doc.fileName ?? doc.nombre, status: estados[estadoDocumento(doc)],
+        privateDocumentUrl: doc.archivoDisponible && doc.id ? `${API}/funcionario/documentos/${encodeURIComponent(doc.id)}/original` : undefined,
+        extractedFields: Object.entries(doc.analisis?.extracted_data ?? {}).map(([campo, dato], i) => ({
+            label: etiquetaPropiedad(campo, i), value: valorVisible(dato.value), source: 'Análisis documental registrado',
+        })),
+        validations: doc.resultados.map(r => ({ description: r.mensaje, result: r.estado === 'por_revisar' ? null : r.estado === 'valido' })),
+    };
+}
 export default function DetallePreinscripcionPage() {
-  const { usuario, cargando } = useSesion('funcionario');
-  const [pestana, setPestana] = useState('resumen');
-  const [analisis, setAnalisis] = useState<DocumentAnalysisData | null>(null);
-  const [revisados, setRevisados] = useState<Record<string, boolean>>({});
+    const { id } = useParams<{ id: string }>();
+    return <DetalleSolicitud key={id} id={id} />;
+}
+function DetalleSolicitud({id}: {id: string}) {
+    const { usuario, cargando } = useSesion('funcionario');
+    const [detalle, setDetalle] = useState<DetalleFuncionaria | null>(null);
+    const [error, setError] = useState('');
+    const [intento, setIntento] = useState(0);
+    const [analisis, setAnalisis] = useState<DocumentAnalysisData | null>(null);
+    const [accion, setAccion] = useState<AccionRevision>('comentario');
+    const [comentario, setComentario] = useState('');
+    const [seleccionados, setSeleccionados] = useState<number[]>([]);
+    const [confirmando, setConfirmando] = useState(false);
+    const [enviando, setEnviando] = useState(false);
+    const [errorEnvio, setErrorEnvio] = useState('');
+    const [mensaje, setMensaje] = useState('');
+    const [requiereConsulta, setRequiereConsulta] = useState(false);
+    const ocupado = useRef(false);
+    const vigente = useRef(true);
+    useEffect(() => { vigente.current = true; return () => { vigente.current = false; }; }, []);
+    useEffect(() => {
+        if (!usuario) return;
+        const controlador = new AbortController();
+        obtenerDetalle(id, controlador.signal).then(data => {
+            if (!controlador.signal.aborted) { setDetalle(data); setError(''); setRequiereConsulta(false); }
+        }).catch(e => { if (!controlador.signal.aborted) setError(e instanceof Error ? e.message : 'No fue posible consultar la solicitud.'); });
+        return () => controlador.abort();
+    }, [usuario, id, intento]);
 
-  if (cargando || !usuario) {
-    return (
-      <main
-        id="contenido"
-        tabIndex={-1}
-        className={styles.cargando}
-        aria-busy="true"
-      >
-        <p>Verificando sesión...</p>
-      </main>
-    );
-  }
-
-  /** Desde una alerta: abre la pestaña Documentos y lleva el foco a ese documento. */
-  const revisar = (documento: Documento) => {
-    setPestana('documentos');
-    requestAnimationFrame(() =>
-      document.getElementById(`documento-${documento.id}`)?.focus(),
-    );
-  };
-
-  const resumen = (
-    <div className={styles.seccion}>
-      <div className={styles.seccionEncabezado}>
-        <h2>Resumen documental</h2>
-        <p>
-          Resultado general del análisis automático de los documentos
-          suministrados.
-        </p>
-      </div>
-
-      <dl className={styles.metricas}>
-        <div className={styles.metrica}>
-          <dt>Documentos analizados</dt>
-          <dd className={styles.metricaValor}>{documentos.length}</dd>
-          <dd>Documentos requeridos</dd>
-        </div>
-        <div className={styles.metrica} data-tono="valido">
-          <dt>Válidos</dt>
-          <dd className={styles.metricaValor}>{VALIDOS.length}</dd>
-          <dd>Sin novedades</dd>
-        </div>
-        <div className={styles.metrica} data-tono="atencion">
-          <dt>Requieren atención</dt>
-          <dd className={styles.metricaValor}>{CON_PROBLEMAS.length}</dd>
-          <dd>Con alertas</dd>
-        </div>
-        <div className={styles.metrica}>
-          <dt>Nivel académico</dt>
-          <dd className={styles.metricaValor}>{estudiante.nivel}</dd>
-          <dd>Tipo de solicitud</dd>
-        </div>
-      </dl>
-
-      {CON_PROBLEMAS.length > 0 && (
-        <Card
-          titulo="Alertas"
-          nivelTitulo={3}
-          acciones={
-            <span className={styles.contador}>{CON_PROBLEMAS.length}</span>
-          }
-        >
-          <p className={styles.textoSecundario}>
-            Documentos que requieren revisión o corrección.
-          </p>
-          <ul className={styles.alertas}>
-            {CON_PROBLEMAS.map((documento) => (
-              <li key={documento.id} className={styles.alerta}>
-                <span
-                  className={styles.alertaIcono}
-                  data-estado={documento.estado}
-                >
-                  <Icono nombre={documento.estado} />
-                </span>
-                <div className={styles.alertaTexto}>
-                  <div className={styles.filaTitulo}>
-                    <strong>{documento.nombre}</strong>
-                    <StatusBadge estado={documento.estado} />
-                  </div>
-                  <p>{documento.mensaje}</p>
-                </div>
-                <Button
-                  variante="secundario"
-                  aria-label={`Revisar ${documento.nombre}`}
-                  onClick={() => revisar(documento)}
-                >
-                  Revisar
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-
-      <Card titulo="Estado de los documentos" nivelTitulo={3}>
-        <p className={styles.textoSecundario}>
-          Vista rápida del resultado de cada documento.
-        </p>
-        <ul className={styles.resumenDocumentos}>
-          {documentos.map((documento) => (
-            <li key={documento.id} className={styles.resumenDocumento}>
-              <span className={styles.iconoDocumento}>
-                <Icono nombre="documento" />
-              </span>
-              <div className={styles.resumenTexto}>
-                <strong>{documento.nombre}</strong>
-                <span>{documento.descripcion}</span>
-              </div>
-              <StatusBadge estado={documento.estado} />
-            </li>
-          ))}
-        </ul>
-      </Card>
-    </div>
-  );
-
-  const informacion = (
-    <div className={styles.seccion}>
-      <div className={styles.seccionEncabezado}>
-        <h2>Información del estudiante</h2>
-        <p>Información suministrada durante el proceso de preinscripción.</p>
-      </div>
-      {/*
-            SIMULADO: DEMO_PREGRADO. TODO: datos reales por id de solicitud.
-            */}
-      <InformacionEstudiante
-        nivel={estudiante.nivel === 'POSGRADO' ? 'POSGRADO' : 'PREGRADO'}
-        datos={estudiante.nivel === 'POSGRADO' ? DEMO_POSGRADO : DEMO_PREGRADO}
-        variante="funcionario"
-      />
-    </div>
-  );
-
-  const listaDocumentos = (
-    <div className={styles.seccion}>
-      <div className={styles.seccionEncabezado}>
-        <h2>Documentos analizados</h2>
-        <p>
-          Detalle de los resultados obtenidos durante la validación documental.
-        </p>
-      </div>
-
-      <ul className={styles.documentos}>
-        {documentos.map((documento, indice) => (
-          <li key={documento.id}>
-            <article
-              className={styles.documento}
-              aria-labelledby={`documento-${documento.id}`}
-            >
-              <div className={styles.documentoCabecera}>
-                <span className={styles.numero} aria-hidden="true">
-                  {String(indice + 1).padStart(2, '0')}
-                </span>
-                <div className={styles.documentoTitulo}>
-                  <h3 id={`documento-${documento.id}`} tabIndex={-1}>
-                    {documento.nombre}
-                  </h3>
-                  <p>{documento.descripcion}</p>
-                </div>
-                <StatusBadge estado={documento.estado} />
-              </div>
-              <div className={styles.resultado}>
-                <p className={styles.resultadoEtiqueta}>
-                  Resultado del análisis
-                </p>
-                <p>{documento.mensaje}</p>
-              </div>
-              <div className={styles.acciones}>
-                <Button
-                  variante="secundario"
-                  aria-label={`Ver análisis automático: ${documento.nombre}`}
-                  onClick={() =>
-                    setAnalisis(documentAnalysisMock[documento.id] ?? null)
-                  }
-                >
-                  Ver análisis automático
-                </Button>
-                {documento.estado !== 'valido' && (
-                  <Button
-                    variante="sutil"
-                    aria-pressed={!!revisados[documento.id]}
-                    onClick={() =>
-                      setRevisados((previos) => ({
-                        ...previos,
-                        [documento.id]: !previos[documento.id],
-                      }))
-                    }
-                  >
-                    {revisados[documento.id] && <Icono nombre="valido" />}
-                    Marcar como revisado
-                  </Button>
-                )}
-              </div>
-            </article>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-
-  return (
-    <>
-      <Navbar tipoUsuario="funcionario" nombreUsuario={usuario.name} />
-      <main id="contenido" tabIndex={-1} className={styles.pagina}>
-        <PageHeader
-          ruta={[
-            { texto: 'Funcionarios' },
-            { texto: 'Preinscripciones', href: '/funcionario/dashboard' },
-            { texto: 'Detalle' },
-          ]}
-          titulo="Detalle de preinscripción"
-          descripcion="Revisión documental de la solicitud de grado del estudiante."
-        />
-
-        <section
-          className={styles.estudiante}
-          aria-labelledby="nombre-estudiante"
-        >
-          <span className={styles.avatar} aria-hidden="true">
-            {INICIALES}
-          </span>
-          <div className={styles.estudianteDatos}>
-            <div className={styles.filaTitulo}>
-              <h2 id="nombre-estudiante">{estudiante.nombre}</h2>
-              <span className={styles.nivel}>{estudiante.nivel}</span>
-            </div>
-            <p className={styles.programa}>{estudiante.programa}</p>
-            <dl className={styles.meta}>
-              <div>
-                <dt>Código</dt>
-                <dd>{estudiante.codigo}</dd>
-              </div>
-              <div>
-                <dt>{estudiante.tipoDocumento}</dt>
-                <dd>{estudiante.numeroDocumento}</dd>
-              </div>
-              <div>
-                <dt>Correo</dt>
-                <dd>{estudiante.correo}</dd>
-              </div>
-              <div>
-                <dt>Teléfono</dt>
-                <dd>{estudiante.telefono}</dd>
-              </div>
-            </dl>
-          </div>
-        </section>
-
-        <section
-          className={styles.estadoGeneral}
-          data-tono={ESTADO_GENERAL.tono}
-          aria-labelledby="estado-general"
-        >
-          <span className={styles.estadoIcono}>
-            <Icono nombre={ESTADO_GENERAL.icono} tamano={22} />
-          </span>
-          <div>
-            <p className={styles.estadoEtiqueta}>Estado general</p>
-            <h2 id="estado-general">{ESTADO_GENERAL.titulo}</h2>
-            <p>
-              {CON_PROBLEMAS.length > 0
-                ? `${CON_PROBLEMAS.length} ${
-                    CON_PROBLEMAS.length === 1
-                      ? 'documento requiere'
-                      : 'documentos requieren'
-                  } atención antes de continuar con el proceso.`
-                : 'Todos los documentos requeridos fueron validados correctamente.'}
-            </p>
-          </div>
-        </section>
-
-        <Tabs
-          etiqueta="Secciones de la preinscripción"
-          activa={pestana}
-          alCambiar={setPestana}
-          pestanas={[
-            { id: 'resumen', titulo: 'Resumen documental', contenido: resumen },
-            {
-              id: 'estudiante',
-              titulo: 'Información del estudiante',
-              contenido: informacion,
-            },
-            {
-              id: 'documentos',
-              titulo: 'Documentos',
-              contenido: listaDocumentos,
-            },
-          ]}
-        />
-      </main>
-
-      <DocumentAnalysis
-        open={analisis !== null}
-        onClose={() => setAnalisis(null)}
-        data={analisis}
-      />
-    </>
-  );
+    const corregibles = detalle?.documentos.filter(d => estadoDocumento(d) !== 'valido') ?? [];
+    const admiteDecision = !!detalle && !['BORRADOR', 'VALIDA', 'CERRADA'].includes(detalle.estadoSolicitud);
+    function preparar(evento: FormEvent) {
+        evento.preventDefault(); setErrorEnvio(''); setMensaje('');
+        if (accion === 'comentario' && !comentario.trim()) { setErrorEnvio('Escribe el comentario.'); return; }
+        if (accion === 'recarga' && !seleccionados.length) { setErrorEnvio('Selecciona al menos un documento.'); return; }
+        setConfirmando(true);
+    }
+    async function enviar() {
+        if (ocupado.current || requiereConsulta) return;
+        ocupado.current = true; setEnviando(true); setErrorEnvio('');
+        let guardado = false;
+        try {
+            await registrarRevision(id, accion, comentario.trim(), seleccionados);
+            guardado = true;
+            if (!vigente.current) return;
+            setConfirmando(false); setComentario(''); setSeleccionados([]);
+            setMensaje('Acción registrada. La notificación del estudiante quedó guardada.');
+            const nuevo = await obtenerDetalle(id);
+            if (vigente.current) { setDetalle(nuevo); setError(''); }
+        } catch (e) {
+            if (!vigente.current) return;
+            // Una respuesta perdida puede haber confirmado la transacción: consultar antes de repetir.
+            setConfirmando(false); setRequiereConsulta(true);
+            setErrorEnvio(guardado ? 'La acción se guardó, pero no fue posible actualizar la vista. Actualiza la solicitud.' : (e instanceof Error ? e.message : 'No se pudo confirmar la acción.'));
+        } finally {
+            ocupado.current = false;
+            if (vigente.current) setEnviando(false);
+        }
+    }
+    if (cargando || !usuario) return <main id="contenido" tabIndex={-1} className={styles.cargando} aria-busy="true"><p>Verificando sesión...</p></main>;
+    return <>
+        <Navbar tipoUsuario="funcionario" nombreUsuario={usuario.name} />
+        <main id="contenido" tabIndex={-1} className={styles.pagina}>
+            <PageHeader ruta={[{ texto: 'Preinscripciones', href: '/funcionario/dashboard' }, { texto: `Solicitud ${id}` }]}
+                titulo="Detalle de preinscripción" descripcion="Revisión de la solicitud y comunicación con el estudiante." />
+            {error && <div role="alert"><p>{error}</p><Button onClick={() => setIntento(i => i + 1)}>Reintentar consulta</Button></div>}
+            {!detalle && !error && <p role="status">Cargando solicitud...</p>}
+            {detalle && <div className={styles.seccion}>
+                <Card titulo={detalle.estudiante.nombre}>
+                    <p>Código estudiantil: {detalle.estudiante.codigo}</p>
+                    <p>Nivel: {detalle.estudiante.nivel} · Solicitud {detalle.id}</p>
+                    <p>Estado: <strong>{ESTADOS[detalle.estadoSolicitud] ?? 'No disponible'}</strong></p>
+                </Card>
+                <Card titulo="Información del estudiante"><InformacionEstudiante nivel={detalle.estudiante.nivel} datos={detalle.informacion} variante="funcionario" /></Card>
+                <Card titulo="Documentos analizados">
+                    {detalle.documentos.length === 0 && <p>La solicitud aún no tiene documentos enviados.</p>}
+                    <ul className={styles.documentos}>{detalle.documentos.map(doc => <li key={doc.id}>
+                        <article className={styles.documento}>
+                            <div className={styles.filaTitulo}><h3>{doc.nombre}</h3><StatusBadge estado={estadoDocumento(doc)} /></div>
+                            <p>{doc.fileName} · Versión {doc.version}</p>
+                            {doc.resultados.map((r, i) => <p key={i}>{r.mensaje}</p>)}
+                            <Button variante="secundario" onClick={() => setAnalisis(analisisPersistido(doc))} aria-label={`Ver análisis automático: ${doc.nombre}`}>Ver análisis automático</Button>
+                        </article>
+                    </li>)}</ul>
+                </Card>
+                <Card titulo="Acciones de revisión">
+                    <form onSubmit={preparar} className={styles.formRevision}>
+                        <label>Acción<select value={accion} onChange={e => { setAccion(e.target.value as AccionRevision); setErrorEnvio(''); }} disabled={enviando}>
+                            <option value="comentario">Enviar comentario</option>
+                            <option value="recarga" disabled={!admiteDecision || !corregibles.length}>Solicitar corrección</option>
+                            <option value="aceptada" disabled={!admiteDecision}>Aceptar solicitud</option>
+                            <option value="anulada" disabled={!admiteDecision}>Anular solicitud</option>
+                        </select></label>
+                        {!admiteDecision && <p>El estado actual solo permite agregar comentarios.</p>}
+                        {accion === 'recarga' && <fieldset><legend>Documentos que debe volver a subir</legend>
+                            {corregibles.map(doc => <label key={doc.id} className={styles.opcionDocumento}><input type="checkbox" checked={seleccionados.includes(Number(doc.id))} disabled={enviando}
+                                onChange={e => setSeleccionados(prev => e.target.checked ? [...prev, Number(doc.id)] : prev.filter(d => d !== Number(doc.id)))} />{doc.nombre}</label>)}
+                        </fieldset>}
+                        <label>Comentario{accion === 'comentario' ? ' (obligatorio)' : ' (opcional)'}<textarea value={comentario} maxLength={5000} required={accion === 'comentario'} rows={4} disabled={enviando} onChange={e => setComentario(e.target.value)} /></label>
+                        <p>Al enviar un comentario, la notificación mostrará sus primeros 15 caracteres. El historial conserva el texto completo.</p>
+                        <div className={styles.acciones}>
+                            <Button type="submit" disabled={enviando || requiereConsulta || !!error || (accion !== 'comentario' && !admiteDecision)}>{ACCIONES[accion]}</Button>
+                            <Button variante="secundario" disabled={enviando} onClick={() => setIntento(i => i + 1)}>Actualizar solicitud</Button>
+                        </div>
+                        {errorEnvio && <p role="alert">{errorEnvio}</p>}
+                        {mensaje && <p role="status">{mensaje}</p>}
+                    </form>
+                </Card>
+                <Card titulo="Historial de revisiones">
+                    {!detalle.revisiones.length && <p>No hay revisiones registradas.</p>}
+                    <ul className={styles.historial}>{detalle.revisiones.map(r => <li key={r.id}>
+                        <strong>{RESULTADOS[r.resultado] ?? 'Revisión'}</strong>
+                        <p>{r.funcionario} · {new Date(r.fecha).toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</p>
+                        {r.comentario && <p>{r.comentario}</p>}
+                        {!!r.documentos?.length && <p>Documentos: {r.documentos.map(idDoc => detalle.documentos.find(d => Number(d.id) === idDoc)?.nombre ?? `Documento ${idDoc}`).join(', ')}</p>}
+                    </li>)}</ul>
+                </Card>
+            </div>}
+        </main>
+        <Dialog abierto={confirmando} alCerrar={() => { if (!enviando) setConfirmando(false); }} titulo={`Confirmar: ${ACCIONES[accion]}`} descripcion="La acción quedará registrada en la solicitud y generará una notificación para el estudiante.">
+            <p>{accion === 'recarga' ? corregibles.filter(d => seleccionados.includes(Number(d.id))).map(d => d.nombre).join(', ') : ACCIONES[accion]}</p>
+            {comentario && <p className={styles.comentarioConfirmacion}>{comentario}</p>}
+            <div className={styles.acciones}><Button cargando={enviando} textoCargando="Guardando..." onClick={enviar}>Confirmar acción</Button><Button variante="secundario" disabled={enviando} onClick={() => setConfirmando(false)}>Cancelar</Button></div>
+        </Dialog>
+        <DocumentAnalysis open={!!analisis} data={analisis} onClose={() => setAnalisis(null)} />
+    </>;
 }
