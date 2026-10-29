@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "@/app/components/navbar/Navbar";
 import Button from "@/app/components/ui/Button";
 import Card from "@/app/components/ui/Card";
@@ -10,17 +10,15 @@ import StatusBadge from "@/app/components/ui/StatusBadge";
 import { useRequiereSolicitud } from "@/app/lib/useSolicitudActiva";
 import { useSesion } from "@/app/lib/useSesion";
 import styles from "./home.module.css";
+import NotificacionesPanel from "./NotificacionesPanel";
 import {
     type DocumentoSolicitud,
     type EstadoDocumentoCompleto,
     type NivelAcademico,
-    type Notificacion,
     type PoliticaReenvios,
     type Solicitud,
     DOCUMENTOS_POR_NIVEL,
-    formatearFecha,
     obtenerNivelSimulado,
-    obtenerNotificaciones,
     obtenerPoliticaReenvios,
     obtenerSolicitudActiva,
 } from "./api";
@@ -38,8 +36,6 @@ const DETALLE_ESTADO: Partial<Record<EstadoDocumentoCompleto, string>> = {
     procesando: "Procesando y validando documento...",
 };
 
-const NOTIFICACIONES_VISIBLES = 3;
-
 function documentosCargados(solicitud: Solicitud): number {
     return solicitud.documentos.filter((d) => d.estado !== "falta_cargar").length;
 }
@@ -52,14 +48,10 @@ export default function Home() {
         tiene_solicitud,
         reintentar: reintentarSolicitud,
     } = useRequiereSolicitud(Boolean(usuario));
-    const idListaNotificaciones = useId();
 
     const [nivel, setNivel] = useState<NivelAcademico | null>(null);
     const [solicitud, setSolicitud] = useState<Solicitud | null | undefined>(undefined);
-    const [notificaciones, setNotificaciones] = useState<Notificacion[] | null>(null);
-    const [errorNotificaciones, setErrorNotificaciones] = useState(false);
     const [politica, setPolitica] = useState<PoliticaReenvios | null>(null);
-    const [verTodas, setVerTodas] = useState(false);
 
     useEffect(() => {
         if (!usuario || tiene_solicitud !== true) return;
@@ -70,19 +62,13 @@ export default function Home() {
             .catch(() => {
                 setSolicitud(null);
             });
-        obtenerNotificaciones()
-            .then(setNotificaciones)
-            .catch(() => {
-                setNotificaciones([]);
-                setErrorNotificaciones(true);
-            });
         obtenerPoliticaReenvios()
             .then(setPolitica)
             .catch(() => setPolitica(null));
     }, [usuario, tiene_solicitud]);
 
     const cargando = cargandoSesion || cargandoSolicitud;
-    const datosListos = solicitud !== undefined && notificaciones !== null;
+    const datosListos = solicitud !== undefined;
 
     if (cargando || !usuario || (!errorSolicitud && tiene_solicitud === false)) {
         return (
@@ -127,46 +113,6 @@ export default function Home() {
                 </p>
             ) : (
                 <p className={styles.textoSecundario}>Cargando política de reenvíos...</p>
-            )}
-        </Card>
-    );
-
-    const listaNotificaciones =
-        notificaciones && (verTodas ? notificaciones : notificaciones.slice(0, NOTIFICACIONES_VISIBLES));
-
-    const tarjetaNotificaciones = (
-        <Card titulo="Notificaciones" id="notificaciones">
-            {notificaciones === null && !errorNotificaciones && (
-                <p className={styles.textoSecundario}>Cargando notificaciones...</p>
-            )}
-            {errorNotificaciones && <p className={styles.textoError}>No fue posible cargar las notificaciones.</p>}
-            {notificaciones !== null && notificaciones.length === 0 && !errorNotificaciones && (
-                <p className={styles.textoSecundario}>No tienes notificaciones.</p>
-            )}
-            {listaNotificaciones && listaNotificaciones.length > 0 && (
-                <ul id={idListaNotificaciones} className={styles.notificaciones}>
-                    {listaNotificaciones.map((n) => (
-                        <li key={n.id} className={styles.notificacion}>
-                            <div className={styles.notificacionCabecera}>
-                                <span className={styles.notificacionTitulo}>{n.titulo}</span>
-                                <time dateTime={n.fecha} className={styles.notificacionFecha}>
-                                    {formatearFecha(n.fecha)}
-                                </time>
-                            </div>
-                            <p className={styles.notificacionTexto}>{n.descripcion}</p>
-                        </li>
-                    ))}
-                </ul>
-            )}
-            {notificaciones && notificaciones.length > NOTIFICACIONES_VISIBLES && (
-                <Button
-                    variante="sutil"
-                    aria-expanded={verTodas}
-                    aria-controls={idListaNotificaciones}
-                    onClick={() => setVerTodas((valor) => !valor)}
-                >
-                    {verTodas ? "Ver menos notificaciones" : "Ver todas las notificaciones"}
-                </Button>
             )}
         </Card>
     );
@@ -278,7 +224,7 @@ export default function Home() {
                     </div>
                     <div className={styles.columna}>
                         {tarjetaAviso}
-                        {tarjetaNotificaciones}
+                        <NotificacionesPanel />
                     </div>
                 </div>
             </main>
