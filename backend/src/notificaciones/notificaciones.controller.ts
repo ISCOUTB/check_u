@@ -46,6 +46,18 @@ export class NotificacionesController {
       id,
     );
   }
+  @Get('funcionario/solicitudes')
+  @Header('Cache-Control', 'private, no-store')
+  solicitudes(@Req() req: Request) {
+    this.usuario(req, 'funcionario');
+    return this.notificaciones.solicitudesFuncionaria();
+  }
+  @Get('funcionario/solicitudes/:id')
+  @Header('Cache-Control', 'private, no-store')
+  detalle(@Req() req: Request, @Param('id', ParseIntPipe) id: number) {
+    this.usuario(req, 'funcionario');
+    return this.notificaciones.detalleFuncionaria(id);
+  }
   @Post('funcionario/solicitudes/:id/revisiones')
   @Header('Cache-Control', 'private, no-store')
   registrarRevision(
