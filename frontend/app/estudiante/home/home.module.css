@@ -142,18 +142,28 @@
 /* Notificaciones */
 
 .notificaciones {
+    padding: 0;
     list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
 }
 
 .notificacion {
-    padding: var(--space-3) 0;
-    border-top: 1px solid var(--color-border);
+    --notificacion-tono: var(--status-review-text);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-inline-start: 4px solid var(--notificacion-tono);
+    border-radius: var(--radius-sm, 8px);
+    background: var(--status-review-bg);
+    overflow-wrap: anywhere;
 }
-
-.notificacion:first-child {
-    padding-top: 0;
-    border-top: none;
-}
+.notificacion[data-tipo="success"] { --notificacion-tono: var(--status-valid-text); background: var(--status-valid-bg); }
+.notificacion[data-tipo="warning"] { --notificacion-tono: var(--status-inconsistent-text); background: var(--status-inconsistent-bg); }
+.notificacion[data-tipo="error"] { --notificacion-tono: var(--status-invalid-text); background: var(--status-invalid-bg); }
+.notificacionTipo { color: var(--notificacion-tono); font-size: 12px; font-weight: 600; }
+.notificacionMeta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-2); font-size: 12px; color: var(--color-text); }
 
 .notificacionCabecera {
     display: flex;
@@ -177,9 +187,10 @@
 
 .notificacionTexto {
     margin-top: var(--space-1);
-    color: var(--color-text-secondary);
+    color: var(--color-text);
     font-size: 13px;
     line-height: 1.5;
+    white-space: pre-wrap;
 }
 
 /* Mi solicitud */
