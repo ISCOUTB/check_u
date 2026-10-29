@@ -19,7 +19,10 @@ const ENLACES: Record<NavbarProps["tipoUsuario"], { texto: string; href: string;
         { texto: "Mis solicitudes", href: "/estudiante/home#mi-solicitud", icono: "lista" },
         { texto: "Notificaciones", href: "/estudiante/home#notificaciones", icono: "campana" },
     ],
-    funcionario: [{ texto: "Solicitudes de preinscripción", href: "/funcionario/dashboard", icono: "lista" }],
+    funcionario: [
+        { texto: "Solicitudes de preinscripción", href: "/funcionario/dashboard", icono: "lista" },
+        { texto: "Opciones del formulario", href: "/funcionario/opciones", icono: "ajustes" },
+    ],
 };
 
 /** Barra superior: marca y menú de usuario (patrón de divulgación: botón + lista de enlaces). */

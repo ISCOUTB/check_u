@@ -63,6 +63,46 @@ const TRAZOS = {
         </>
     ),
     luna: <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z" />,
+    ajustes: (
+        <>
+            <path d="M4 7h8M17 7h3M4 17h3M12 17h8" />
+            <circle cx="14.5" cy="7" r="2.5" />
+            <circle cx="9.5" cy="17" r="2.5" />
+        </>
+    ),
+    mas: <path d="M12 5v14M5 12h14" />,
+    arriba: <path d="M12 19V5M6 11l6-6 6 6" />,
+    abajo: <path d="M12 5v14M6 13l6 6 6-6" />,
+    importar: (
+        <>
+            <path d="M12 3v12M7.5 10.5 12 15l4.5-4.5" />
+            <path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17" />
+        </>
+    ),
+    basura: (
+        <>
+            <path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13" />
+            <path d="M10 11v5M14 11v5" />
+        </>
+    ),
+    persona: (
+        <>
+            <circle cx="12" cy="8" r="3.5" />
+            <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+        </>
+    ),
+    graduacion: (
+        <>
+            <path d="m2.5 9 9.5-4.5L21.5 9 12 13.5 2.5 9Z" />
+            <path d="M6.5 11v4.5c0 1.5 2.5 2.5 5.5 2.5s5.5-1 5.5-2.5V11M21.5 9v5" />
+        </>
+    ),
+    accesibilidad: (
+        <>
+            <circle cx="12" cy="4.5" r="1.5" />
+            <path d="M5 8.5h14M12 8.5v5M12 13.5l-3 7M12 13.5l3 7" />
+        </>
+    ),
 };
 
 export type NombreIcono = keyof typeof TRAZOS;
