@@ -78,7 +78,10 @@ export default function IndiceProgreso({ progreso, secciones }: { progreso: Prog
         const elegir = () => {
             if (ultimaCompleta) return setActual(ids[ids.length - 1]);
             const primera = ids.find((id) => enFranja.has(id));
-            if (primera) setActual(primera);
+            if (primera) return setActual(primera);
+            // Arriba del todo ninguna sección entra en la franja (el encabezado la deja abajo):
+            // la sección que se está viendo es la primera.
+            if (window.scrollY <= 1) setActual(ids[0]);
         };
 
         const franja = new IntersectionObserver(
