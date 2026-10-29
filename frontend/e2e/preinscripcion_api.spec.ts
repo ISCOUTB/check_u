@@ -8,7 +8,7 @@ import {
     tamanoMaximoPdfBytes,
 } from "@/app/estudiante/iniciar_preinscripcion/api";
 import { documentosRequeridos } from "@/app/estudiante/documentos-requeridos";
-import { GENEROS, MODALIDADES, TIPOS_DOCUMENTO } from "@/app/estudiante/iniciar_preinscripcion/constantes";
+import { MODALIDADES } from "@/app/estudiante/iniciar_preinscripcion/constantes";
 import { borradorVacio } from "@/app/estudiante/iniciar_preinscripcion/tipos";
 
 // Pruebas del cliente HTTP y escenarios de demostración; no necesitan navegador.
@@ -124,7 +124,7 @@ test("rechazo carga un borrador completo para pregrado y posgrado", async () => 
         }
         expect(borrador.nombres).toBe("Ana");
         expect(borrador.apellidos).toBe("Prueba");
-        expect(TIPOS_DOCUMENTO.map((o) => o.valor)).toContain(borrador.perfil.tipoDocumento);
+        expect(borrador.perfil.tipoDocumento).toBe("CC");
         expect(MODALIDADES.map((o) => o.valor)).toContain(borrador.programas[0].modalidad);
         expect(/^[A-Za-z0-9]+$/.test(borrador.perfil.numeroDocumento)).toBe(true);
 
@@ -170,10 +170,10 @@ test("cargarPreinscripcion con borrador da un borrador parcial con datos inventa
     expect(Object.keys(borrador.documentos).length).toBeGreaterThan(0);
     expect(Object.keys(borrador.documentos).length).toBeLessThan(5);
 
-    // Los valores de las listas existen en las constantes: el select no queda en blanco.
-    expect(TIPOS_DOCUMENTO.map((o) => o.valor)).toContain(borrador.perfil.tipoDocumento);
+    // Los valores de ejemplo existen en el catálogo: el select no queda en blanco.
+    expect(borrador.perfil.tipoDocumento).toBe("CC");
+    expect(borrador.programas[0].programa).toBe("PROGRAMA_DE_EJEMPLO");
     expect(MODALIDADES.map((o) => o.valor)).toContain(borrador.programas[0].modalidad);
-    expect(GENEROS.length).toBeGreaterThan(0);
 });
 
 test("cargarPreinscripcion con borrador respeta el nivel", async () => {
