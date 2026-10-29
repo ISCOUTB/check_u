@@ -35,14 +35,6 @@ const DOCUMENTOS_REQUERIDOS_POSGRADO = [
   'estampilla_pro_cultura',
 ];
 
-const TIPOS_DISCAPACIDAD = [
-  'SENSORIAL',
-  'FISICA',
-  'INTELECTUAL',
-  'ORGANOS',
-  'OTRA',
-] as const;
-
 function normalizarTipoDocumento(tipo: string): string {
   const limpio = tipo.trim().toLowerCase();
   if (limpio === 'estampilla2' || limpio === 'estampilla_pro_cultura-2') return 'estampilla_pro_cultura';
