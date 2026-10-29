@@ -331,6 +331,11 @@ export async function sesionComo(page: Page, rol: Rol | null, nombre?: string): 
             json: { status: "ok", service: "CheckU API", message: "Backend conectado correctamente" },
         }),
     );
+    // Tarea 41: avisos vacíos por defecto; cada prueba del módulo define sus casos.
+    await page.route(`${API}/estudiante/notificaciones`, ruta => ruta.fulfill({
+        status: rol === "estudiante" ? 200 : rol ? 403 : 401,
+        json: rol === "estudiante" ? {notificaciones: [], noLeidas: 0} : {message: "Acceso restringido"},
+    }));
     await page.route(`${API}/estudiante/solicitud`, (ruta) =>
         rol === "estudiante"
             ? ruta.fulfill({
