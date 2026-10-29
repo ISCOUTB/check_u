@@ -17,13 +17,13 @@ export type Modalidad = "VIRTUAL" | "PRESENCIAL";
 
 /** Datos personales y de residencia del estudiante. */
 export interface PerfilEstudiante {
-    /** Valor de `TIPOS_DOCUMENTO` */
+    /** Opción de `TIPO_DOCUMENTO` cargada del panel del funcionario. */
     tipoDocumento: string;
     /** Solo letras y dígitos */
     numeroDocumento: string;
     /** `aaaa-mm-dd` */
     fechaNacimiento: string;
-    /** Valor de `GENEROS` */
+    /** Opción de `GENERO` cargada del panel del funcionario. */
     genero: string;
     telefonoFijo: string;
     celular: string;
@@ -32,7 +32,7 @@ export interface PerfilEstudiante {
     direccion: string;
     /** ¿Posee alguna discapacidad? null = sin responder. */
     tieneDiscapacidad: boolean | null;
-    /** Valor de `TIPOS_DISCAPACIDAD`; solo si `tieneDiscapacidad` es true. */
+    /** Opción de `TIPO_DISCAPACIDAD`; solo si `tieneDiscapacidad` es true. */
     tipoDiscapacidad: string;
     /** Condiciones y apoyos para asistir a la ceremonia de graduación presencial. */
     detallesAsistencia: string;
@@ -43,7 +43,7 @@ export interface ProgramaSolicitud {
     orden: 1 | 2;
     programa: string;
     modalidad: Modalidad | "";
-    /** Valor de `OPCIONES_GRADO`. Solo se pide en pregrado; en posgrado queda vacío. */
+    /** Opción de `OPCION_GRADO`; solo se pide en pregrado, en posgrado queda vacío. */
     tipoOpcionGrado: string;
 }
 

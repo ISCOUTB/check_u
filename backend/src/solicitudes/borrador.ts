@@ -5,8 +5,8 @@ const texto = z.string().max(500).optional();
 const textoLargo = z.string().max(1000).optional();
 const fecha = z.union([z.literal(''), z.iso.date()]).optional();
 const respuesta = z.boolean().nullable().optional();
-const TIPOS_DISCAPACIDAD = ['SENSORIAL', 'FISICA', 'INTELECTUAL', 'ORGANOS', 'OTRA'] as const;
-const tipoDiscapacidad = z.enum(['', ...TIPOS_DISCAPACIDAD]).optional();
+// El catálogo lo administra el funcionario (opciones_campo); aquí solo se exige coherencia.
+const tipoDiscapacidad = z.string().max(80).optional();
 const orden = z.union([z.literal(1), z.literal(2)]);
 const programa = z.object({
   orden,

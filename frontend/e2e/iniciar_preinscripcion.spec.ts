@@ -91,7 +91,7 @@ async function llenarObligatoriosPosgrado(page: Page): Promise<void> {
     await page.getByLabel("Número de documento (obligatorio)").fill("1234567890");
     await page.getByLabel("Código estudiantil (obligatorio)").fill("T00012345");
     await responder(page, "Modalidad (obligatorio)", "Presencial");
-    await page.getByLabel("Programa (obligatorio)").fill("Programa de ejemplo");
+    await page.getByLabel("Programa (obligatorio)").selectOption({ label: "Programa de ejemplo" });
     for (const id of ["identification", "paz_y_salvo_bib", "estampilla_pro_cultura"])
         await page.locator(`#documento-${id}`).setInputFiles(pdf(`${id}.pdf`));
 }
@@ -703,20 +703,19 @@ test.describe("iniciar preinscripción", () => {
         await abrir(page, POSGRADO);
 
         let envioLlamado = false;
-        let cuerpoEnvio: { nivel?: string; claveIdempotencia?: string } | null = null;
+        let cuerpoEnvio = "";
 
         await page.route(`${API}/solicitudes/enviar`, async (ruta) => {
             envioLlamado = true;
-            cuerpoEnvio = ruta.request().postDataJSON();
+            // El envío va como multipart: los datos del borrador viajan en el campo "datos".
+            cuerpoEnvio = ruta.request().postDataBuffer()?.toString() ?? "";
             await ruta.fulfill({
                 status: 201,
-                json: {
-                    ok: true,
-                    id_solicitud: 102,
-                    id_entrega: 1,
-                    estado: "EN_PROCESO",
-                    mensaje: "Preinscripción registrada correctamente. Pendiente de análisis.",
-                },
+                contentType: "application/x-ndjson",
+                body: `${JSON.stringify({
+                    tipo: "resultado",
+                    resultado: { ok: true, mensaje: "Preinscripción registrada correctamente." },
+                })}\n`,
             });
         });
 
@@ -730,9 +729,9 @@ test.describe("iniciar preinscripción", () => {
         await expect(page).toHaveURL("/estudiante/preinscripcion");
 
         expect(envioLlamado).toBe(true);
-        expect(cuerpoEnvio).not.toBeNull();
-        expect(cuerpoEnvio.nivel).toBe("POSGRADO");
-        expect(cuerpoEnvio.claveIdempotencia).toMatch(/^[0-9a-f-]{36}$/);
+        expect(cuerpoEnvio).toContain('name="datos"');
+        expect(cuerpoEnvio).toContain('"nivel":"POSGRADO"');
+        expect(cuerpoEnvio).toContain('name="documentos"');
     });
 
 

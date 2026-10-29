@@ -1,9 +1,10 @@
 /**
- * constantes.ts — Listas de valores de los campos con opciones del formulario.
+ * constantes.ts — Listas de valores de los campos que todavía no administra el panel.
  *
- * ⚠️  Los valores y las etiquetas de estas listas son provisionales: faltan las listas
- * oficiales del formulario real. Cada lista lleva su TODO. Cuando se confirmen, se cambian
- * aquí y el formulario las toma sin tocar nada más.
+ * Los campos de la Tarea 40 (tipo de documento, género, programa, opción de grado y
+ * tipo de discapacidad) ya no se definen aquí: se cargan desde `opciones_campo` en
+ * `opciones.ts`. Estas listas siguen su curso hasta que esos campos también se
+ * confirmen con el formulario real.
  */
 
 import type { Modalidad } from "./tipos";
@@ -14,30 +15,6 @@ export interface Opcion<V extends string = string> {
     /** Lo que ve el estudiante */
     etiqueta: string;
 }
-
-// TODO: sin confirmar con el formulario real
-export const TIPOS_DOCUMENTO: readonly Opcion[] = [
-    { valor: "CC", etiqueta: "Cédula de ciudadanía" },
-    { valor: "TI", etiqueta: "Tarjeta de identidad" },
-    { valor: "CE", etiqueta: "Cédula de extranjería" },
-    { valor: "PASAPORTE", etiqueta: "Pasaporte" },
-];
-
-// TODO: sin confirmar con el formulario real
-export const GENEROS: readonly Opcion[] = [
-    { valor: "FEMENINO", etiqueta: "Femenino" },
-    { valor: "MASCULINO", etiqueta: "Masculino" },
-    { valor: "OTRO", etiqueta: "Otro" },
-    { valor: "NO_INFORMA", etiqueta: "Prefiero no decirlo" },
-];
-
-// TODO: sin confirmar con el formulario real
-export const OPCIONES_GRADO: readonly Opcion[] = [
-    { valor: "TRABAJO_DE_GRADO", etiqueta: "Trabajo de grado" },
-    { valor: "PRACTICA_PROFESIONAL", etiqueta: "Práctica profesional" },
-    { valor: "CURSO_POSGRADO", etiqueta: "Curso de posgrado" },
-    { valor: "EMPRENDIMIENTO", etiqueta: "Proyecto de emprendimiento" },
-];
 
 // TODO: sin confirmar con el formulario real
 export const TIPOS_CONTRATO: readonly Opcion[] = [
@@ -53,15 +30,6 @@ export const NIVELES_ESTUDIO: readonly Opcion[] = [
     { valor: "ESPECIALIZACION", etiqueta: "Especialización" },
     { valor: "MAESTRIA", etiqueta: "Maestría" },
     { valor: "DOCTORADO", etiqueta: "Doctorado" },
-];
-
-/** Tipos de discapacidad para la ceremonia de graduación presencial. */
-export const TIPOS_DISCAPACIDAD: readonly Opcion[] = [
-    { valor: "SENSORIAL", etiqueta: "Sensorial" },
-    { valor: "FISICA", etiqueta: "Física" },
-    { valor: "INTELECTUAL", etiqueta: "Intelectual" },
-    { valor: "ORGANOS", etiqueta: "Órganos" },
-    { valor: "OTRA", etiqueta: "Otra" },
 ];
 
 /** Los valores son los del modelo de datos (#40): VIRTUAL y PRESENCIAL. */

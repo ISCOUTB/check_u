@@ -180,7 +180,12 @@ describe('SolicitudesService', () => {
         mockClient.query
           .mockResolvedValueOnce({ rows: [] }) // bloqueo de usuario
           .mockResolvedValueOnce({
-            rows: [{ id_solicitud: 102, tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+            rows: [{
+              id_solicitud: 102,
+              id_periodo: '11111111-1111-4111-8111-111111111111',
+              tipo_solicitud: 'PREGRADO',
+              estado: 'BORRADOR',
+            }],
           })
           .mockResolvedValueOnce({ rows: [{ fecha_actualizacion: new Date() }] })
           .mockResolvedValue({ rows: [] });

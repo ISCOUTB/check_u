@@ -1,14 +1,16 @@
 "use client";
 
+import type { ChangeEvent } from "react";
 import Field from "@/app/components/ui/Field";
 import Opciones from "@/app/components/ui/Opciones";
-import { MODALIDADES, OPCIONES_GRADO } from "../constantes";
+import { MODALIDADES } from "../constantes";
+import { conValorActual } from "../opciones";
 import type { Modalidad } from "../tipos";
 import { ID_CAMPOS, idCampoPrograma, type Orden } from "../validacion";
 import styles from "../iniciar_preinscripcion.module.css";
 import { aSiNo, cambioPrograma, Condicional, deSiNo, OPCIONES_SI_NO, Seccion, type PropsSeccion } from "./comun";
 
-export default function Academico({ borrador, cambiar, errores }: PropsSeccion) {
+export default function Academico({ borrador, cambiar, errores, opciones }: PropsSeccion) {
     return (
         <Seccion id="academico">
             <div className={styles.campos}>
@@ -27,7 +29,7 @@ export default function Academico({ borrador, cambiar, errores }: PropsSeccion) 
                     error={errores[ID_CAMPOS.codigoEstudiantil]}
                 />
 
-                <CamposPrograma orden={1} borrador={borrador} cambiar={cambiar} errores={errores} />
+                <CamposPrograma orden={1} borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} />
 
                 <Opciones
                     id={ID_CAMPOS.segundoPrograma}
@@ -48,7 +50,7 @@ export default function Academico({ borrador, cambiar, errores }: PropsSeccion) 
                         <fieldset className={styles.subgrupo}>
                             <legend className={styles.leyendaSubgrupo}>Segundo programa</legend>
                             <div className={styles.campos}>
-                                <CamposPrograma orden={2} borrador={borrador} cambiar={cambiar} errores={errores} />
+                                <CamposPrograma orden={2} borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} />
                             </div>
                         </fieldset>
                     </Condicional>
@@ -59,7 +61,7 @@ export default function Academico({ borrador, cambiar, errores }: PropsSeccion) 
 }
 
 /** Modalidad, programa y (solo pregrado) opción de grado de un programa. */
-function CamposPrograma({ orden, borrador, cambiar, errores }: PropsSeccion & { orden: Orden }) {
+function CamposPrograma({ orden, borrador, cambiar, errores, opciones }: PropsSeccion & { orden: Orden }) {
     const solicitud = borrador.programas[orden - 1];
     const idModalidad = idCampoPrograma("modalidad", orden);
     const idPrograma = idCampoPrograma("programa", orden);
@@ -78,23 +80,27 @@ function CamposPrograma({ orden, borrador, cambiar, errores }: PropsSeccion & { 
                 alCambiar={(valor) => cambiar(cambioPrograma(orden, "modalidad", valor as Modalidad))}
                 error={errores[idModalidad]}
             />
-            {/* TODO: texto libre hasta que exista la lista oficial de programas. */}
             <Field
                 id={idPrograma}
                 className={borrador.nivel === "POSGRADO" ? styles.ancho : undefined}
                 etiqueta="Programa"
                 obligatorio
+                opciones={conValorActual(opciones.PROGRAMA, solicitud.programa)}
                 value={solicitud.programa}
-                onChange={(evento) => cambiar(cambioPrograma(orden, "programa", evento.target.value))}
+                onChange={(evento: ChangeEvent<HTMLSelectElement>) =>
+                    cambiar(cambioPrograma(orden, "programa", evento.target.value))
+                }
                 error={errores[idPrograma]}
             />
             {borrador.nivel === "PREGRADO" && (
                 <Field
                     id={idOpcionGrado}
                     etiqueta="Opción de grado"
-                    opciones={OPCIONES_GRADO}
+                    opciones={conValorActual(opciones.OPCION_GRADO, solicitud.tipoOpcionGrado)}
                     value={solicitud.tipoOpcionGrado}
-                    onChange={(evento) => cambiar(cambioPrograma(orden, "tipoOpcionGrado", evento.target.value))}
+                    onChange={(evento: ChangeEvent<HTMLSelectElement>) =>
+                        cambiar(cambioPrograma(orden, "tipoOpcionGrado", evento.target.value))
+                    }
                     error={errores[idOpcionGrado]}
                 />
             )}

@@ -4,22 +4,27 @@ import ProgresoDocumental from "@/app/components/ui/ProgresoDocumental";
 import type { ProgresoEnvio } from "../envio-documental";
 import Button from "@/app/components/ui/Button";
 import Dialog from "@/app/components/ui/Dialog";
-import { MODALIDADES, TIPOS_DOCUMENTO, type Opcion } from "./constantes";
+import { MODALIDADES, type Opcion } from "./constantes";
+import type { OpcionesFormulario } from "./opciones";
 import type { BorradorPreinscripcion, ProgramaSolicitud } from "./tipos";
 import type { Progreso } from "./validacion";
 import styles from "./iniciar_preinscripcion.module.css";
 
 /** Lo que se va a enviar, en pocas líneas, para el diálogo de confirmación. */
-function datosDelEnvio(borrador: BorradorPreinscripcion, avance: Progreso): [string, string][] {
+function datosDelEnvio(
+    borrador: BorradorPreinscripcion,
+    avance: Progreso,
+    opciones: OpcionesFormulario,
+): [string, string][] {
     const etiqueta = (lista: readonly Opcion[], valor: string) =>
         lista.find((opcion) => opcion.valor === valor)?.etiqueta ?? valor;
     const programa = (solicitud: ProgramaSolicitud) =>
-        `${solicitud.programa.trim()} · ${etiqueta(MODALIDADES, solicitud.modalidad)}`;
+        `${etiqueta(opciones.PROGRAMA, solicitud.programa)} · ${etiqueta(MODALIDADES, solicitud.modalidad)}`;
     const { perfil, programas } = borrador;
 
     const datos: [string, string][] = [
         ["Nombre", `${borrador.nombres.trim()} ${borrador.apellidos.trim()}`],
-        ["Documento", `${etiqueta(TIPOS_DOCUMENTO, perfil.tipoDocumento)} ${perfil.numeroDocumento}`],
+        ["Documento", `${etiqueta(opciones.TIPO_DOCUMENTO, perfil.tipoDocumento)} ${perfil.numeroDocumento}`],
         ["Código estudiantil", borrador.codigoEstudiantil.trim()],
         ["Programa", programa(programas[0])],
     ];
@@ -34,6 +39,7 @@ export interface DialogoConfirmarEnvioProps {
     abierto: boolean;
     borrador: BorradorPreinscripcion | null;
     avance: Progreso | null;
+    opciones: OpcionesFormulario | null;
     enviando: boolean;
     /** El último envío falló por un error técnico: el botón pasa a "Reintentar" */
     errorEnvio: boolean;
@@ -52,6 +58,7 @@ export default function DialogoConfirmarEnvio({
     progresoEnvio,
     borrador,
     avance,
+    opciones,
     enviando,
     errorEnvio,
     alCerrar,
@@ -69,7 +76,8 @@ export default function DialogoConfirmarEnvio({
             <dl className={styles.datosEnvio}>
                 {borrador &&
                     avance &&
-                    datosDelEnvio(borrador, avance).map(([dato, valor]) => (
+                    opciones &&
+                    datosDelEnvio(borrador, avance, opciones).map(([dato, valor]) => (
                         <div key={dato}>
                             <dt>{dato}</dt>
                             <dd>{valor}</dd>

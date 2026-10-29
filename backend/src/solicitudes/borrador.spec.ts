@@ -54,14 +54,14 @@ describe('validarBorrador: discapacidad y asistencia (Tarea 37)', () => {
     },
   );
 
-  it('rechaza un tipo de discapacidad que no está en el catálogo', () => {
-    const error = errorDe({
-      perfil: { tieneDiscapacidad: true, tipoDiscapacidad: 'OTRA_COSA' },
+  it('acepta un tipo de discapacidad creado desde el panel', () => {
+    const datos = validarBorrador({
+      perfil: { tieneDiscapacidad: true, tipoDiscapacidad: 'AUDITIVA' },
     });
 
-    expect(error.getResponse()).toMatchObject({
-      codigo: 'BORRADOR_DATOS_INVALIDOS',
-      campos: [{ campo: 'perfil.tipoDiscapacidad', motivo: 'INVALIDO' }],
+    expect(datos.perfil).toMatchObject({
+      tieneDiscapacidad: true,
+      tipoDiscapacidad: 'AUDITIVA',
     });
   });
 
