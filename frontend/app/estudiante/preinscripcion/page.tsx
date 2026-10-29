@@ -34,7 +34,7 @@ import type {
 import { InformacionEstudiante } from '@/app/components/informacion_estudiante';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tipos de sesión
+// Tipos de sesión importantes
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface Usuario {
