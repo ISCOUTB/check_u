@@ -15,6 +15,7 @@ import type {
     ProgramaSolicitud,
 } from "../tipos";
 import { SECCIONES, type SeccionId } from "../validacion";
+import type { OpcionesFormulario } from "../opciones";
 import styles from "../iniciar_preinscripcion.module.css";
 
 export type Cambio = (borrador: BorradorPreinscripcion) => BorradorPreinscripcion;
@@ -24,6 +25,8 @@ export interface PropsSeccion {
     cambiar: (cambio: Cambio) => void;
     /** Errores por id de campo (los de `ID_CAMPOS`, `idCampoPrograma`…). */
     errores: Record<string, string>;
+    /** Opciones de los campos, cargadas desde el panel del funcionario. */
+    opciones: OpcionesFormulario;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

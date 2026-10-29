@@ -74,7 +74,7 @@ function borradorParcial(nivel: Nivel, correo: string): BorradorPreinscripcion {
     };
     borrador.programas[0] = {
         orden: 1,
-        programa: "Programa de ejemplo",
+        programa: "PROGRAMA_DE_EJEMPLO",
         modalidad: "PRESENCIAL",
         tipoOpcionGrado: "",
     };

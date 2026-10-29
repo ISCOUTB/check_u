@@ -16,6 +16,7 @@ import DialogoConfirmarEnvio from "./DialogoConfirmarEnvio";
 import DialogoSalida from "./DialogoSalida";
 import IndiceProgreso from "./IndiceProgreso";
 import ResumenErrores, { type ContenidoResumen } from "./ResumenErrores";
+import { cargarOpcionesFormulario, type OpcionesFormulario } from "./opciones";
 import Academico from "./secciones/Academico";
 import type { Cambio } from "./secciones/comun";
 import Contacto from "./secciones/Contacto";
@@ -51,6 +52,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
 
     const [periodos, setPeriodos] = useState<ContextoPeriodo | null>(null);
     const [borrador, setBorrador] = useState<BorradorPreinscripcion | null>(null);
+    const [opciones, setOpciones] = useState<OpcionesFormulario | null>(null);
     const [errorCarga, setErrorCarga] = useState(false);
     const [intento, setIntento] = useState(0);
     const formularioRef = useRef<HTMLFormElement>(null);
@@ -83,8 +85,12 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
         }
 
         let vigente = true;
-        cargarPreinscripcion(nivelPedido, usuario.username, escenarioDesde(escenario))
-            .then((resultado) => {
+        // Las opciones de los selectores vienen del panel del funcionario, no de listas fijas.
+        Promise.all([
+            cargarPreinscripcion(nivelPedido, usuario.username, escenarioDesde(escenario)),
+            cargarOpcionesFormulario(),
+        ])
+            .then(([resultado, opcionesCargadas]) => {
                 if (!vigente) return;
                 if (resultado.estado === "enviada") {
                     router.replace("/estudiante/preinscripcion");
@@ -92,6 +98,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                 }
                 setBorrador(resultado.borrador);
                 setPeriodos(resultado.periodos ?? null);
+                setOpciones(opcionesCargadas);
             })
             .catch(() => {
                 if (vigente) setErrorCarga(true);
@@ -229,6 +236,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                     abierto={confirmando}
                     borrador={borrador}
                     avance={avance}
+                    opciones={opciones}
                     enviando={enviando}
                     errorEnvio={errorEnvio}
                     alCerrar={cerrarConfirmacion}
@@ -258,14 +266,14 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                     </div>
                 )}
 
-                {!errorCarga && (!borrador || !avance) && (
+                {!errorCarga && (!borrador || !avance || !opciones) && (
                     <div className={styles.cargandoBorrador}>
                         <span className={styles.spinner} aria-hidden="true" />
                         <p>Cargando tu preinscripción...</p>
                     </div>
                 )}
 
-                {borrador && avance && (
+                {borrador && avance && opciones && (
                     <div className={styles.rejilla}>
                         <IndiceProgreso progreso={avance} secciones={secciones} />
                         <form
@@ -278,15 +286,15 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                             onKeyDownCapture={() => marcarEntrada("teclado")}
                         >
                             {resumen && <ResumenErrores contenido={resumen} />}
-                            <Identificacion borrador={borrador} cambiar={cambiar} errores={errores} />
-                            <Contacto borrador={borrador} cambiar={cambiar} errores={errores} />
-                            <Academico borrador={borrador} cambiar={cambiar} errores={errores} />
+                            <Identificacion borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} />
+                            <Contacto borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} />
+                            <Academico borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} />
                             {borrador.nivel === "PREGRADO" ? (
-                                <SaberProVinculacion borrador={borrador} cambiar={cambiar} errores={errores} />
+                                <SaberProVinculacion borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} />
                             ) : (
-                                <EstudiosExperiencia borrador={borrador} cambiar={cambiar} errores={errores} />
+                                <EstudiosExperiencia borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} />
                             )}
-                            <Documentos borrador={borrador} cambiar={cambiar} errores={errores} progreso={avance} />
+                            <Documentos borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} progreso={avance} />
                             <BarraAcciones
                                 guardadoEn={borrador.guardadoEn}
                                 guardados={guardados}

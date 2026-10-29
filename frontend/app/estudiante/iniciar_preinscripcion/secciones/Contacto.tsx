@@ -1,9 +1,10 @@
 "use client";
 
+import type { ChangeEvent } from "react";
 import AreaTexto from "@/app/components/ui/AreaTexto";
 import Field from "@/app/components/ui/Field";
 import Opciones from "@/app/components/ui/Opciones";
-import { TIPOS_DISCAPACIDAD } from "../constantes";
+import { conValorActual } from "../opciones";
 import { ID_CAMPOS } from "../validacion";
 import styles from "../iniciar_preinscripcion.module.css";
 import {
@@ -18,7 +19,7 @@ import {
 
 // TODO: departamento y ciudad son texto libre hasta que existan las listas oficiales (en la #40
 // también son texto).
-export default function Contacto({ borrador, cambiar, errores }: PropsSeccion) {
+export default function Contacto({ borrador, cambiar, errores, opciones }: PropsSeccion) {
     const { perfil } = borrador;
 
     /** Al responder "No" (o dejar sin responder) se descartan los datos dependientes. */
@@ -122,9 +123,9 @@ export default function Contacto({ borrador, cambiar, errores }: PropsSeccion) {
                             id={ID_CAMPOS.tipoDiscapacidad}
                             etiqueta="Tipo de discapacidad"
                             obligatorio
-                            opciones={TIPOS_DISCAPACIDAD}
+                            opciones={conValorActual(opciones.TIPO_DISCAPACIDAD, perfil.tipoDiscapacidad)}
                             value={perfil.tipoDiscapacidad}
-                            onChange={(evento) =>
+                            onChange={(evento: ChangeEvent<HTMLSelectElement>) =>
                                 cambiar(cambioPerfil("tipoDiscapacidad", evento.target.value))
                             }
                             error={errores[ID_CAMPOS.tipoDiscapacidad]}
