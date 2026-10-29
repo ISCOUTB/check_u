@@ -1,16 +1,4 @@
-/**
- * api.ts — Contratos de tipos y datos simulados para la Home del estudiante.
- *
- * SIMULADO: Todas las funciones que no sean obtenerSesion() devuelven datos
- * de ejemplo. Cuando el backend exponga los endpoints reales, reemplaza el
- * cuerpo de cada función con la llamada real y elimina el comentario "SIMULADO".
- *
- * REAL:   GET ${API_URL}/auth/me           → Usuario
- * TODO:   GET ${API_URL}/solicitudes/activa → Solicitud | null
- * TODO:   GET ${API_URL}/notificaciones     → Notificacion[]
- * TODO:   GET ${API_URL}/politica-reenvios  → PoliticaReenvios
- */
-
+/** Notificaciones reales; las otras funciones de demostración de home conservan su alcance previo. */
 import { DOCUMENTOS_REQUERIDOS, type NivelAcademico as Nivel } from "../documentos-requeridos";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,6 +50,9 @@ export interface Notificacion {
     id: string;
     titulo: string;
     descripcion: string;
+    tipo: "success" | "warning" | "error" | "info";
+    generadoPor: "system" | "motor" | "funcionario";
+    leida: boolean;
     /** ISO 8601 en zona America/Bogota */
     fecha: string;
 }
@@ -124,27 +115,6 @@ const SOLICITUD_DEMO_PREGRADO: Solicitud = {
     documentos: DOCUMENTOS_CON_SOLICITUD_PREGRADO,
 };
 
-const NOTIFICACIONES_DEMO: Notificacion[] = [
-    {
-        id: "n1",
-        titulo: "Cédula: se necesita una nueva versión",
-        descripcion: "La imagen no permite leer el número con claridad.",
-        fecha: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-    },
-    {
-        id: "n2",
-        titulo: "Paz y Salvo en revisión",
-        descripcion: "No necesitas hacer nada por ahora.",
-        fecha: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-        id: "n3",
-        titulo: "Evaluación de Grado válida",
-        descripcion: "Ya cumple los requisitos revisados.",
-        fecha: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
-    },
-];
-
 const POLITICA_DEMO: PoliticaReenvios = { usados: 1, limite: 3 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -182,18 +152,43 @@ export async function obtenerSolicitudActiva(): Promise<Solicitud | null> {
     return null;
 }
 
-/**
- * Notificaciones recientes del estudiante autenticado.
- *
- * SIMULADO — TODO: GET ${API_URL}/notificaciones
- */
-export async function obtenerNotificaciones(): Promise<Notificacion[]> {
-    await new Promise((r) => setTimeout(r, 100));
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
-    if (ESCENARIO_DEMO === "con_solicitud") {
-        return NOTIFICACIONES_DEMO;
+async function consultarNotificaciones(ruta: string, method: "GET" | "PATCH", signal?: AbortSignal) {
+    const controlador = new AbortController();
+    const cancelar = () => controlador.abort();
+    const limite = setTimeout(cancelar, 8000);
+    signal?.addEventListener("abort", cancelar, {once:true});
+    if (signal?.aborted) cancelar();
+    try {
+        const r = await fetch(`${API_URL}/estudiante/notificaciones${ruta}`, {
+            method, credentials:"include", cache:"no-store", signal:controlador.signal,
+        });
+        if (!r.ok) throw new Error(r.status === 401 ? "Tu sesión expiró. Vuelve a iniciar sesión." : "No fue posible consultar las notificaciones.");
+        return await r.json();
+    } finally {
+        clearTimeout(limite);
+        signal?.removeEventListener("abort",cancelar);
     }
-    return [];
+}
+
+/** Solo recupera avisos persistidos del estudiante autenticado; nunca usa datos de demostración. */
+export async function obtenerNotificaciones(signal?: AbortSignal): Promise<Notificacion[]> {
+    const datos = await consultarNotificaciones("", "GET", signal) as {notificaciones?: unknown};
+    if (!Array.isArray(datos?.notificaciones)) throw new Error("Respuesta de notificaciones inválida.");
+    return datos.notificaciones.map((n: Record<string,unknown>) => {
+        if (!n || typeof n.id!=="string" || typeof n.titulo!=="string" || typeof n.msg!=="string" ||
+            !["success","warning","error","info"].includes(String(n.tipo)) ||
+            !["system","motor","funcionario"].includes(String(n.generado_por)) || typeof n.leida!=="boolean" ||
+            typeof n.creadoEn!=="string" || Number.isNaN(Date.parse(n.creadoEn))) throw new Error("Notificación inválida.");
+        return {id:n.id,titulo:n.titulo,descripcion:n.msg,fecha:n.creadoEn,
+            tipo:n.tipo as Notificacion["tipo"],generadoPor:n.generado_por as Notificacion["generadoPor"],leida:n.leida};
+    });
+}
+
+export async function marcarNotificacionLeida(id: string): Promise<void> {
+    const r = await consultarNotificaciones(`/${encodeURIComponent(id)}/leida`, "PATCH") as {id?:string;leida?:boolean};
+    if (r?.id!==id || r.leida!==true) throw new Error("No fue posible confirmar la lectura.");
 }
 
 /**
@@ -233,8 +228,8 @@ export function formatearFecha(iso: string): string {
 
     if (diffH < 1) return "Hace un momento";
     if (diffH < 24) {
-        return `Hoy, ${fecha.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`;
+        return `Hoy, ${fecha.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", timeZone: "America/Bogota" })}`;
     }
     if (diffH < 48) return "Ayer";
-    return fecha.toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+    return fecha.toLocaleDateString("es-CO", { day: "numeric", month: "short", timeZone: "America/Bogota" });
 }
