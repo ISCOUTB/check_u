@@ -160,6 +160,40 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
       .send(body);
   }
 
+  it('listado y detalle de revisión usan solicitudes reales, protegen roles y respetan el ID histórico', async () => {
+    const id = await solicitud();
+    const segundo = await solicitud('BORRADOR');
+    await revisar(id, {accion:'comentario', comentario:'Historial completo de la primera solicitud'}).expect(201);
+    const listado = await funcionaria.get('/api/funcionario/solicitudes').expect(200);
+    expect(listado.headers['cache-control']).toBe('private, no-store');
+    expect(listado.body.map((r: {id: string}) => r.id)).toEqual([String(segundo),String(id)]);
+    const detalle = await funcionaria.get(`/api/funcionario/solicitudes/${id}`).expect(200);
+    expect(detalle.body.id).toBe(String(id));
+    expect(detalle.body.estadoSolicitud).toBe('EN_PROCESO');
+    expect(detalle.body.revisiones[0].comentario).toBe('Historial completo de la primera solicitud');
+    await funcionaria.get('/api/funcionario/solicitudes/999999').expect(404);
+    await funcionaria.get('/api/funcionario/solicitudes/invalido').expect(400);
+    for (const ruta of ['/api/funcionario/solicitudes', `/api/funcionario/solicitudes/${id}`, '/api/funcionario/documentos/1/original']) {
+      await estudiante.get(ruta).expect(403);
+      await request(app.getHttpServer()).get(ruta).expect(401);
+    }
+  });
+
+  it('la funcionaria visualiza el PDF real y los resultados actuales, sin exponerlo a otros estudiantes', async () => {
+    await enviar().expect(201);
+    const detalle = await funcionaria.get('/api/funcionario/solicitudes/1').expect(200);
+    expect(detalle.body.documentos).toHaveLength(5);
+    const doc = detalle.body.documentos[0];
+    expect(doc.archivoDisponible).toBe(true);
+    const r = await funcionaria.get(`/api/funcionario/documentos/${doc.id}/original`).expect(200);
+    expect(r.headers['content-type']).toContain('application/pdf');
+    expect(r.headers['cache-control']).toBe('private, no-store');
+    expect(r.body).toEqual(PDF);
+    await funcionaria.get('/api/funcionario/documentos/999999/original').expect(404);
+    await base.db.exec('UPDATE periodos_grado SET fecha_fin=CURRENT_DATE-17,fecha_inicio=CURRENT_DATE-60');
+    await funcionaria.get(`/api/funcionario/documentos/${doc.id}/original`).expect(410);
+  });
+
   it('la migración es repetible y los valores están restringidos', async () => {
     const sql = await readFile(
       new URL('../../db/migrations/007-notificaciones.sql', import.meta.url),
@@ -485,10 +519,6 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     'home con API y PostgreSQL reales: recibe actores y persiste la lectura',
     async () => {
       await enviar().expect(201);
-      await revisar(1, {
-        accion: 'comentario',
-        comentario: 'Revisa la información del formulario.',
-      }).expect(201);
       await base.db.exec(
         "UPDATE periodos_grado SET fecha_fin=(CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date+3",
       );
@@ -544,6 +574,31 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
             '--in-process-gpu',
           ],
         });
+        const contextoFuncionaria = await browser.newContext({ viewport: {width:1280,height:1000} });
+        await contextoFuncionaria.request.post('http://127.0.0.1:3000/api/auth/login', {
+          data: {username:'rmarriaga@utb.edu.co',password:'12345'},
+        });
+        const revision = await contextoFuncionaria.newPage();
+        await revision.goto('http://127.0.0.1:3004/funcionario/dashboard');
+        await revision.getByRole('link', {name:'Ver solicitud 1',exact:true}).first().click();
+        await revision.getByLabel('Comentario (obligatorio)').fill('Revisa la información del formulario.');
+        await revision.getByRole('button',{name:'Enviar comentario',exact:true}).click();
+        await revision.getByRole('button',{name:'Confirmar acción',exact:true}).click();
+        await revision.getByText('Acción registrada. La notificación del estudiante quedó guardada.',{exact:true}).waitFor();
+        await revision.getByRole('combobox',{name:'Acción',exact:true}).selectOption('recarga');
+        await revision.getByRole('checkbox').first().check();
+        await revision.getByRole('button',{name:'Solicitar corrección',exact:true}).click();
+        await revision.getByRole('button',{name:'Confirmar acción',exact:true}).click();
+        await revision.getByText('Corrección solicitada',{exact:true}).waitFor();
+        for (const accion of ['aceptada','anulada']) {
+          const id = await solicitud();
+          await revision.goto(`http://127.0.0.1:3004/funcionario/detalle_preinscripcion/${id}`);
+          await revision.getByRole('combobox',{name:'Acción',exact:true}).selectOption(accion);
+          await revision.getByRole('button',{name:accion==='aceptada'?'Aceptar solicitud':'Anular solicitud',exact:true}).click();
+          await revision.getByRole('button',{name:'Confirmar acción',exact:true}).click();
+          await revision.getByText(accion==='aceptada'?'Solicitud aceptada':'Solicitud anulada',{exact:true}).waitFor();
+        }
+        await contextoFuncionaria.close();
         const contexto = await browser.newContext({
           viewport: { width: 1280, height: 1000 },
         });
@@ -560,7 +615,8 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
         );
         await pagina.goto('http://127.0.0.1:3004/estudiante/home');
         const cuerpo = await (await respuesta).json();
-        expect(cuerpo.noLeidas).toBe(7);
+        expect(cuerpo.noLeidas).toBe(10);
+        expect(cuerpo.notificaciones.filter((n: {generado_por:string}) => n.generado_por==='funcionario')).toHaveLength(4);
         const panel = pagina.getByRole('region', {
           name: 'Notificaciones',
           exact: true,
@@ -568,7 +624,7 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
         await panel
           .getByRole('button', { name: 'Ver todas las notificaciones' })
           .click();
-        expect(await panel.getByRole('listitem').count()).toBe(7);
+        expect(await panel.getByRole('listitem').count()).toBe(10);
         await panel
           .getByRole('button', { name: /Marcar como leída/ })
           .first()
@@ -576,17 +632,17 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
         await pagina.waitForFunction(() =>
           document
             .querySelector('#notificaciones')
-            ?.textContent?.includes('6 sin leer'),
+            ?.textContent?.includes('9 sin leer'),
         );
         expect(
           (await estudiante.get('/api/estudiante/notificaciones')).body
             .noLeidas,
-        ).toBe(6);
+        ).toBe(9);
         await pagina.reload();
         await pagina.waitForFunction(() =>
           document
             .querySelector('#notificaciones')
-            ?.textContent?.includes('6 sin leer'),
+            ?.textContent?.includes('9 sin leer'),
         );
       } finally {
         await browser?.close();
