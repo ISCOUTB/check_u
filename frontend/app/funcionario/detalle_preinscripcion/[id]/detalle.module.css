@@ -487,3 +487,16 @@
         padding: var(--space-4);
     }
 }
+
+.formRevision { display: grid; gap: var(--space-4); min-width: 0; }
+.formRevision label { display: grid; gap: var(--space-2); }
+.formRevision select, .formRevision textarea {
+    width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--color-border);
+    border-radius: 8px; background: var(--color-surface); color: var(--color-text); font: inherit;
+}
+.formRevision fieldset { min-width: 0; border: 1px solid var(--color-border); padding: var(--space-4); }
+.formRevision .opcionDocumento { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.opcionDocumento input { width: 20px; height: 20px; flex-shrink: 0; }
+.historial { display: grid; gap: var(--space-4); list-style: none; padding: 0; }
+.historial li, .documento, .comentarioConfirmacion { overflow-wrap: anywhere; white-space: pre-wrap; }
+.formRevision select:focus-visible, .formRevision textarea:focus-visible, .opcionDocumento input:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
