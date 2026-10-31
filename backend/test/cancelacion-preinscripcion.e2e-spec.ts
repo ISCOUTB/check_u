@@ -523,7 +523,7 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
     await cancelar().expect(201);
   });
   it.skipIf(process.env.CANCELACION_UI_REAL !== '1')(
-    'cancelación desde el navegador con API y PostgreSQL reales, historial y nuevo periodo',
+    'cancelación desde el navegador con API y PostgreSQL reales, consulta histórica y nuevo periodo',
     async () => {
       await enviar().expect(201);
       await base.db.exec('UPDATE periodos_grado SET fecha_fin=CURRENT_DATE+10');
@@ -618,11 +618,11 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
         expect(
           await pagina.getByRole('button', { name: 'Volver a cargar' }).count(),
         ).toBe(0);
-        const panel = pagina.getByRole('region', {
-          name: 'Historial de preinscripciones',
-          exact: true,
-        });
-        await panel.getByText('CANCELADA', { exact: true }).waitFor();
+        expect(
+          await pagina
+            .getByRole('region', { name: 'Historial de preinscripciones' })
+            .count(),
+        ).toBe(0);
         expect(await datosDocumentales()).toEqual(antes);
         expect(
           (await base.db.query('SELECT * FROM cancelaciones_preinscripcion'))
@@ -641,7 +641,7 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
         await pagina.goto('http://127.0.0.1:3005/estudiante/home');
         await pagina.waitForURL('http://127.0.0.1:3005/estudiante/bienvenida');
         await pagina
-          .getByRole('link', { name: 'Ver detalle de solicitud 1' })
+          .getByRole('link', { name: 'Iniciar preinscripción para pregrado' })
           .waitFor();
         await base.db.exec(
           `INSERT INTO periodos_grado(id,nombre,fecha_inicio,fecha_fin,fecha_graduacion) VALUES('${OTRO}','Nuevo periodo',CURRENT_DATE-5,CURRENT_DATE+45,CURRENT_DATE+60)`,
@@ -691,9 +691,11 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
             .getByRole('heading', { name: 'Estudiante Prueba', exact: true })
             .count(),
         ).toBe(1);
-        await pagina
-          .getByRole('link', { name: 'Ver detalle de solicitud 2' })
-          .waitFor();
+        expect(
+          await pagina
+            .getByRole('region', { name: 'Historial de preinscripciones' })
+            .count(),
+        ).toBe(0);
         expect(
           (
             await base.db.query(
