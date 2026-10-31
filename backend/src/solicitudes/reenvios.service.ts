@@ -15,6 +15,7 @@ import {
 } from './analisis-preinscripcion.service.js';
 import { ArchivosTemporalesService } from './archivos-temporales.service.js';
 import type { InformarAvance } from './progreso-envio.js';
+import { claveDocumento, MAXIMO_DOCUMENTOS } from './requisitos-documentales.js';
 
 export type ArchivoCorreccion = Omit<PdfPreinscripcion, 'tipo'> & {
   id: number;
@@ -70,7 +71,7 @@ export class ReenviosService {
     if (
       !/^[\w-]{8,128}$/.test(clave ?? '') ||
       !archivos.length ||
-      archivos.length > 6 ||
+      archivos.length > MAXIMO_DOCUMENTOS ||
       archivos.some((a) => !Number.isSafeInteger(a.id) || a.id <= 0) ||
       new Set(archivos.map((a) => a.id)).size !== archivos.length
     )
@@ -152,7 +153,7 @@ export class ReenviosService {
             documento: d,
             archivo: {
               ...a,
-              tipo: d.tipo_documento + (d.orden === 2 ? '-2' : ''),
+              tipo: claveDocumento({ tipo: d.tipo_documento, orden: d.orden }),
             },
           };
         });

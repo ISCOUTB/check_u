@@ -26,6 +26,11 @@ import {
 } from './borrador.js';
 import { DatabaseService } from '../database/database.service.js';
 import { TIPO_DOCUMENTO_LEGADO } from '../contratos/mapeo.js';
+import {
+  admiteSegundo,
+  claveDocumento,
+  documentosRequeridos,
+} from './requisitos-documentales.js';
 import type {
   DatosEnvioPreinscripcion,
   DocumentoCargadoDTO,
@@ -37,24 +42,11 @@ import type {
   SolicitudResumen,
 } from './solicitudes.types.js';
 
-const DOCUMENTOS_REQUERIDOS_PREGRADO = [
-  'identification',
-  'academic_evaluation',
-  'paz_y_salvo_bib',
-  'estampilla_pro_cultura',
-  'saber_pro',
-];
-
-const DOCUMENTOS_REQUERIDOS_POSGRADO = [
-  'identification',
-  'paz_y_salvo_bib',
-  'estampilla_pro_cultura',
-];
-
 function normalizarTipoDocumento(tipo: string): string {
   const limpio = tipo.trim().toLowerCase();
-  if (limpio === 'estampilla2' || limpio === 'estampilla_pro_cultura-2')
-    return 'estampilla_pro_cultura';
+  if (limpio === 'estampilla2') return 'estampilla_pro_cultura';
+  const segundo = limpio.replace(/-2$/, '');
+  if (segundo !== limpio && admiteSegundo(segundo)) return segundo;
   return TIPO_DOCUMENTO_LEGADO[limpio] ?? limpio;
 }
 
@@ -153,16 +145,10 @@ export class SolicitudesService {
     informar('Documentos cargados.');
     // Primero guarda el borrador. Un fallo del motor no pierde los campos del estudiante.
     const datos = validarBorrador(payload);
-    const tiposPermitidos =
-      datos.nivel === 'POSGRADO'
-        ? DOCUMENTOS_REQUERIDOS_POSGRADO
-        : DOCUMENTOS_REQUERIDOS_PREGRADO;
-    const esperados = [
-      ...tiposPermitidos,
-      ...(datos.nivel === 'PREGRADO' && datos.segundoPrograma
-        ? ['estampilla_pro_cultura-2']
-        : []),
-    ];
+    const esperados = documentosRequeridos(
+      datos.nivel === 'POSGRADO' ? 'POSGRADO' : 'PREGRADO',
+      datos.nivel !== 'POSGRADO' && datos.segundoPrograma === true,
+    ).map(claveDocumento);
     if (
       archivos.length !== esperados.length ||
       esperados.some((t) => !archivos.some((a) => a.tipo === t))
@@ -580,7 +566,7 @@ export class SolicitudesService {
             original === 'estampilla2'
               ? 2
               : 1;
-          if (orden === 2 && tipo !== 'estampilla_pro_cultura')
+          if (orden === 2 && !admiteSegundo(tipo))
             throw new BadRequestException('Orden documental inválido');
           await client.query(
             `INSERT INTO documentos
@@ -784,29 +770,24 @@ export class SolicitudesService {
       [idSolicitud],
     );
 
-    const tiposExistentes = new Set(
-      resDocs.rows.map((d) => normalizarTipoDocumento(d.tipo_documento)),
+    const existentes = new Set(
+      resDocs.rows.map((d) =>
+        claveDocumento({
+          tipo: normalizarTipoDocumento(d.tipo_documento),
+          orden: d.orden ?? 1,
+        }),
+      ),
     );
 
-    const requeridos =
-      tipoSolicitud === 'PREGRADO'
-        ? DOCUMENTOS_REQUERIDOS_PREGRADO
-        : DOCUMENTOS_REQUERIDOS_POSGRADO;
-
-    const faltantes = requeridos.filter((tipo) => !tiposExistentes.has(tipo));
-
-    // Doble programa en pregrado: una estampilla Pro-Cultura por programa (la del segundo, con orden 2).
+    // Doble programa en pregrado: una evaluación de Banner y una estampilla por programa (orden 2).
     const hayPrograma2 = resPrograma.rows.some(
       (p) => p.orden === 2 && p.programa?.trim(),
     );
-    const hayEstampilla2 = resDocs.rows.some(
-      (d) =>
-        normalizarTipoDocumento(d.tipo_documento) ===
-          'estampilla_pro_cultura' && (d.orden ?? 1) === 2,
-    );
-    if (tipoSolicitud === 'PREGRADO' && hayPrograma2 && !hayEstampilla2) {
-      faltantes.push('estampilla_pro_cultura (segundo programa)');
-    }
+    const faltantes = documentosRequeridos(tipoSolicitud, hayPrograma2)
+      .filter((d) => !existentes.has(claveDocumento(d)))
+      .map((d) =>
+        d.orden === 2 ? `${d.tipo} (segundo programa)` : d.tipo,
+      );
 
     if (faltantes.length > 0) {
       throw new BadRequestException(

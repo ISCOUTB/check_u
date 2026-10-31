@@ -12,6 +12,7 @@ import type { PoolClient } from 'pg';
 import { DocumentosService } from '../documentos/documentos.service.js';
 import { DocumentValidationResult } from '../contratos/resultado-documento.js';
 import { ArchivosTemporalesService } from './archivos-temporales.service.js';
+import { leerClave, MAXIMO_DOCUMENTOS } from './requisitos-documentales.js';
 
 export interface PdfPreinscripcion {
   buffer: Buffer;
@@ -19,28 +20,16 @@ export interface PdfPreinscripcion {
   mimetype: string;
   tipo: string;
 }
-const TIPOS = [
-  'identification',
-  'academic_evaluation',
-  'paz_y_salvo_bib',
-  'estampilla_pro_cultura',
-  'saber_pro',
-];
 
 export function validarArchivos(archivos: PdfPreinscripcion[]) {
-  if (!archivos.length || archivos.length > 6)
+  if (!archivos.length || archivos.length > MAXIMO_DOCUMENTOS)
     throw new BadRequestException(
       'Adjunta nuevamente los PDF requeridos para enviar la preinscripción.',
     );
   const claves = new Set<string>();
   let total = 0;
   for (const a of archivos) {
-    const tipo = a.tipo?.replace(/-2$/, '');
-    if (
-      !TIPOS.includes(tipo) ||
-      (a.tipo.endsWith('-2') && tipo !== 'estampilla_pro_cultura') ||
-      claves.has(a.tipo)
-    )
+    if (typeof a.tipo !== 'string' || !leerClave(a.tipo) || claves.has(a.tipo))
       throw new BadRequestException(
         'Tipos documentales inválidos o repetidos.',
       );

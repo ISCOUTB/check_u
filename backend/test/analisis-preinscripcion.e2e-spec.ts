@@ -148,7 +148,10 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
     const requeridos =
       tipos ??
       (nivel === 'PREGRADO'
-        ? [...TIPOS, ...(doble ? ['estampilla_pro_cultura-2'] : [])]
+        ? [
+            ...TIPOS,
+            ...(doble ? ['academic_evaluation-2', 'estampilla_pro_cultura-2'] : []),
+          ]
         : ['identification', 'paz_y_salvo_bib', 'estampilla_pro_cultura']);
     let req = agente
       .post('/api/solicitudes/enviar')
@@ -164,7 +167,7 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
   it.each([
     ['PREGRADO', false, 5, 4],
     ['POSGRADO', false, 3, 2],
-    ['PREGRADO', true, 6, 5],
+    ['PREGRADO', true, 7, 6],
   ] as const)(
     'persiste %s doble=%s y consulta después de nueva sesión',
     async (nivel, doble, cantidad, llamadas) => {

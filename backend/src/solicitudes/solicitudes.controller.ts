@@ -2,6 +2,7 @@ import { ReenviosService, type ArchivoCorreccion } from './reenvios.service.js';
 import { flujoProgreso, type InformarAvance } from './progreso-envio.js';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { MAXIMO_DOCUMENTOS } from './requisitos-documentales.js';
 import {
   AnalisisPreinscripcionService,
   type PdfPreinscripcion,
@@ -71,7 +72,7 @@ export class SolicitudesController {
 
   @Post('solicitudes/enviar')
   @UseInterceptors(
-    FilesInterceptor('documentos', 6, {
+    FilesInterceptor('documentos', MAXIMO_DOCUMENTOS, {
       storage: memoryStorage(),
       limits: { fileSize: 25 * 1024 * 1024, fieldSize: 1024 * 1024, fields: 3 },
     }),
@@ -150,7 +151,7 @@ export class SolicitudesController {
 
   @Post('solicitudes/:id/correcciones')
   @UseInterceptors(
-    FilesInterceptor('documentos', 6, {
+    FilesInterceptor('documentos', MAXIMO_DOCUMENTOS, {
       storage: memoryStorage(),
       limits: { fileSize: 25 * 1024 * 1024, fieldSize: 4096, fields: 2 },
     }),
