@@ -50,7 +50,10 @@ describe('requisitos documentales por tipo de solicitud', () => {
   });
 
   it('leerClave reconoce -2 solo en los tipos que admiten segundo', () => {
-    expect(leerClave('academic_evaluation-2')).toEqual({ tipo: 'academic_evaluation', orden: 2 });
+    expect(leerClave('academic_evaluation-2')).toEqual({
+      tipo: 'academic_evaluation',
+      orden: 2,
+    });
     expect(leerClave('estampilla_pro_cultura-2')).toEqual({
       tipo: 'estampilla_pro_cultura',
       orden: 2,
@@ -72,13 +75,15 @@ describe('validarArchivos', () => {
   });
 
   it('acepta los 7 PDF del doble programa', () => {
-    expect(() => validarArchivos(claves('PREGRADO', true).map(pdf))).not.toThrow();
+    expect(() =>
+      validarArchivos(claves('PREGRADO', true).map(pdf)),
+    ).not.toThrow();
   });
 
   it('rechaza un segundo documento de un tipo que no lo admite', () => {
-    expect(() => validarArchivos([pdf('saber_pro'), pdf('saber_pro-2')])).toThrow(
-      'Tipos documentales inválidos o repetidos.',
-    );
+    expect(() =>
+      validarArchivos([pdf('saber_pro'), pdf('saber_pro-2')]),
+    ).toThrow('Tipos documentales inválidos o repetidos.');
   });
 
   it('rechaza más de 7 archivos', () => {

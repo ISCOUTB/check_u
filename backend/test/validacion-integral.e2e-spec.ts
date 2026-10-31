@@ -11,7 +11,8 @@ describe('Tarea 42: esquema', () => {
     await base?.db.close();
   });
   beforeEach(async () => {
-    await base.db.exec(`TRUNCATE notificaciones,revisiones,historial_validaciones,validaciones,rutas,documentos,entregas,
+    await base.db
+      .exec(`TRUNCATE notificaciones,revisiones,historial_validaciones,validaciones,rutas,documentos,entregas,
       solicitud_programa,solicitud_grado,periodos_grado RESTART IDENTITY CASCADE;
       INSERT INTO periodos_grado(id,nombre,fecha_inicio,fecha_fin,fecha_graduacion)
       VALUES('${PERIODO}','Periodo prueba',CURRENT_DATE-60,CURRENT_DATE+30,CURRENT_DATE+60)`);
@@ -91,7 +92,10 @@ describe('Tarea 42: esquema', () => {
     const n = await base.db.query<Record<string, string>>(
       'SELECT tipo,titulo,msg FROM notificaciones',
     );
-    expect(n.rows[0]).toMatchObject({ tipo: 'error', titulo: 'Documento no válido' });
+    expect(n.rows[0]).toMatchObject({
+      tipo: 'error',
+      titulo: 'Documento no válido',
+    });
     expect(n.rows[0].msg).toContain('Revisado contra el original');
   });
 

@@ -5,9 +5,7 @@ import type { TypeDocument } from '../contratos/enums.js';
 // del backend; el envío, los reenvíos y el cálculo del estado la consultan en vez de repetirla.
 
 export type TipoSolicitud =
-  | 'PREGRADO_UN_PROGRAMA'
-  | 'PREGRADO_DOBLE_PROGRAMA'
-  | 'POSGRADO';
+  'PREGRADO_UN_PROGRAMA' | 'PREGRADO_DOBLE_PROGRAMA' | 'POSGRADO';
 export interface DocumentoRequerido {
   tipo: TypeDocument;
   orden: 1 | 2;
