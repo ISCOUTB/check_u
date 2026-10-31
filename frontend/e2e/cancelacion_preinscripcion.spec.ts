@@ -17,24 +17,6 @@ async function preparar(page: Page, estado = 'EN_PROCESO') {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     let detalle = { ...structuredClone(BASE), estadoSolicitud: estado };
     let envios = 0;
-    const lista = () => ({
-        solicitudes: [
-            {
-                id: '1',
-                nivel: 'PREGRADO',
-                estado: detalle.estadoSolicitud,
-                activa: !['CANCELADA', 'CERRADA'].includes(
-                    detalle.estadoSolicitud,
-                ),
-                fechaSolicitud: '2026-10-31T12:00:00Z',
-                periodo: {
-                    nombre: 'Grados de noviembre',
-                    fechaInicio: '2026-10-01',
-                    fechaFin: '2026-11-10',
-                },
-            },
-        ],
-    });
     await page.route(`${API}/solicitudes/estado`, (r) =>
         r.fulfill({
             json: {
@@ -55,9 +37,6 @@ async function preparar(page: Page, estado = 'EN_PROCESO') {
         '/estudiante/solicitudes/1/analisis',
     ])
         await page.route(`${API}${ruta}`, (r) => r.fulfill({ json: detalle }));
-    await page.route(`${API}/estudiante/solicitudes`, (r) =>
-        r.fulfill({ json: lista() }),
-    );
     await page.route(
         `${API}/estudiante/solicitudes/1/cancelacion`,
         async (r) => {
@@ -121,7 +100,7 @@ for (const estado of [
 }
 for (const tema of ['light', 'dark'] as const)
     for (const ancho of [320, 1280]) {
-        test(`confirmación e historial accesibles sin desborde en ${tema} a ${ancho}px`, async ({
+        test(`confirmación y detalle accesibles sin desborde en ${tema} a ${ancho}px`, async ({
             page,
         }) => {
             await preparar(page);
@@ -180,7 +159,7 @@ test('rechazar o cerrar la confirmación conserva la solicitud y devuelve el foc
     await expect(abrir).toBeFocused();
     expect(app.envios()).toBe(0);
 });
-test('confirmar cambia detalle e historial, bloquea reenvíos y conserva la consulta tras F5', async ({
+test('confirmar cambia el detalle, bloquea reenvíos y conserva la consulta tras F5', async ({
     page,
 }) => {
     const app = await preparar(page);
@@ -202,12 +181,7 @@ test('confirmar cambia detalle e historial, bloquea reenvíos y conserva la cons
     await expect(
         page.getByRole('button', { name: 'Volver a cargar' }),
     ).toHaveCount(0);
-    await expect(
-        page.getByRole('region', { name: 'Historial de preinscripciones' }),
-    ).toContainText('CANCELADA');
-    await expect(
-        page.getByRole('region', { name: 'Historial de preinscripciones' }),
-    ).toContainText('Histórica, sin gestión pendiente');
+    await expect(page.getByRole('region', { name: 'Historial de preinscripciones' })).toHaveCount(0);
     expect(app.envios()).toBe(1);
     await page.reload();
     await expect(
@@ -328,25 +302,17 @@ test('el tiempo de espera informa un resultado desconocido y permite consultar d
         liberar();
     }
 });
-test('la bienvenida mantiene visible la cancelada y permite consultar su detalle sin activarla', async ({
-    page,
-}) => {
-    await preparar(page, 'CANCELADA');
-    await page.goto('/estudiante/bienvenida');
-    await expect(
-        page.getByRole('region', { name: 'Historial de preinscripciones' }),
-    ).toContainText('CANCELADA');
-    await page
-        .getByRole('link', { name: 'Ver detalle de solicitud 1' })
-        .click();
-    await expect(page).toHaveURL(`${RUTA}?solicitud=1`);
-    await expect(
-        page.getByRole('heading', {
-            name: 'Preinscripción cancelada',
-            exact: true,
-        }),
-    ).toBeVisible();
-});
+for (const ruta of ['/estudiante/bienvenida', '/estudiante/home', `${RUTA}?solicitud=1`]) {
+    test(`no muestra ni consulta el bloque de historial en ${ruta}`, async ({page}) => {
+        await preparar(page, ruta.endsWith('/home') ? 'EN_PROCESO' : 'CANCELADA');
+        const consultas: string[] = [];
+        page.on('request', r => { if (r.url() === `${API}/estudiante/solicitudes`) consultas.push(r.url()); });
+        await page.goto(ruta);
+        await expect(page.getByRole('heading', {level:1})).toBeVisible();
+        await expect(page.getByRole('region', {name:'Historial de preinscripciones'})).toHaveCount(0);
+        expect(consultas).toEqual([]);
+    });
+}
 test('un detalle histórico ajeno o inexistente no muestra la solicitud actual ni redirige', async ({
     page,
 }) => {
@@ -369,27 +335,6 @@ test('un detalle histórico ajeno o inexistente no muestra la solicitud actual n
     ).toHaveCount(0);
     await expect(page).toHaveURL(`${RUTA}?solicitud=999`);
 });
-test('un fallo del historial no bloquea la consulta ni la cancelación', async ({
-    page,
-}) => {
-    await preparar(page);
-    await page.route(`${API}/estudiante/solicitudes`, (r) =>
-        r.fulfill({ status: 503, json: { message: 'Fallo controlado' } }),
-    );
-    await page.goto(RUTA);
-    await expect(
-        page
-            .getByRole('region', { name: 'Historial de preinscripciones' })
-            .getByRole('alert'),
-    ).toContainText('No fue posible consultar');
-    await expect(
-        page.getByRole('button', {
-            name: 'Cancelar preinscripción',
-            exact: true,
-        }),
-    ).toBeEnabled();
-});
-
 for (const [dias, fechaCorte, fechaActual, texto] of [
     [1, '2026-11-01', '2026-10-31', '1 día'],
     [0, '2026-10-29', '2026-10-31', '0 días'],
@@ -455,37 +400,4 @@ test('un periodo sin fechas no produce números ni fechas inventados en la confi
     await expect(
         dialogo.getByText('Fecha límite:', { exact: false }),
     ).toHaveCount(0);
-});
-test('un historial malformado presenta error recuperable y no rompe el detalle', async ({
-    page,
-}) => {
-    await preparar(page);
-    await page.route(`${API}/estudiante/solicitudes`, (r) =>
-        r.fulfill({
-            json: {
-                solicitudes: [
-                    {
-                        id: '1',
-                        estado: 'CANCELADA',
-                        nivel: 'PREGRADO',
-                        activa: false,
-                        fechaSolicitud: null,
-                        periodo: {},
-                    },
-                ],
-            },
-        }),
-    );
-    await page.goto(RUTA);
-    await expect(
-        page
-            .getByRole('region', { name: 'Historial de preinscripciones' })
-            .getByRole('alert'),
-    ).toContainText('no es válido');
-    await expect(
-        page.getByRole('button', {
-            name: 'Cancelar preinscripción',
-            exact: true,
-        }),
-    ).toBeEnabled();
 });
