@@ -18,11 +18,17 @@ export async function detalleAnalisis(
       u.nombres, u.apellidos, u.codigo_estudiante, u.correo, pe.*
       FROM solicitud_grado s JOIN usuarios u ON u.id_usuario = s.id_estudiante
       LEFT JOIN perfil_estudiante pe ON pe.id_usuario = u.id_usuario
-      WHERE s.id_estudiante = $1 AND ($2::integer IS NULL OR s.id_solicitud=$2) ORDER BY s.id_solicitud DESC LIMIT 1`,
+      WHERE s.id_estudiante = $1 AND ($2::integer IS NULL OR s.id_solicitud=$2) ORDER BY CASE WHEN $2::integer IS NULL AND s.estado NOT IN ('CANCELADA','CERRADA') THEN 0 ELSE 1 END,s.id_solicitud DESC LIMIT 1`,
       [idEstudiante, idSolicitud ?? null],
     );
-    const s = res.rows[0];
+    let s = res.rows[0];
     if (!s) throw new NotFoundException('No hay preinscripción registrada.');
+    const cancelacion = s.estado === 'CANCELADA' ? (await client.query(
+      'SELECT fecha_cancelacion,informacion_estudiante FROM cancelaciones_preinscripcion WHERE id_solicitud=$1',
+      [s.id_solicitud],
+    )).rows[0] : null;
+    // Conservar el perfil al cancelar aunque el estudiante lo cambie en otro periodo.
+    if (cancelacion) s = {...s,...cancelacion.informacion_estudiante};
     const programas = await client.query(
       'SELECT * FROM solicitud_programa WHERE id_solicitud = $1 ORDER BY orden',
       [s.id_solicitud],
@@ -96,6 +102,7 @@ export async function detalleAnalisis(
     const periodos = await consultarContextoPeriodo(
       client,
       s.id_periodo ?? null,
+      idEstudiante,
     );
     const p = programas.rows[0] ?? {},
       p2 = programas.rows[1] ?? {},
@@ -145,6 +152,15 @@ export async function detalleAnalisis(
     return {
       id: String(s.id_solicitud),
       estadoSolicitud: s.estado,
+      cancelacion: {
+        permitida: s.estado === 'EN_PROCESO',
+        canceladaEn: cancelacion?.fecha_cancelacion ?? null,
+        fechaActual: periodos.fechaActual,
+        nombrePeriodo: periodos.periodoAsignado?.nombre ?? null,
+        fechaCorte: periodos.periodoAsignado?.fechaCorte ?? null,
+        diasRestantes: periodos.periodoAsignado
+          ? Math.max(0, Math.round((Date.parse(periodos.periodoAsignado.fechaCorte+'T00:00:00Z')-Date.parse(periodos.fechaActual+'T00:00:00Z'))/86400000)) : null,
+      },
       estadoAnalisis:
         !actuales.length || actuales.some((d) => !d.detalle)
           ? 'pendiente'
