@@ -88,6 +88,14 @@ export interface PoliticaReenvios {
 }
 
 export interface SolicitudDetalle {
+  cancelacion?: {
+    permitida: boolean;
+    canceladaEn: string | null;
+    fechaActual: string;
+    nombrePeriodo: string | null;
+    fechaCorte: string | null;
+    diasRestantes: number | null;
+  };
   estadoSolicitud: string;
   estadoAnalisis: "pendiente" | "registrado";
   informacion: DatosInformacionEstudiante;
