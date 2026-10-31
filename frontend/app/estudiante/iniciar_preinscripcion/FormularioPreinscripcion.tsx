@@ -8,6 +8,7 @@ import Navbar from "@/app/components/navbar/Navbar";
 import Button from "@/app/components/ui/Button";
 import PageHeader from "@/app/components/ui/PageHeader";
 import type { Nivel } from "@/app/estudiante/documentos-requeridos";
+import { obtenerEstadoNavegacion } from "@/app/lib/estadoNavegacion";
 import { useSesion } from "@/app/lib/useSesion";
 import { cargarPreinscripcion, enviarPreinscripcion, escenarioDesde, guardarBorrador } from "./api";
 import { mensajeErrorGuardado } from "./mensajes-borrador";
@@ -79,12 +80,28 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
 
     useEffect(() => {
         if (!usuario) return;
+        let vigente = true;
+        const controlador = new AbortController();
         if (!nivelPedido || (usuario.nivel && usuario.nivel !== nivelPedido)) {
-            router.replace("/estudiante/bienvenida");
-            return;
+            // Una URL incompleta debe recuperar el borrador real; volver siempre a bienvenida crea un ciclo.
+            obtenerEstadoNavegacion(controlador.signal)
+                .then((estado) => {
+                    if (!vigente) return;
+                    if (estado.estado === "BORRADOR" && usuario.nivel && estado.nivel !== usuario.nivel) {
+                        setErrorCarga(true);
+                        return;
+                    }
+                    router.replace(estado.destino);
+                })
+                .catch(() => {
+                    if (vigente) setErrorCarga(true);
+                });
+            return () => {
+                vigente = false;
+                controlador.abort();
+            };
         }
 
-        let vigente = true;
         // Las opciones de los selectores vienen del panel del funcionario, no de listas fijas.
         Promise.all([
             cargarPreinscripcion(nivelPedido, usuario.username, escenarioDesde(escenario)),

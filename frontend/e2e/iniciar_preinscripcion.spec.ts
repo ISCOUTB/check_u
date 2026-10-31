@@ -372,18 +372,27 @@ test.describe("iniciar preinscripción", () => {
 
     test("nivel inválido redirige a /estudiante/bienvenida", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await page.route(`${API}/solicitudes/estado`, (ruta) =>
+            ruta.fulfill({ json: { ok: true, estado: "SIN_SOLICITUD", destino: "/estudiante/bienvenida" } }),
+        );
         await page.goto(`${RUTA}?nivel=DOCTORADO`);
         await expect(page).toHaveURL("/estudiante/bienvenida");
     });
 
     test("sin nivel redirige a /estudiante/bienvenida", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await page.route(`${API}/solicitudes/estado`, (ruta) =>
+            ruta.fulfill({ json: { ok: true, estado: "SIN_SOLICITUD", destino: "/estudiante/bienvenida" } }),
+        );
         await page.goto(RUTA);
         await expect(page).toHaveURL("/estudiante/bienvenida");
     });
 
     test("nivel que no coincide con el del usuario redirige a /estudiante/bienvenida", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await page.route(`${API}/solicitudes/estado`, (ruta) =>
+            ruta.fulfill({ json: { ok: true, estado: "SIN_SOLICITUD", destino: "/estudiante/bienvenida" } }),
+        );
         // La ruta registrada después tiene prioridad: este usuario es de posgrado.
         await page.route(`${API}/auth/me`, (ruta) =>
             ruta.fulfill({ status: 200, json: { user: { ...USUARIOS.estudiante, nivel: "POSGRADO" } } }),

@@ -12,9 +12,20 @@
 # La base de datos se respalda y reconstruye en cada ejecucion.
 # El motor OCR se crea si no existe y se inicia si esta detenido.
 # Antes de continuar, verifica que el OCR responda en /salud.
+# Uso: .\levantar.ps1             (entorno completo)
+#      .\levantar.ps1 --only-db   (solo reconstruir la base de datos)
 # ============================================================
 
 $ErrorActionPreference = 'Stop'
+
+# El script acepta únicamente el indicador --only-db.
+$argumentosNoReconocidos = @($args | Where-Object { $_ -ne '--only-db' })
+
+if ($argumentosNoReconocidos.Count -gt 0) {
+    throw "Parametro(s) no reconocido(s): $($argumentosNoReconocidos -join ', '). Uso: .\levantar.ps1 [--only-db]"
+}
+
+$soloBaseDatos = $args -contains '--only-db'
 
 $raiz = $PSScriptRoot
 
@@ -131,7 +142,12 @@ function Test-MotorOCR {
 }
 
 try {
-    Write-Host "`n===== CHECKU: RECONSTRUIR BASE LOCAL =====" -ForegroundColor Cyan
+    if ($soloBaseDatos) {
+        Write-Host "`n===== CHECKU: RECONSTRUIR SOLO BASE DE DATOS =====" -ForegroundColor Cyan
+    }
+    else {
+        Write-Host "`n===== CHECKU: RECONSTRUIR ENTORNO LOCAL =====" -ForegroundColor Cyan
+    }
 
     # --------------------------------------------------------
     # 0. Validar archivos y disponibilidad de Docker.
@@ -149,57 +165,65 @@ try {
         throw "No se encontro $userbase"
     }
 
-    if (-not (Test-Path (Join-Path $raiz 'backend\package.json'))) {
-        throw 'No se encontro backend\package.json'
-    }
+    if (-not $soloBaseDatos) {
+        if (-not (Test-Path (Join-Path $raiz 'backend\package.json'))) {
+            throw 'No se encontro backend\package.json'
+        }
 
-    if (-not (Test-Path (Join-Path $raiz 'frontend\package.json'))) {
-        throw 'No se encontro frontend\package.json'
+        if (-not (Test-Path (Join-Path $raiz 'frontend\package.json'))) {
+            throw 'No se encontro frontend\package.json'
+        }
     }
 
     Invoke-Docker -Argumentos @('info')
 
-    # --------------------------------------------------------
-    # 1. Crear/iniciar el OCR y comprobarlo.
-    # --------------------------------------------------------
+    if (-not $soloBaseDatos) {
+        # --------------------------------------------------------
+        # 1. Crear/iniciar el OCR y comprobarlo.
+        # --------------------------------------------------------
 
-    Write-Host "`n[1/7] Preparando motor OCR..." -ForegroundColor Yellow
+        Write-Host "`n[1/7] Preparando motor OCR..." -ForegroundColor Yellow
 
-    # Compose crea el contenedor si no existe y lo inicia si esta detenido.
-    # --build construye la imagen si hace falta.
-    Invoke-Docker -Argumentos @(
-        'compose', '-f', $compose, 'up', '-d', '--build', 'ocr'
-    )
+        # Compose crea el contenedor si no existe y lo inicia si esta detenido.
+        # --build construye la imagen si hace falta.
+        Invoke-Docker -Argumentos @(
+            'compose', '-f', $compose, 'up', '-d', '--build', 'ocr'
+        )
 
-    # Esperar a que Compose reporte el servicio OCR como ejecutandose.
-    # Se usa "compose ps" para evitar ejecutar "docker inspect" sobre
-    # un contenedor inexistente, lo que puede detener PowerShell.
-    $ocrIniciado = $false
+        # Esperar a que Compose reporte el servicio OCR como ejecutandose.
+        # Se usa "compose ps" para evitar ejecutar "docker inspect" sobre
+        # un contenedor inexistente, lo que puede detener PowerShell.
+        $ocrIniciado = $false
 
-    for ($i = 0; $i -lt 30; $i++) {
-        $idOCR = & docker compose -f $compose ps --status running -q ocr 2>$null
+        for ($i = 0; $i -lt 30; $i++) {
+            $idOCR = & docker compose -f $compose ps --status running -q ocr 2>$null
 
-        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($idOCR -join '').Trim())) {
-            $ocrIniciado = $true
-            break
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($idOCR -join '').Trim())) {
+                $ocrIniciado = $true
+                break
+            }
+
+            Start-Sleep -Seconds 2
         }
 
-        Start-Sleep -Seconds 2
+        if (-not $ocrIniciado) {
+            Write-Host "`nContenedores del proyecto:" -ForegroundColor Yellow
+            & docker compose -f $compose ps -a
+            throw "El servicio OCR no inicio. Revisa los logs con: docker compose -f `"$compose`" logs --tail 100 ocr"
+        }
+
+        Write-Host "Contenedor OCR ejecutandose: $contenedorOCR" -ForegroundColor Green
+
+        # El contenedor puede estar activo aunque Flask no este listo.
+        if (-not (Test-MotorOCR)) {
+            Write-Host "`nUltimos logs del OCR:" -ForegroundColor Yellow
+            & docker compose -f $compose logs --tail 100 ocr
+            throw 'El motor OCR no respondio correctamente en /salud. No se continuara con la inicializacion.'
+        }
+
     }
-
-    if (-not $ocrIniciado) {
-        Write-Host "`nContenedores del proyecto:" -ForegroundColor Yellow
-        & docker compose -f $compose ps -a
-        throw "El servicio OCR no inicio. Revisa los logs con: docker compose -f `"$compose`" logs --tail 100 ocr"
-    }
-
-    Write-Host "Contenedor OCR ejecutandose: $contenedorOCR" -ForegroundColor Green
-
-    # El contenedor puede estar activo aunque Flask no este listo.
-    if (-not (Test-MotorOCR)) {
-        Write-Host "`nUltimos logs del OCR:" -ForegroundColor Yellow
-        & docker compose -f $compose logs --tail 100 ocr
-        throw 'El motor OCR no respondio correctamente en /salud. No se continuara con la inicializacion.'
+    else {
+        Write-Host "`n[OCR] Se omite la preparacion y verificacion del motor OCR (--only-db)." -ForegroundColor DarkYellow
     }
 
     # --------------------------------------------------------
@@ -347,65 +371,75 @@ try {
         '-c', 'SELECT 1;'
     )
 
-    # --------------------------------------------------------
-    # 7. Iniciar backend y frontend.
-    # --------------------------------------------------------
+    if ($soloBaseDatos) {
+        Write-Host "`n===== BASE DE DATOS RECONSTRUIDA =====" -ForegroundColor Green
+        Write-Host "Base de datos: $baseDatos"
+        Write-Host "SQL fuente: $schema"
+        Write-Host "Usuarios base: $userbase"
+        Write-Host "Respaldos: $carpetaRespaldos"
+        Write-Host 'No se iniciaron ni modificaron los servicios OCR, backend o frontend.'
+    }
+    else {
+        # --------------------------------------------------------
+        # 7. Iniciar backend y frontend.
+        # --------------------------------------------------------
 
-    Write-Host "`n[7/7] Iniciando aplicaciones..." -ForegroundColor Yellow
+        Write-Host "`n[7/7] Iniciando aplicaciones..." -ForegroundColor Yellow
 
-    $backend = Join-Path $raiz 'backend'
-    $frontend = Join-Path $raiz 'frontend'
+        $backend = Join-Path $raiz 'backend'
+        $frontend = Join-Path $raiz 'frontend'
 
-    if (-not (Test-Path (Join-Path $backend 'node_modules'))) {
-        Write-Host 'Instalando dependencias del backend...' -ForegroundColor Yellow
-        Push-Location $backend
-        try {
-            & npm install
-            if ($LASTEXITCODE -ne 0) {
-                throw 'No se pudieron instalar las dependencias del backend.'
+        if (-not (Test-Path (Join-Path $backend 'node_modules'))) {
+            Write-Host 'Instalando dependencias del backend...' -ForegroundColor Yellow
+            Push-Location $backend
+            try {
+                & npm install
+                if ($LASTEXITCODE -ne 0) {
+                    throw 'No se pudieron instalar las dependencias del backend.'
+                }
+            }
+            finally {
+                Pop-Location
             }
         }
-        finally {
-            Pop-Location
-        }
-    }
 
-    if (-not (Test-Path (Join-Path $frontend 'node_modules'))) {
-        Write-Host 'Instalando dependencias del frontend...' -ForegroundColor Yellow
-        Push-Location $frontend
-        try {
-            & npm install
-            if ($LASTEXITCODE -ne 0) {
-                throw 'No se pudieron instalar las dependencias del frontend.'
+        if (-not (Test-Path (Join-Path $frontend 'node_modules'))) {
+            Write-Host 'Instalando dependencias del frontend...' -ForegroundColor Yellow
+            Push-Location $frontend
+            try {
+                & npm install
+                if ($LASTEXITCODE -ne 0) {
+                    throw 'No se pudieron instalar las dependencias del frontend.'
+                }
+            }
+            finally {
+                Pop-Location
             }
         }
-        finally {
-            Pop-Location
-        }
+
+        Start-Process powershell.exe -ArgumentList @(
+            '-NoExit', '-Command',
+            "Set-Location '$backend'; npm run start:dev"
+        )
+
+        Start-Process powershell.exe -ArgumentList @(
+            '-NoExit', '-Command',
+            "Set-Location '$frontend'; npm run dev -- -p 3001"
+        )
+
+        # --------------------------------------------------------
+        # Final.
+        # --------------------------------------------------------
+
+        Write-Host "`n===== CHECKU LISTO =====" -ForegroundColor Green
+        Write-Host 'Backend:  http://localhost:3000/api/health'
+        Write-Host 'Frontend: http://localhost:3001'
+        Write-Host 'OCR:      http://localhost:5001'
+        Write-Host 'Salud OCR: http://localhost:5001/salud'
+        Write-Host "SQL fuente: $schema"
+        Write-Host "Usuarios base: $userbase"
+        Write-Host "Respaldo: $carpetaRespaldos"
     }
-
-    Start-Process powershell.exe -ArgumentList @(
-        '-NoExit', '-Command',
-        "Set-Location '$backend'; npm run start:dev"
-    )
-
-    Start-Process powershell.exe -ArgumentList @(
-        '-NoExit', '-Command',
-        "Set-Location '$frontend'; npm run dev -- -p 3001"
-    )
-
-    # --------------------------------------------------------
-    # Final.
-    # --------------------------------------------------------
-
-    Write-Host "`n===== CHECKU LISTO =====" -ForegroundColor Green
-    Write-Host 'Backend:  http://localhost:3000/api/health'
-    Write-Host 'Frontend: http://localhost:3001'
-    Write-Host 'OCR:      http://localhost:5001'
-    Write-Host 'Salud OCR: http://localhost:5001/salud'
-    Write-Host "SQL fuente: $schema"
-    Write-Host "Usuarios base: $userbase"
-    Write-Host "Respaldo: $carpetaRespaldos"
 }
 catch {
     Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red

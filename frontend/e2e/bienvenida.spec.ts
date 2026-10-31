@@ -57,6 +57,7 @@ test.describe("página de bienvenida para estudiante sin preinscripciones", () =
     });
 
     test("caso PREGRADO: muestra únicamente el bloque 1", async ({ page }) => {
+        await sesionComo(page, "estudiante");
         // Simular estudiante con nivel PREGRADO en /auth/me
         await page.route(`${API}/auth/me`, (ruta) =>
             ruta.fulfill({
@@ -75,6 +76,7 @@ test.describe("página de bienvenida para estudiante sin preinscripciones", () =
     });
 
     test("caso POSGRADO: muestra únicamente el bloque 2", async ({ page }) => {
+        await sesionComo(page, "estudiante");
         // Simular estudiante con nivel POSGRADO en /auth/me
         await page.route(`${API}/auth/me`, (ruta) =>
             ruta.fulfill({
