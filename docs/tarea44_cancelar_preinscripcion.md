@@ -10,7 +10,7 @@ El estudiante puede cancelar voluntariamente una preinscripción en estado `EN_P
 
 La operación no borra solicitudes, programas, entregas, documentos, rutas, validaciones ni observaciones. Se crea un único registro en `cancelaciones_preinscripcion`, con fecha, propietario, estado anterior y una instantánea del perfil del estudiante al cancelar. Esta instantánea evita que cambiar el perfil en otro periodo altere la consulta de la preinscripción cancelada. Los documentos y datos específicos ya están asociados a cada solicitud y conservan sus versiones.
 
-La cancelada deja de ser activa, no admite reenvíos ni decisiones que la reactiven, no recibe nuevos recordatorios de plazo y sale del tablero operativo de la funcionaria. Se conserva en el historial del estudiante, con acceso al detalle y a los resultados. El acceso al PDF original mantiene la política de disponibilidad y conservación de la tarea 36: cancelar no lo elimina ni amplía indefinidamente su plazo.
+La cancelada deja de ser activa, no admite reenvíos ni decisiones que la reactiven, no recibe nuevos recordatorios de plazo y sale del tablero operativo de la funcionaria. Se conserva en la base de datos, con consulta del detalle y de los resultados por ID. La vista de historial corresponde a #106. El acceso al PDF original mantiene la política de disponibilidad y conservación de la tarea 36: cancelar no lo elimina ni amplía indefinidamente su plazo.
 
 No hay dependencias ni variables de entorno nuevas. No se modifica el motor OCR.
 
@@ -32,9 +32,9 @@ La cancelación se permite por estado; esta tarea no añade una prohibición de 
 
 ## Integración con tarea 45
 
-Se incorpora un componente reutilizable `HistorialPreinscripciones` en home, bienvenida y detalle. Muestra solicitudes propias desde la base de datos, estado, nivel, fecha real del envío, periodo y enlace al detalle. Cuando el historial está vacío no añade un panel sin registros. Un fallo del historial no bloquea el detalle ni la cancelación.
+La vista del historial corresponde a la tarea #106. Por revisión de la PR #110, esta entrega no muestra el bloque «Historial de preinscripciones» en home, bienvenida ni detalle. Se retiró el componente y sus estilos; estas pantallas no consultan el listado para construir ese bloque.
 
-Este es el soporte histórico necesario para que la cancelación no desaparezca al dejar de existir una solicitud activa. La tarea 45 puede reutilizar el componente y estos endpoints para su vista definitiva; esta entrega no cierra la issue #106.
+Se conservan los datos, la auditoría, los endpoints de consulta propios y el detalle por ID. Cancelar sigue mostrando la confirmación en el detalle y permite recargar esa URL. La tarea #106 podrá presentar el listado en su vista correspondiente.
 
 Se conservan los nombres internos existentes: `NO_VALIDA` se presenta como Inválida y `CERRADA` como Anulada. `CANCELADA` es un estado distinto, exclusivo de la cancelación voluntaria. La navegación usa el contrato de la tarea 34 (`SIN_SOLICITUD`, `BORRADOR`, `ENVIADA`); una cancelada o anulada no cuenta como solicitud activa.
 
@@ -160,9 +160,9 @@ Prueba manual:
 1. Iniciar como funcionaria local (`rmarriaga@utb.edu.co`, contraseña `12345`). Preparar un periodo abierto, por ejemplo inicio hoy y cierre dentro de 10 días: el plazo documental informado será dentro de 3 días.
 2. Como estudiante local (`lizapata@utb.edu.co`, contraseña `12345`), enviar una preinscripción de prueba. El botón de cancelación aparece cuando el estado persistido sea EN_PROCESO, no mientras sea borrador.
 3. Pulsar Cancelar preinscripción. Comprobar el texto, nombre del periodo, fecha de cierre menos siete y días restantes. Pulsar Conservar preinscripción o Escape: no debe cambiar el estado.
-4. Volver a abrir y confirmar. Debe aparecer Preinscripción cancelada, desaparecer el botón de cancelación y bloquearse las correcciones. El historial debe indicar CANCELADA e histórica.
+4. Volver a abrir y confirmar. Debe aparecer Preinscripción cancelada, desaparecer el botón de cancelación y bloquearse las correcciones. No debe aparecer un bloque de historial redundante.
 5. Recargar. Abrir el análisis de un documento y comprobar que sus datos/observaciones se conservan. El original puede verse mientras siga disponible según su plazo habitual.
-6. Entrar al home: si no queda solicitud activa, se abre bienvenida, donde el historial permite consultar la cancelada. Esta consulta no la reactiva.
+6. Entrar al home: si no queda solicitud activa, se abre bienvenida sin el bloque de historial. El detalle cancelado sigue siendo consultable mediante su URL con `?solicitud=ID`, sin reactivarlo.
 7. Si no hay otro periodo elegible, no debe poder guardarse una nueva preinscripción en el mismo periodo cancelado. Preparar otro periodo elegible y comprobar que el nuevo borrador obtiene otro ID/periodo; el detalle cancelado conserva sus datos anteriores.
 
 Consultar la auditoría local, sin imprimir el perfil completo:
@@ -185,7 +185,7 @@ npx.cmd playwright test e2e/cancelacion_preinscripcion.spec.ts e2e/bienvenida.sp
 npm.cmd run build -- --webpack
 ```
 
-Existe una prueba integrada opcional: arranca API, PostgreSQL embebido y frontend, cancela desde el navegador, verifica la auditoría y los documentos, recarga, consulta el historial y crea un borrador en otro periodo. Solo el motor OCR está simulado; no intercepta las respuestas de la API.
+Existe una prueba integrada opcional: arranca API, PostgreSQL embebido y frontend, cancela desde el navegador, verifica la auditoría y los documentos, recarga, consulta el detalle por ID y crea un borrador en otro periodo. Solo el motor OCR está simulado; no intercepta las respuestas de la API.
 
 Para ejecutarla, detener antes los procesos locales de backend/frontend. Usa puertos 3000 y 3005 y necesita la carpeta `.next` libre. Playwright debe tener Chromium instalado (`npx.cmd playwright install chromium` desde frontend si falta).
 
@@ -203,6 +203,8 @@ cd C:\check_u
 ```
 
 ## Verificación de esta entrega
+
+Las cifras siguientes registran la entrega inicial. La verificación del retiro del bloque de historial se detalla en `docs/tarea44_retirar_historial.md`.
 
 - 28 pruebas HTTP/SQL específicas de cancelación aprobadas, con permisos, estados, propiedad, rollback, conservación, reintentos, fechas de Bogotá, historial, otro periodo y perfil histórico.
 - Regresión HTTP del backend: 130 pruebas aprobadas en seis archivos; tres pruebas opcionales omitidas en esa corrida.
@@ -254,8 +256,6 @@ Conservar los commits individuales al integrar, conforme al acuerdo del equipo.
 - `db/init/01-schema.sql`
 - `db/migrations/008-cancelacion-preinscripcion.sql`
 - `docs/tarea44_cancelar_preinscripcion.md`
-- `frontend/app/estudiante/HistorialPreinscripciones.module.css`
-- `frontend/app/estudiante/HistorialPreinscripciones.tsx`
 - `frontend/app/estudiante/bienvenida/page.tsx`
 - `frontend/app/estudiante/home/page.tsx`
 - `frontend/app/estudiante/preinscripcion/CancelarPreinscripcion.tsx`
