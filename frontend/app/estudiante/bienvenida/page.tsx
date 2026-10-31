@@ -13,6 +13,7 @@ import {
   type NivelAcademico,
   type RequisitoDocumento,
 } from '../documentos-requeridos';
+import HistorialPreinscripciones from '../HistorialPreinscripciones';
 import styles from './bienvenida.module.css';
 
 interface BloqueNivelProps {
@@ -160,6 +161,7 @@ export default function Bienvenida() {
             />
           )}
         </div>
+        <HistorialPreinscripciones />
       </main>
     </>
   );
