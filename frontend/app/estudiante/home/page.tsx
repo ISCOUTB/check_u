@@ -13,7 +13,6 @@ import StatusBadge from '@/app/components/ui/StatusBadge';
 import { useEstadoNavegacion } from '@/app/lib/useEstadoNavegacion';
 import { useSesion } from '@/app/lib/useSesion';
 
-import HistorialPreinscripciones from '../HistorialPreinscripciones';
 import styles from './home.module.css';
 import NotificacionesPanel from './NotificacionesPanel';
 
@@ -336,7 +335,6 @@ export default function Home() {
             <NotificacionesPanel />
           </div>
         </div>
-        <HistorialPreinscripciones />
       </main>
     </>
   );
