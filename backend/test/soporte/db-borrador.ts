@@ -27,6 +27,16 @@ export async function crearDbBorrador() {
       'utf8',
     ),
   );
+  // Tarea 42: la migración debe poder repetirse sobre el esquema ya actualizado.
+  await db.exec(
+    await readFile(
+      new URL(
+        '../../../db/migrations/008-estado-solicitud.sql',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  );
   // pg entrega DATE como Date según la configuración; para la API usamos fecha calendario.
   const query = (sql: string, params?: unknown[]) => db.query(sql, params);
   const servicio = {

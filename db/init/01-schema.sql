@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS solicitud_grado (
         REFERENCES usuarios(id_usuario) ON DELETE RESTRICT,
     CONSTRAINT chk_tipo_solicitud CHECK (tipo_solicitud IN ('PREGRADO', 'POSGRADO')),
     CONSTRAINT chk_estado_solicitud CHECK (
-        estado IN ('BORRADOR', 'EN_PROCESO', 'POR_REVISAR', 'VALIDA', 'NO_VALIDA', 'INCONSISTENTE', 'CERRADA')
+        estado IN ('BORRADOR', 'EN_PROCESO', 'POR_REVISAR', 'VALIDA', 'NO_VALIDA', 'INCONSISTENTE', 'ACEPTADA', 'CERRADA')
     )
 );
 
@@ -218,7 +218,7 @@ CREATE TABLE IF NOT EXISTS validaciones (
     CONSTRAINT fk_validacion_documento FOREIGN KEY (id_documento)
         REFERENCES documentos(id_documento) ON DELETE RESTRICT,
     CONSTRAINT chk_validacion_tipo CHECK (
-        tipo_validacion IN ('OCR', 'INTEGRIDAD', 'CONSISTENCIA', 'REQUISITOS', 'FIRMA_CRIPTOGRAFICA')
+        tipo_validacion IN ('OCR', 'INTEGRIDAD', 'CONSISTENCIA', 'REQUISITOS', 'FIRMA_CRIPTOGRAFICA', 'MANUAL')
     ),
     CONSTRAINT chk_validacion_resultado CHECK (
         resultado IN ('PENDIENTE', 'VALIDO', 'NO_VALIDO', 'INCONSISTENTE')
@@ -259,7 +259,7 @@ CREATE TABLE IF NOT EXISTS revisiones (
     CONSTRAINT fk_revision_funcionario FOREIGN KEY (id_funcionario)
         REFERENCES usuarios(id_usuario) ON DELETE RESTRICT,
     CONSTRAINT chk_revision_resultado CHECK (
-        resultado IN ('APROBADA', 'CORRECCION_REQUERIDA', 'RECHAZADA', 'POR_REVISAR')
+        resultado IN ('APROBADA', 'CORRECCION_REQUERIDA', 'RECHAZADA', 'POR_REVISAR', 'DOCUMENTO_RESUELTO')
     )
 );
 
@@ -706,7 +706,7 @@ BEGIN
 END $$;
 
 CREATE OR REPLACE FUNCTION notificar_revision() RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE estudiante INTEGER; lista TEXT; total INTEGER; clase TEXT; encabezado TEXT; mensaje TEXT;
+DECLARE estudiante INTEGER; lista TEXT; total INTEGER; clase TEXT; encabezado TEXT; mensaje TEXT; estado_doc TEXT;
 BEGIN
     IF NOT EXISTS(SELECT 1 FROM usuarios WHERE id_usuario=NEW.id_funcionario AND rol='FUNCIONARIO') THEN
         RAISE EXCEPTION 'La revisión requiere un funcionario';
@@ -723,6 +723,17 @@ BEGIN
         IF total<>cardinality(NEW.documentos_ids) THEN RAISE EXCEPTION 'Documentos de revisión inválidos'; END IF;
         clase:='warning'; encabezado:='Documentos por volver a subir';
         mensaje:='La funcionaria confirmó que necesitas volver a subir estos documentos: '||lista||'.';
+    ELSIF NEW.resultado='DOCUMENTO_RESUELTO' THEN
+        IF COALESCE(cardinality(NEW.documentos_ids),0)<>1 THEN RAISE EXCEPTION 'La resolución debe indicar un documento'; END IF;
+        SELECT d.estado, nombre_documento_notificacion(d.tipo_documento,d.orden) INTO estado_doc,lista
+        FROM documentos d WHERE d.id_solicitud=NEW.id_solicitud AND d.id_documento=NEW.documentos_ids[1] AND d.id_entrega IS NOT NULL;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Documentos de revisión inválidos'; END IF;
+        IF estado_doc='VALIDO' THEN
+            clase:='success'; encabezado:='Documento validado'; mensaje:='La funcionaria validó: '||lista||'.';
+        ELSE
+            clase:='error'; encabezado:='Documento no válido';
+            mensaje:='La funcionaria marcó como no válido: '||lista||'.'||COALESCE(' '||NULLIF(btrim(NEW.comentario),''),'');
+        END IF;
     ELSIF NEW.resultado='POR_REVISAR' AND COALESCE(btrim(NEW.comentario),'')<>'' THEN
         clase:='info'; encabezado:='Nuevo comentario';
         mensaje:='La funcionaria te dejó un comentario: '||left(NEW.comentario,15)||CASE WHEN char_length(NEW.comentario)>15 THEN '…' ELSE '' END;

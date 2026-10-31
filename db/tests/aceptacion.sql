@@ -29,7 +29,7 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO tablas FROM information_schema.tables
     WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
-    IF tablas <> 15 THEN RAISE EXCEPTION 'Se esperaban 15 tablas, hay %', tablas; END IF;
+    IF tablas <> 16 THEN RAISE EXCEPTION 'Se esperaban 16 tablas, hay %', tablas; END IF;
 
     SELECT id_usuario INTO STRICT estudiante FROM usuarios
     WHERE correo = 'lizapata@utb.edu.co' AND rol = 'ESTUDIANTE'
@@ -150,6 +150,13 @@ BEGIN
     PERFORM pg_temp.debe_rechazar(format('UPDATE informacion_pregrado SET es_empleado_utb=NULL, tipo_contrato=''Temporal'' WHERE id_solicitud=%s', solicitud_p), '23514');
     UPDATE informacion_pregrado SET es_empleado_utb=FALSE, tipo_contrato=NULL WHERE id_solicitud=solicitud_p;
 
+    -- Tarea 42: ACEPTADA es un estado de la solicitud; un estado desconocido se rechaza.
+    SELECT estado INTO prueba FROM solicitud_grado WHERE id_solicitud = solicitud_p;
+    UPDATE solicitud_grado SET estado = 'ACEPTADA' WHERE id_solicitud = solicitud_p;
+    UPDATE solicitud_grado SET estado = prueba WHERE id_solicitud = solicitud_p;
+    PERFORM pg_temp.debe_rechazar(format('UPDATE solicitud_grado SET estado=''APROBADA'' WHERE id_solicitud=%s', solicitud_p), '23514');
+    PERFORM pg_temp.debe_rechazar(format('INSERT INTO revisiones(id_solicitud,id_funcionario,resultado) SELECT %s,id_usuario,''DESCONOCIDO'' FROM usuarios WHERE rol=''FUNCIONARIO''', solicitud_p), '23514');
+
     PERFORM pg_temp.debe_rechazar(format('INSERT INTO solicitud_programa(id_solicitud,orden,programa,modalidad) VALUES (%s,3,''Tercero'',''VIRTUAL'')', solicitud_p), '23514');
     PERFORM pg_temp.debe_rechazar(format('INSERT INTO solicitud_programa(id_solicitud,orden,programa,modalidad) VALUES (%s,1,''Repetido'',''VIRTUAL'')', solicitud_p), '23505');
     PERFORM pg_temp.debe_rechazar(format('UPDATE solicitud_programa SET modalidad=''HIBRIDA'' WHERE id_solicitud=%s', solicitud_p), '23514');
@@ -177,7 +184,7 @@ BEGIN
     WHERE id_usuario = estudiante;
     SELECT fecha_actualizacion INTO fecha_anterior FROM perfil_estudiante WHERE id_usuario=estudiante;
     IF fecha_anterior <> CURRENT_TIMESTAMP THEN RAISE EXCEPTION 'No funciona trigger de auditoria'; END IF;
-    RAISE NOTICE 'ACEPTACION CORRECTA: 15 tablas, solo Lisandro y Rosa, restricciones y auditoria verificadas';
+    RAISE NOTICE 'ACEPTACION CORRECTA: 16 tablas, solo Lisandro y Rosa, restricciones y auditoria verificadas';
 END;
 $$;
 ROLLBACK;
