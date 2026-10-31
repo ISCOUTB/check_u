@@ -1,46 +1,50 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef, useId } from "react";
-import { useRouter } from "next/navigation";
-import ProgresoDocumental from "@/app/components/ui/ProgresoDocumental";
-import type { ProgresoEnvio } from "../envio-documental";
-import { etiquetaPropiedad, valorVisible } from "./etiquetas";
-import { validarPdf, tieneFirmaPdf } from "../iniciar_preinscripcion/validacion";
-import { tamanoMaximoPdfBytes } from "../iniciar_preinscripcion/api";
-import Link from "next/link";
+import { useEffect, useState, useRef, useId } from 'react';
+import { useRouter } from 'next/navigation';
+import ProgresoDocumental from '@/app/components/ui/ProgresoDocumental';
+import type { ProgresoEnvio } from '../envio-documental';
+import { etiquetaPropiedad, valorVisible } from './etiquetas';
+import {
+  validarPdf,
+  tieneFirmaPdf,
+} from '../iniciar_preinscripcion/validacion';
+import { tamanoMaximoPdfBytes } from '../iniciar_preinscripcion/api';
+import Link from 'next/link';
 
-import Navbar from "@/app/components/navbar/Navbar";
+import Navbar from '@/app/components/navbar/Navbar';
 import DocumentAnalysis, {
   type DocumentAnalysisData,
-} from "@/app/components/document_analysis/DocumentAnalysis";
-import PeriodoInscripcion from "../iniciar_preinscripcion/PeriodoInscripcion";
-import styles from "./preinscripcion.module.css";
+} from '@/app/components/document_analysis/DocumentAnalysis';
+import PeriodoInscripcion from '../iniciar_preinscripcion/PeriodoInscripcion';
+import styles from './preinscripcion.module.css';
 
-import { obtenerSolicitudDetalle, enviarDocumentosReenvio, ErrorConsultaSolicitud } from "./api";
+import {
+  obtenerSolicitudDetalle,
+  enviarDocumentosReenvio,
+  ErrorConsultaSolicitud,
+} from './api';
 import type {
   SolicitudDetalle,
   EstadoDocumento,
   EstadoGeneral,
   DocumentoSolicitud,
-} from "./types";
+} from './types';
 
-import {
-  InformacionEstudiante,
-} from "@/app/components/informacion_estudiante";
-
+import { InformacionEstudiante } from '@/app/components/informacion_estudiante';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tipos de sesión
+// Tipos de sesión importantes
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface Usuario {
   id: number;
   username: string;
   name: string;
-  role: "estudiante" | "funcionario";
+  role: 'estudiante' | 'funcionario';
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -48,10 +52,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 function etiquetaEstado(estado: EstadoDocumento): string {
   const mapa: Record<EstadoDocumento, string> = {
-    valido: "Válido",
-    no_valido: "No válido",
-    inconsistente: "Inconsistente",
-    por_revisar: "Por revisar",
+    valido: 'Válido',
+    no_valido: 'No válido',
+    inconsistente: 'Inconsistente',
+    por_revisar: 'Por revisar',
   };
   return mapa[estado] ?? estado;
 }
@@ -63,7 +67,7 @@ function claseChip(estado: EstadoDocumento): string {
     inconsistente: styles.chipInconsistente,
     por_revisar: styles.chipPorRevisar,
   };
-  return mapa[estado] ?? "";
+  return mapa[estado] ?? '';
 }
 
 function derivarEstadoGeneral(documentos: DocumentoSolicitud[]): {
@@ -74,61 +78,87 @@ function derivarEstadoGeneral(documentos: DocumentoSolicitud[]): {
 } {
   const todos = documentos.flatMap((d) => d.resultados);
   const tieneProblemaGrave = todos.some(
-    (r) => r.estado === "no_valido" || r.estado === "inconsistente"
+    (r) => r.estado === 'no_valido' || r.estado === 'inconsistente',
   );
-  const tienePorRevisar = todos.some((r) => r.estado === "por_revisar");
+  const tienePorRevisar = todos.some((r) => r.estado === 'por_revisar');
   const cantidadProblemas = documentos.filter((d) =>
-    d.resultados.some((r) => r.estado !== "valido")
+    d.resultados.some((r) => r.estado !== 'valido'),
   ).length;
 
   if (tieneProblemaGrave) {
     return {
-      tipo: "requiere_correccion",
-      titulo: "Se requiere corregir documentos",
-      frase: `${cantidadProblemas} documento${cantidadProblemas !== 1 ? "s" : ""} requieren atención antes de continuar con el proceso.`,
+      tipo: 'requiere_correccion',
+      titulo: 'Se requiere corregir documentos',
+      frase: `${cantidadProblemas} documento${cantidadProblemas !== 1 ? 's' : ''} requieren atención antes de continuar con el proceso.`,
       cantidadProblemas,
     };
   }
   if (tienePorRevisar) {
     return {
-      tipo: "por_revisar",
-      titulo: "Preinscripción por revisar",
-      frase: `${cantidadProblemas} documento${cantidadProblemas !== 1 ? "s" : ""} requieren atención antes de continuar con el proceso.`,
+      tipo: 'por_revisar',
+      titulo: 'Preinscripción por revisar',
+      frase: `${cantidadProblemas} documento${cantidadProblemas !== 1 ? 's' : ''} requieren atención antes de continuar con el proceso.`,
       cantidadProblemas,
     };
   }
   return {
-    tipo: "lista_para_continuar",
-    titulo: "Preinscripción lista para continuar",
-    frase: "Todos los documentos fueron validados correctamente.",
+    tipo: 'lista_para_continuar',
+    titulo: 'Preinscripción lista para continuar',
+    frase: 'Todos los documentos fueron validados correctamente.',
     cantidadProblemas: 0,
   };
 }
 
 function iniciales(nombre: string): string {
   return nombre
-    .split(" ")
+    .split(' ')
     .slice(0, 2)
-    .map((p) => p[0] ?? "")
-    .join("")
+    .map((p) => p[0] ?? '')
+    .join('')
     .toUpperCase();
 }
 
 /** El modal utiliza exclusivamente la evidencia persistida del motor. */
 function analisisPersistido(doc: DocumentoSolicitud): DocumentAnalysisData {
-  const estados: Record<EstadoDocumento, DocumentAnalysisData["status"]> = {
-    valido: "VALIDO", no_valido: "NO_VALIDO", inconsistente: "INCONSISTENTE", por_revisar: "POR_REVISAR",
+  const estados: Record<EstadoDocumento, DocumentAnalysisData['status']> = {
+    valido: 'VALIDO',
+    no_valido: 'NO_VALIDO',
+    inconsistente: 'INCONSISTENTE',
+    por_revisar: 'POR_REVISAR',
   };
   return {
-    documentType: doc.nombre, fileName: doc.fileName ?? doc.nombre,
-    status: estados[doc.resultados.find(r => r.estado === 'no_valido' || r.estado === 'inconsistente')?.estado ?? doc.resultados[0]?.estado ?? "por_revisar"],
-    privateDocumentUrl: doc.archivoDisponible && doc.id ? `${API_URL}/estudiante/documentos/${encodeURIComponent(doc.id)}/original` : undefined,
-    extractedFields: Object.entries(doc.analisis?.extracted_data ?? {}).map(([campo, dato], indice) => ({
-      label: etiquetaPropiedad(campo, indice), value: valorVisible(dato.value), source: "Análisis documental registrado",
-    })),
+    documentType: doc.nombre,
+    fileName: doc.fileName ?? doc.nombre,
+    status:
+      estados[
+        doc.resultados.find(
+          (r) => r.estado === 'no_valido' || r.estado === 'inconsistente',
+        )?.estado ??
+          doc.resultados[0]?.estado ??
+          'por_revisar'
+      ],
+    privateDocumentUrl:
+      doc.archivoDisponible && doc.id
+        ? `${API_URL}/estudiante/documentos/${encodeURIComponent(doc.id)}/original`
+        : undefined,
+    extractedFields: Object.entries(doc.analisis?.extracted_data ?? {}).map(
+      ([campo, dato], indice) => ({
+        label: etiquetaPropiedad(campo, indice),
+        value: valorVisible(dato.value),
+        source: 'Análisis documental registrado',
+      }),
+    ),
     validations: [
-      ...(doc.analisis?.rules ?? []).map(r => ({ description: r.message || "Comprobación documental", result: r.result === "no_evaluable" ? null : r.result === "cumple", detail: undefined })),
-      ...(doc.analisis?.errors ?? []).map(error => ({ description: "Observación del análisis", result: false, detail: error })),
+      ...(doc.analisis?.rules ?? []).map((r) => ({
+        description: r.message || 'Comprobación documental',
+        result: r.result === 'no_evaluable' ? null : r.result === 'cumple',
+        detail: undefined,
+      })),
+      ...(doc.analisis?.errors ?? []).map((error) => ({
+        description: 'Observación del análisis',
+        result: false,
+        detail: error,
+      })),
     ],
   };
 }
@@ -150,7 +180,7 @@ function StatusBadge({ estado }: { estado: EstadoDocumento }) {
 // Página
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Pestana = "resumen" | "informacion" | "documentos";
+type Pestana = 'resumen' | 'informacion' | 'documentos';
 
 export default function PreinscripcionPage() {
   const router = useRouter();
@@ -162,17 +192,21 @@ export default function PreinscripcionPage() {
   const [intento, setIntento] = useState(0);
   const [solicitud, setSolicitud] = useState<SolicitudDetalle | null>(null);
   const [errorDatos, setErrorDatos] = useState<string | null>(null);
-  const [pestana, setPestana] = useState<Pestana>("documentos");
+  const [pestana, setPestana] = useState<Pestana>('documentos');
 
   // Análisis automático
   const [analysisOpen, setAnalysisOpen] = useState(false);
-  const [analysisData, setAnalysisData] = useState<DocumentAnalysisData | null>(null);
+  const [analysisData, setAnalysisData] = useState<DocumentAnalysisData | null>(
+    null,
+  );
 
   // Reenvío
   const [seleccionados, setSeleccionados] = useState<Record<string, File>>({});
   const envioRef = useRef(false);
   const claveCorreccion = useRef<string | null>(null);
-  const [progresoEnvio, setProgresoEnvio] = useState<ProgresoEnvio | null>(null);
+  const [progresoEnvio, setProgresoEnvio] = useState<ProgresoEnvio | null>(
+    null,
+  );
   const [enviando, setEnviando] = useState(false);
   const [mensajeEnvio, setMensajeEnvio] = useState<string | null>(null);
   const [docParaCargar, setDocParaCargar] = useState<string | null>(null);
@@ -192,38 +226,64 @@ export default function PreinscripcionPage() {
     async function cargar() {
       try {
         const response = await fetch(`${API_URL}/auth/me`, {
-          credentials: "include", cache: "no-store", signal: controlador.signal,
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controlador.signal,
         });
         if (!vigente) return;
         if (response.status === 401) {
           redirigiendo = true;
-          router.replace("/");
+          router.replace('/');
           return;
         }
-        if (!response.ok) throw new Error("No fue posible verificar la sesión.");
+        if (!response.ok)
+          throw new Error('No fue posible verificar la sesión.');
         const data = await response.json();
         const u: Usuario = data.user;
         if (!vigente) return;
-        if (!u || !["estudiante", "funcionario"].includes(u.role))
-          throw new Error("Respuesta de sesión inválida.");
-        if (u.role !== "estudiante") {
+        if (!u || !['estudiante', 'funcionario'].includes(u.role))
+          throw new Error('Respuesta de sesión inválida.');
+        if (u.role !== 'estudiante') {
           redirigiendo = true;
-          router.replace("/funcionario/dashboard");
+          router.replace('/funcionario/dashboard');
           return;
         }
         setUsuario(u);
+        const estadoRes = await fetch(`${API_URL}/solicitudes/estado`, {
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controlador.signal,
+        });
+        if (!vigente) return;
+        if (estadoRes.ok) {
+          const estadoNav = (await estadoRes.json()) as {
+            estado: string;
+            destino: string;
+          };
+          if (estadoNav.estado !== 'ENVIADA') {
+            redirigiendo = true;
+            router.replace(estadoNav.destino);
+            return;
+          }
+        }
+
         const detalle = await obtenerSolicitudDetalle(controlador.signal);
         if (vigente) setSolicitud(detalle);
       } catch (error) {
         if (!vigente) return;
-        if (error instanceof ErrorConsultaSolicitud && [401, 404].includes(error.status)) {
+        if (
+          error instanceof ErrorConsultaSolicitud &&
+          [401, 404].includes(error.status)
+        ) {
           redirigiendo = true;
-          router.replace(error.status === 401 ? "/" : "/estudiante/bienvenida");
+          router.replace(error.status === 401 ? '/' : '/estudiante/bienvenida');
           return;
         }
-        setErrorDatos(agotado
-          ? "La consulta tardó demasiado. Comprueba la conexión e intenta nuevamente."
-          : "No fue posible cargar la preinscripción. Intenta recargar la página.");
+        setErrorDatos(
+          agotado
+            ? 'La consulta tardó demasiado. Comprueba la conexión e intenta nuevamente.'
+            : 'No fue posible cargar la preinscripción. Intenta recargar la página.',
+        );
       } finally {
         clearTimeout(limite);
         if (vigente && !redirigiendo) setCargando(false);
@@ -240,8 +300,15 @@ export default function PreinscripcionPage() {
   if (cargando) {
     return (
       <>
-        {usuario && <Navbar tipoUsuario={usuario.role} nombreUsuario={usuario.name} />}
-        <main id="contenido" tabIndex={-1} className={styles.page} aria-busy="true">
+        {usuario && (
+          <Navbar tipoUsuario={usuario.role} nombreUsuario={usuario.name} />
+        )}
+        <main
+          id="contenido"
+          tabIndex={-1}
+          className={styles.page}
+          aria-busy="true"
+        >
           <header className={styles.header}>
             <h1>Detalle de mi preinscripción</h1>
             <p>Revisión documental de tu solicitud de grado.</p>
@@ -258,20 +325,28 @@ export default function PreinscripcionPage() {
   if (errorDatos || !solicitud || !usuario) {
     return (
       <>
-        {usuario && <Navbar tipoUsuario={usuario.role} nombreUsuario={usuario.name} />}
-        <main id="contenido" tabIndex={-1} className={styles.page} aria-busy="false">
+        {usuario && (
+          <Navbar tipoUsuario={usuario.role} nombreUsuario={usuario.name} />
+        )}
+        <main
+          id="contenido"
+          tabIndex={-1}
+          className={styles.page}
+          aria-busy="false"
+        >
           <h1>Detalle de mi preinscripción</h1>
           <p role="alert" className={styles.textoError}>
-            {errorDatos ?? "No fue posible cargar la preinscripción. Intenta recargar la página."}
+            {errorDatos ??
+              'No fue posible cargar la preinscripción. Intenta recargar la página.'}
           </p>
-          <div style={{ marginTop: "1rem" }}>
+          <div style={{ marginTop: '1rem' }}>
             <button
               type="button"
               className={styles.btnSecundario}
               onClick={() => {
                 setErrorDatos(null);
                 setCargando(true);
-                setIntento(v => v + 1);
+                setIntento((v) => v + 1);
               }}
             >
               Reintentar
@@ -283,15 +358,22 @@ export default function PreinscripcionPage() {
   }
 
   const { estudiante, documentos, politicaReenvios } = solicitud;
-  const estadoGeneral = solicitud.estadoAnalisis === "pendiente" || documentos.length === 0
-    ? { tipo: "por_revisar" as const, titulo: "Análisis documental pendiente", frase: "Todavía no hay resultados completos registrados para esta preinscripción.", cantidadProblemas: 0 }
-    : derivarEstadoGeneral(documentos);
+  const estadoGeneral =
+    solicitud.estadoAnalisis === 'pendiente' || documentos.length === 0
+      ? {
+          tipo: 'por_revisar' as const,
+          titulo: 'Análisis documental pendiente',
+          frase:
+            'Todavía no hay resultados completos registrados para esta preinscripción.',
+          cantidadProblemas: 0,
+        }
+      : derivarEstadoGeneral(documentos);
   const reenviosRestantes = politicaReenvios.limite - politicaReenvios.usados;
   const docsConProblema = documentos.filter((d) =>
-    d.resultados.some((r) => r.estado !== "valido")
+    d.resultados.some((r) => r.estado !== 'valido'),
   );
   const docsValidos = documentos.filter((d) =>
-    d.resultados.every((r) => r.estado === "valido")
+    d.resultados.every((r) => r.estado === 'valido'),
   );
   const seleccionadosList = Object.keys(seleccionados);
   const puedeEnviar =
@@ -316,14 +398,26 @@ export default function PreinscripcionPage() {
     const file = e.target.files?.[0];
     if (file && docParaCargar) {
       const error = validarPdf(file, tamanoMaximoPdfBytes());
-      if (error) { setMensajeEnvio(error); e.target.value = ''; return; }
-      try { if (!await tieneFirmaPdf(file)) { setMensajeEnvio('El archivo debe ser un PDF válido.'); e.target.value = ''; return; } }
-      catch { setMensajeEnvio('No fue posible leer el PDF seleccionado.'); return; }
+      if (error) {
+        setMensajeEnvio(error);
+        e.target.value = '';
+        return;
+      }
+      try {
+        if (!(await tieneFirmaPdf(file))) {
+          setMensajeEnvio('El archivo debe ser un PDF válido.');
+          e.target.value = '';
+          return;
+        }
+      } catch {
+        setMensajeEnvio('No fue posible leer el PDF seleccionado.');
+        return;
+      }
       claveCorreccion.current = null;
       setSeleccionados((prev) => ({ ...prev, [docParaCargar]: file }));
       setMensajeEnvio(null);
     }
-    e.target.value = "";
+    e.target.value = '';
     setDocParaCargar(null);
   }
 
@@ -346,19 +440,26 @@ export default function PreinscripcionPage() {
       const key = claveCorreccion.current;
       const res = await enviarDocumentosReenvio(
         solicitud.id,
-        seleccionadosList.map(id => ({ id, archivo: seleccionados[id] })),
+        seleccionadosList.map((id) => ({ id, archivo: seleccionados[id] })),
         key,
-        setProgresoEnvio
+        setProgresoEnvio,
       );
       setMensajeEnvio(res.mensaje);
       if (res.ok) {
         setSeleccionados({});
         claveCorreccion.current = null;
-        try { setSolicitud(await obtenerSolicitudDetalle()); }
-        catch { setMensajeEnvio('La corrección quedó registrada, pero no fue posible actualizar la vista. Recarga la página para consultar los resultados.'); }
+        try {
+          setSolicitud(await obtenerSolicitudDetalle());
+        } catch {
+          setMensajeEnvio(
+            'La corrección quedó registrada, pero no fue posible actualizar la vista. Recarga la página para consultar los resultados.',
+          );
+        }
       }
     } catch {
-      setMensajeEnvio("No fue posible enviar los documentos. Intenta de nuevo.");
+      setMensajeEnvio(
+        'No fue posible enviar los documentos. Intenta de nuevo.',
+      );
     } finally {
       envioRef.current = false;
       setEnviando(false);
@@ -373,7 +474,12 @@ export default function PreinscripcionPage() {
         nivel={estudiante.nivel}
       />
 
-      <main id="contenido" tabIndex={-1} className={styles.page} aria-busy="false">
+      <main
+        id="contenido"
+        tabIndex={-1}
+        className={styles.page}
+        aria-busy="false"
+      >
         {/* Header */}
         <header className={styles.header}>
           <nav className={styles.breadcrumb} aria-label="Miga de pan">
@@ -397,7 +503,10 @@ export default function PreinscripcionPage() {
         <PeriodoInscripcion datos={solicitud.periodos ?? null} />
 
         {/* Tarjeta estudiante */}
-        <section className={styles.studentCard} aria-label="Datos del estudiante">
+        <section
+          className={styles.studentCard}
+          aria-label="Datos del estudiante"
+        >
           <div className={styles.avatar} aria-hidden="true">
             {iniciales(estudiante.nombre)}
           </div>
@@ -408,7 +517,7 @@ export default function PreinscripcionPage() {
             </div>
             <p className={styles.programa}>{estudiante.programa}</p>
             <p className={styles.meta}>
-              {estudiante.tipoDocumento}: {estudiante.numeroDocumento} ·{" "}
+              {estudiante.tipoDocumento}: {estudiante.numeroDocumento} ·{' '}
               {estudiante.correo} · {estudiante.telefono}
             </p>
           </div>
@@ -417,14 +526,14 @@ export default function PreinscripcionPage() {
         {/* Banner estado */}
         <section
           className={`${styles.bannerEstado} ${
-            estadoGeneral.tipo === "lista_para_continuar"
+            estadoGeneral.tipo === 'lista_para_continuar'
               ? styles.bannerOk
               : styles.bannerAtencion
           }`}
           aria-live="polite"
         >
           <div className={styles.bannerIcono} aria-hidden="true">
-            {estadoGeneral.tipo === "lista_para_continuar" ? "✓" : "!"}
+            {estadoGeneral.tipo === 'lista_para_continuar' ? '✓' : '!'}
           </div>
           <div>
             <span className={styles.bannerLabel}>ESTADO GENERAL</span>
@@ -441,9 +550,9 @@ export default function PreinscripcionPage() {
         >
           {(
             [
-              ["resumen", "Resumen documental"],
-              ["informacion", "Tu información"],
-              ["documentos", "Tus documentos"],
+              ['resumen', 'Resumen documental'],
+              ['informacion', 'Tu información'],
+              ['documentos', 'Tus documentos'],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -462,7 +571,7 @@ export default function PreinscripcionPage() {
         </div>
 
         {/* ═══════════════ RESUMEN DOCUMENTAL ═══════════════ */}
-        {pestana === "resumen" && (
+        {pestana === 'resumen' && (
           <div
             role="tabpanel"
             id={`${tabsId}-panel-resumen`}
@@ -479,7 +588,9 @@ export default function PreinscripcionPage() {
             <div className={styles.metrics}>
               <div className={styles.metricCard}>
                 <span className={styles.metricValue}>{documentos.length}</span>
-                <span className={styles.metricLabel}>Documentos analizados</span>
+                <span className={styles.metricLabel}>
+                  Documentos analizados
+                </span>
                 <span className={styles.metricHint}>Documentos requeridos</span>
               </div>
               <div className={`${styles.metricCard} ${styles.metricOk}`}>
@@ -488,7 +599,9 @@ export default function PreinscripcionPage() {
                 <span className={styles.metricHint}>Sin novedades</span>
               </div>
               <div className={`${styles.metricCard} ${styles.metricWarn}`}>
-                <span className={styles.metricValue}>{docsConProblema.length}</span>
+                <span className={styles.metricValue}>
+                  {docsConProblema.length}
+                </span>
                 <span className={styles.metricLabel}>Requieren atención</span>
                 <span className={styles.metricHint}>Con alertas</span>
               </div>
@@ -496,7 +609,9 @@ export default function PreinscripcionPage() {
                 <span className={styles.metricValue}>
                   {reenviosRestantes} de {politicaReenvios.limite}
                 </span>
-                <span className={styles.metricLabel}>Reenvíos disponibles hoy</span>
+                <span className={styles.metricLabel}>
+                  Reenvíos disponibles hoy
+                </span>
                 <span className={styles.metricHint}>
                   Se reinician a medianoche (Bogotá)
                 </span>
@@ -505,17 +620,25 @@ export default function PreinscripcionPage() {
 
             {/* Alertas */}
             {docsConProblema.length > 0 ? (
-              <section className={styles.alertasBox} aria-labelledby="hdr-alertas">
+              <section
+                className={styles.alertasBox}
+                aria-labelledby="hdr-alertas"
+              >
                 <div className={styles.alertasHeader}>
                   <h3 id="hdr-alertas">Alertas</h3>
-                  <span className={styles.alertasCount}>{docsConProblema.length}</span>
+                  <span className={styles.alertasCount}>
+                    {docsConProblema.length}
+                  </span>
                 </div>
                 <p className={styles.alertasSub}>
                   Documentos que requieren revisión o corrección.
                 </p>
                 <ul className={styles.alertasList}>
                   {docsConProblema.map((doc) => (
-                    <li key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`} className={styles.alertaItem}>
+                    <li
+                      key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`}
+                      className={styles.alertaItem}
+                    >
                       <div className={styles.alertaMain}>
                         <strong>{doc.nombre}</strong>
                         <div className={styles.alertaChips}>
@@ -524,13 +647,13 @@ export default function PreinscripcionPage() {
                           ))}
                         </div>
                         <p className={styles.alertaMsg}>
-                          {doc.resultados.map((r) => r.mensaje).join(" ")}
+                          {doc.resultados.map((r) => r.mensaje).join(' ')}
                         </p>
                       </div>
                       <button
                         type="button"
                         className={styles.btnSecundario}
-                        onClick={() => setPestana("documentos")}
+                        onClick={() => setPestana('documentos')}
                       >
                         Ver detalle
                       </button>
@@ -540,17 +663,27 @@ export default function PreinscripcionPage() {
               </section>
             ) : (
               <p className={styles.textoOk}>
-                {solicitud.estadoAnalisis === "pendiente" ? "Todavía no hay resultados del análisis registrados." : "Todos los documentos fueron validados correctamente."}
+                {solicitud.estadoAnalisis === 'pendiente'
+                  ? 'Todavía no hay resultados del análisis registrados.'
+                  : 'Todos los documentos fueron validados correctamente.'}
               </p>
             )}
 
             {/* Estado de los documentos */}
-            <section className={styles.estadoDocs} aria-labelledby="hdr-estado-docs">
+            <section
+              className={styles.estadoDocs}
+              aria-labelledby="hdr-estado-docs"
+            >
               <h3 id="hdr-estado-docs">Estado de los documentos</h3>
-              <p className={styles.panelSubtitle}>Vista rápida del resultado de cada documento.</p>
+              <p className={styles.panelSubtitle}>
+                Vista rápida del resultado de cada documento.
+              </p>
               <ul className={styles.estadoList}>
                 {documentos.map((doc) => (
-                  <li key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`} className={styles.estadoRow}>
+                  <li
+                    key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`}
+                    className={styles.estadoRow}
+                  >
                     <div className={styles.estadoLeft}>
                       <span className={styles.pdfBadge}>PDF</span>
                       <div>
@@ -571,7 +704,7 @@ export default function PreinscripcionPage() {
         )}
 
         {/* ═══════════════ TU INFORMACIÓN ═══════════════ */}
-        {pestana === "informacion" && (
+        {pestana === 'informacion' && (
           <div
             role="tabpanel"
             id={`${tabsId}-panel-informacion`}
@@ -585,16 +718,15 @@ export default function PreinscripcionPage() {
             </p>
 
             <InformacionEstudiante
-              nivel={estudiante.nivel === "POSGRADO" ? "POSGRADO" : "PREGRADO"}
+              nivel={estudiante.nivel === 'POSGRADO' ? 'POSGRADO' : 'PREGRADO'}
               datos={solicitud.informacion}
               variante="estudiante"
             />
           </div>
         )}
 
-
         {/* ═══════════════ TUS DOCUMENTOS ═══════════════ */}
-        {pestana === "documentos" && (
+        {pestana === 'documentos' && (
           <div
             role="tabpanel"
             id={`${tabsId}-panel-documentos`}
@@ -603,16 +735,19 @@ export default function PreinscripcionPage() {
           >
             <h2 className={styles.panelTitle}>Tus documentos</h2>
             <p className={styles.panelSubtitle}>
-              Resultado del análisis automático de cada documento requerido para{" "}
+              Resultado del análisis automático de cada documento requerido para{' '}
               {estudiante.nivel.toLowerCase()}.
             </p>
 
             <ProgresoDocumental progreso={progresoEnvio} />
             <div className={styles.docCards}>
               {documentos.map((doc) => {
-                const archivo = seleccionados[doc.id ?? ""];
+                const archivo = seleccionados[doc.id ?? ''];
                 return (
-                  <article key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`} className={styles.docCard}>
+                  <article
+                    key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`}
+                    className={styles.docCard}
+                  >
                     <div className={styles.docCardHeader}>
                       <h3>{doc.nombre}</h3>
                       {doc.version && <span>Versión {doc.version}</span>}
@@ -624,7 +759,9 @@ export default function PreinscripcionPage() {
                     </div>
 
                     <div className={styles.docResultados}>
-                      <span className={styles.resultLabel}>RESULTADO DEL ANÁLISIS</span>
+                      <span className={styles.resultLabel}>
+                        RESULTADO DEL ANÁLISIS
+                      </span>
                       {doc.resultados.map((r, i) => (
                         <div
                           key={i}
@@ -676,40 +813,48 @@ export default function PreinscripcionPage() {
             </div>
 
             {/* El backend habilitará las correcciones cuando exista el flujo real. */}
-            {politicaReenvios.limite > 0 && <section className={styles.proximoEnvio} aria-labelledby="hdr-envio">
-              <div>
-                <h3 id="hdr-envio">Tu próximo envío</h3>
-                <p>
-                  {seleccionadosList.length === 0
-                    ? "Ningún documento seleccionado."
-                    : `${seleccionadosList.length} documento${seleccionadosList.length !== 1 ? "s" : ""} seleccionado${seleccionadosList.length !== 1 ? "s" : ""}.`}{" "}
-                  Puedes volver a enviar documentos que estén{" "}
-                  <strong>No válido, Inconsistente o Por revisar</strong>; el sistema seguirá validándolos.
-                  Un envío con varios documentos cuenta como un solo reenvío.
-                </p>
-              </div>
-              <div className={styles.envioActions}>
-                <span className={styles.reenviosCount}>
-                  <strong>
-                    {reenviosRestantes} de {politicaReenvios.limite}
-                  </strong>
-                  <small>reenvíos hoy · reinician a medianoche (Bogotá)</small>
-                </span>
-                <button
-                  type="button"
-                  className={styles.btnPrimario}
-                  disabled={!puedeEnviar}
-                  onClick={handleEnviar}
-                >
-                  {enviando ? "Enviando..." : "Enviar documentos"}
-                </button>
-              </div>
-              {mensajeEnvio && (
-                <p className={styles.mensajeEnvio} role="status">
-                  {mensajeEnvio}
-                </p>
-              )}
-            </section>}
+            {politicaReenvios.limite > 0 && (
+              <section
+                className={styles.proximoEnvio}
+                aria-labelledby="hdr-envio"
+              >
+                <div>
+                  <h3 id="hdr-envio">Tu próximo envío</h3>
+                  <p>
+                    {seleccionadosList.length === 0
+                      ? 'Ningún documento seleccionado.'
+                      : `${seleccionadosList.length} documento${seleccionadosList.length !== 1 ? 's' : ''} seleccionado${seleccionadosList.length !== 1 ? 's' : ''}.`}{' '}
+                    Puedes volver a enviar documentos que estén{' '}
+                    <strong>No válido, Inconsistente o Por revisar</strong>; el
+                    sistema seguirá validándolos. Un envío con varios documentos
+                    cuenta como un solo reenvío.
+                  </p>
+                </div>
+                <div className={styles.envioActions}>
+                  <span className={styles.reenviosCount}>
+                    <strong>
+                      {reenviosRestantes} de {politicaReenvios.limite}
+                    </strong>
+                    <small>
+                      reenvíos hoy · reinician a medianoche (Bogotá)
+                    </small>
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.btnPrimario}
+                    disabled={!puedeEnviar}
+                    onClick={handleEnviar}
+                  >
+                    {enviando ? 'Enviando...' : 'Enviar documentos'}
+                  </button>
+                </div>
+                {mensajeEnvio && (
+                  <p className={styles.mensajeEnvio} role="status">
+                    {mensajeEnvio}
+                  </p>
+                )}
+              </section>
+            )}
           </div>
         )}
 
