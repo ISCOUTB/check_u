@@ -38,6 +38,7 @@ services:
       PORT: "3000"
       NODE_OPTIONS: --max-old-space-size=192
       OCR_ENGINE_URL: http://ocr:5001
+      MOTOR_URL: http://ocr:5001
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: ${DB_USER}
