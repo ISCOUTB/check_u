@@ -19,7 +19,6 @@ import DocumentAnalysis, {
 import PeriodoInscripcion from '../iniciar_preinscripcion/PeriodoInscripcion';
 import styles from './preinscripcion.module.css';
 import CancelarPreinscripcion from './CancelarPreinscripcion';
-import HistorialPreinscripciones from '../HistorialPreinscripciones';
 
 import {
   obtenerSolicitudDetalle,
@@ -882,7 +881,6 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
           </div>
         )}
 
-        <HistorialPreinscripciones actualizar={solicitud.estadoSolicitud} />
         {/* Input oculto para carga de archivos */}
         <input
           ref={fileInputRef}
