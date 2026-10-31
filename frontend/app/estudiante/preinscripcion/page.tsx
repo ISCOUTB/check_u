@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useRef, useId } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState, useRef, useId } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ProgresoDocumental from '@/app/components/ui/ProgresoDocumental';
 import type { ProgresoEnvio } from '../envio-documental';
 import { etiquetaPropiedad, valorVisible } from './etiquetas';
@@ -18,6 +18,8 @@ import DocumentAnalysis, {
 } from '@/app/components/document_analysis/DocumentAnalysis';
 import PeriodoInscripcion from '../iniciar_preinscripcion/PeriodoInscripcion';
 import styles from './preinscripcion.module.css';
+import CancelarPreinscripcion from './CancelarPreinscripcion';
+import HistorialPreinscripciones from '../HistorialPreinscripciones';
 
 import {
   obtenerSolicitudDetalle,
@@ -183,6 +185,14 @@ function StatusBadge({ estado }: { estado: EstadoDocumento }) {
 type Pestana = 'resumen' | 'informacion' | 'documentos';
 
 export default function PreinscripcionPage() {
+  return <Suspense fallback={<main id="contenido" tabIndex={-1} className={styles.page}><h1>Detalle de mi preinscripción</h1><p role="status">Cargando tu preinscripción…</p></main>}><SeleccionarDetalle /></Suspense>;
+}
+function SeleccionarDetalle() {
+  const parametros=useSearchParams();
+  const id=parametros.get('solicitud') ?? undefined;
+  return <DetallePreinscripcion key={id ?? 'actual'} idSolicitud={id} />;
+}
+function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tabsId = useId();
@@ -249,6 +259,7 @@ export default function PreinscripcionPage() {
           return;
         }
         setUsuario(u);
+        if (!idSolicitud) {
         const estadoRes = await fetch(`${API_URL}/solicitudes/estado`, {
           credentials: 'include',
           cache: 'no-store',
@@ -267,13 +278,14 @@ export default function PreinscripcionPage() {
           }
         }
 
-        const detalle = await obtenerSolicitudDetalle(controlador.signal);
+        }
+        const detalle = await obtenerSolicitudDetalle(controlador.signal,idSolicitud);
         if (vigente) setSolicitud(detalle);
       } catch (error) {
         if (!vigente) return;
         if (
           error instanceof ErrorConsultaSolicitud &&
-          [401, 404].includes(error.status)
+          (error.status===401 || (error.status===404 && !idSolicitud))
         ) {
           redirigiendo = true;
           router.replace(error.status === 401 ? '/' : '/estudiante/bienvenida');
@@ -295,7 +307,7 @@ export default function PreinscripcionPage() {
       clearTimeout(limite);
       controlador.abort();
     };
-  }, [router, intento]);
+  }, [router, intento, idSolicitud]);
 
   if (cargando) {
     return (
@@ -358,7 +370,8 @@ export default function PreinscripcionPage() {
   }
 
   const { estudiante, documentos, politicaReenvios } = solicitud;
-  const estadoGeneral =
+  const cancelada=solicitud.estadoSolicitud==='CANCELADA';
+  const estadoGeneral = cancelada ? {tipo:'cancelada' as const,titulo:'Consulta histórica',frase:'La preinscripción está cancelada. Estos son los resultados que quedaron registrados, sin acciones pendientes.',cantidadProblemas:0} :
     solicitud.estadoAnalisis === 'pendiente' || documentos.length === 0
       ? {
           tipo: 'por_revisar' as const,
@@ -368,7 +381,7 @@ export default function PreinscripcionPage() {
           cantidadProblemas: 0,
         }
       : derivarEstadoGeneral(documentos);
-  const reenviosRestantes = politicaReenvios.limite - politicaReenvios.usados;
+  const reenviosRestantes = Math.max(0, politicaReenvios.limite - politicaReenvios.usados);
   const docsConProblema = documentos.filter((d) =>
     d.resultados.some((r) => r.estado !== 'valido'),
   );
@@ -377,7 +390,7 @@ export default function PreinscripcionPage() {
   );
   const seleccionadosList = Object.keys(seleccionados);
   const puedeEnviar =
-    seleccionadosList.length > 0 && reenviosRestantes > 0 && !enviando;
+    solicitud.estadoSolicitud!=='CANCELADA' && seleccionadosList.length > 0 && reenviosRestantes > 0 && !enviando;
 
   function abrirAnalisis(doc: DocumentoSolicitud) {
     setAnalysisData(analisisPersistido(doc));
@@ -449,7 +462,7 @@ export default function PreinscripcionPage() {
         setSeleccionados({});
         claveCorreccion.current = null;
         try {
-          setSolicitud(await obtenerSolicitudDetalle());
+          setSolicitud(await obtenerSolicitudDetalle(undefined,idSolicitud));
         } catch {
           setMensajeEnvio(
             'La corrección quedó registrada, pero no fue posible actualizar la vista. Recarga la página para consultar los resultados.',
@@ -501,6 +514,17 @@ export default function PreinscripcionPage() {
         </header>
 
         <PeriodoInscripcion datos={solicitud.periodos ?? null} />
+        <CancelarPreinscripcion solicitud={solicitud} deshabilitado={enviando} onReconsultar={()=>{
+          router.replace(`/estudiante/preinscripcion?solicitud=${encodeURIComponent(solicitud.id)}`);
+          setCargando(true);setErrorDatos(null);setIntento(n=>n+1);
+        }} onCancelada={fecha=>{
+          setSeleccionados({});claveCorreccion.current=null;
+          setSolicitud(prev=>prev?{...prev,estadoSolicitud:'CANCELADA',
+            cancelacion:prev.cancelacion?{...prev.cancelacion,permitida:false,canceladaEn:fecha}:undefined,
+            documentos:prev.documentos.map(d=>({...d,resubmission_allowed:false})),
+            politicaReenvios:{...prev.politicaReenvios,limite:0},}:prev);
+          router.replace(`/estudiante/preinscripcion?solicitud=${encodeURIComponent(solicitud.id)}`);
+        }} />
 
         {/* Tarjeta estudiante */}
         <section
@@ -526,14 +550,14 @@ export default function PreinscripcionPage() {
         {/* Banner estado */}
         <section
           className={`${styles.bannerEstado} ${
-            estadoGeneral.tipo === 'lista_para_continuar'
+            cancelada ? styles.bannerCancelada : estadoGeneral.tipo === 'lista_para_continuar'
               ? styles.bannerOk
               : styles.bannerAtencion
           }`}
           aria-live="polite"
         >
           <div className={styles.bannerIcono} aria-hidden="true">
-            {estadoGeneral.tipo === 'lista_para_continuar' ? '✓' : '!'}
+            {cancelada ? '—' : estadoGeneral.tipo === 'lista_para_continuar' ? '✓' : '!'}
           </div>
           <div>
             <span className={styles.bannerLabel}>ESTADO GENERAL</span>
@@ -602,7 +626,7 @@ export default function PreinscripcionPage() {
                 <span className={styles.metricValue}>
                   {docsConProblema.length}
                 </span>
-                <span className={styles.metricLabel}>Requieren atención</span>
+                <span className={styles.metricLabel}>{cancelada?'Con observaciones':'Requieren atención'}</span>
                 <span className={styles.metricHint}>Con alertas</span>
               </div>
               <div className={styles.metricCard}>
@@ -610,10 +634,10 @@ export default function PreinscripcionPage() {
                   {reenviosRestantes} de {politicaReenvios.limite}
                 </span>
                 <span className={styles.metricLabel}>
-                  Reenvíos disponibles hoy
+                  {cancelada?'Reenvíos bloqueados':'Reenvíos disponibles hoy'}
                 </span>
                 <span className={styles.metricHint}>
-                  Se reinician a medianoche (Bogotá)
+                  {cancelada?'La preinscripción está cancelada':'Se reinician a medianoche (Bogotá)'}
                 </span>
               </div>
             </div>
@@ -631,7 +655,7 @@ export default function PreinscripcionPage() {
                   </span>
                 </div>
                 <p className={styles.alertasSub}>
-                  Documentos que requieren revisión o corrección.
+                  {cancelada?'Observaciones documentales conservadas en el historial.':'Documentos que requieren revisión o corrección.'}
                 </p>
                 <ul className={styles.alertasList}>
                   {docsConProblema.map((doc) => (
@@ -858,6 +882,7 @@ export default function PreinscripcionPage() {
           </div>
         )}
 
+        <HistorialPreinscripciones actualizar={solicitud.estadoSolicitud} />
         {/* Input oculto para carga de archivos */}
         <input
           ref={fileInputRef}
