@@ -1,7 +1,21 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { ANCHOS, API, revisarPagina, sesionComo, TEMAS, USUARIOS } from "./soporte";
 
 const RUTA_BIENVENIDA = "/estudiante/bienvenida";
+
+/** El estado real de navegación que corresponde a esta página: aún no hay solicitud. */
+async function sinSolicitud(page: Page): Promise<void> {
+    await page.route(`${API}/solicitudes/estado`, (ruta) =>
+        ruta.fulfill({
+            status: 200,
+            json: {
+                ok: true,
+                estado: "SIN_SOLICITUD",
+                destino: RUTA_BIENVENIDA,
+            },
+        }),
+    );
+}
 
 test.describe("página de bienvenida para estudiante sin preinscripciones", () => {
     // Verificación de accesibilidad y diseño responsive en temas y anchos requeridos
@@ -9,6 +23,7 @@ test.describe("página de bienvenida para estudiante sin preinscripciones", () =
         for (const ancho of ANCHOS) {
             test(`accesible y sin desborde (${tema}, ${ancho}px)`, async ({ page }) => {
                 await sesionComo(page, "estudiante");
+                await sinSolicitud(page);
                 await revisarPagina(page, RUTA_BIENVENIDA, tema, ancho);
             });
         }
@@ -16,6 +31,7 @@ test.describe("página de bienvenida para estudiante sin preinscripciones", () =
 
     test("caso sin nivel: muestra ambos bloques de acción (Pregrado y Posgrado)", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await sinSolicitud(page);
         await page.goto(RUTA_BIENVENIDA);
 
         // Encabezado con h1 único
@@ -57,6 +73,8 @@ test.describe("página de bienvenida para estudiante sin preinscripciones", () =
     });
 
     test("caso PREGRADO: muestra únicamente el bloque 1", async ({ page }) => {
+        await sesionComo(page, "estudiante");
+        await sinSolicitud(page);
         // Simular estudiante con nivel PREGRADO en /auth/me
         await page.route(`${API}/auth/me`, (ruta) =>
             ruta.fulfill({
@@ -75,6 +93,8 @@ test.describe("página de bienvenida para estudiante sin preinscripciones", () =
     });
 
     test("caso POSGRADO: muestra únicamente el bloque 2", async ({ page }) => {
+        await sesionComo(page, "estudiante");
+        await sinSolicitud(page);
         // Simular estudiante con nivel POSGRADO en /auth/me
         await page.route(`${API}/auth/me`, (ruta) =>
             ruta.fulfill({
@@ -111,16 +131,7 @@ test.describe("página de bienvenida para estudiante sin preinscripciones", () =
 
     test("home sin solicitud redirige a bienvenida", async ({ page }) => {
         await sesionComo(page, "estudiante");
-        await page.route(`${API}/estudiante/solicitud`, (ruta) =>
-            ruta.fulfill({
-                status: 200,
-                json: { tiene_solicitud: false, solicitud: null },
-            }),
-        );
-        // Inyectar escenario sin_solicitud en la ventana
-        await page.addInitScript(() => {
-            (window as unknown as { __CHECKU_ESCENARIO__: string }).__CHECKU_ESCENARIO__ = "sin_solicitud";
-        });
+        await sinSolicitud(page);
         await page.goto("/estudiante/home");
         await expect(page).toHaveURL(RUTA_BIENVENIDA);
     });

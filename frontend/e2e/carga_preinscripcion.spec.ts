@@ -77,6 +77,18 @@ test('un error de consulta se recupera sin duplicar el detalle al reintentar', a
 
 test('sin una solicitud registrada redirige a bienvenida usando el 404 del detalle', async ({ page }) => {
   await sesionComo(page, 'estudiante');
+  // La preinscripción debe llegar al detalle (ENVIADA); la bienvenida que recibe el 404
+  // consulta de nuevo y allí ya no existe solicitud, así que permanece en bienvenida.
+  await page.route(`${API}/solicitudes/estado`, ruta => {
+    const referer = ruta.request().headers()['referer'] ?? '';
+    const desdePreinscripcion = referer.includes('/estudiante/preinscripcion');
+    return ruta.fulfill({
+      status: 200,
+      json: desdePreinscripcion
+        ? { ok: true, estado: 'ENVIADA', destino: '/estudiante/preinscripcion', nivel: 'PREGRADO' }
+        : { ok: true, estado: 'SIN_SOLICITUD', destino: '/estudiante/bienvenida' },
+    });
+  });
   await page.route(`${API}/estudiante/solicitud/analisis`, r => r.fulfill({status: 404, json: {message: 'No hay preinscripción registrada.'}}));
   await page.goto('/estudiante/preinscripcion');
   await expect(page).toHaveURL(/\/estudiante\/bienvenida$/);

@@ -20,6 +20,20 @@ async function abrir(page: Page, ruta: string): Promise<void> {
     await page.locator('main#contenido:not([aria-busy="true"])').waitFor();
 }
 
+/** La bienvenida solo permanece visible si el estado real es "sin solicitud". */
+async function sinSolicitud(page: Page): Promise<void> {
+    await page.route(`${API}/solicitudes/estado`, (ruta) =>
+        ruta.fulfill({
+            status: 200,
+            json: {
+                ok: true,
+                estado: "SIN_SOLICITUD",
+                destino: "/estudiante/bienvenida",
+            },
+        }),
+    );
+}
+
 /** Marca una respuesta en un grupo de opciones (sí/no o una sola opción), por su pregunta. */
 async function responder(page: Page, pregunta: string, respuesta: string): Promise<void> {
     await page.getByRole("radiogroup", { name: pregunta }).getByRole("radio", { name: respuesta }).check();
@@ -372,18 +386,21 @@ test.describe("iniciar preinscripción", () => {
 
     test("nivel inválido redirige a /estudiante/bienvenida", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await sinSolicitud(page);
         await page.goto(`${RUTA}?nivel=DOCTORADO`);
         await expect(page).toHaveURL("/estudiante/bienvenida");
     });
 
     test("sin nivel redirige a /estudiante/bienvenida", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await sinSolicitud(page);
         await page.goto(RUTA);
         await expect(page).toHaveURL("/estudiante/bienvenida");
     });
 
     test("nivel que no coincide con el del usuario redirige a /estudiante/bienvenida", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await sinSolicitud(page);
         // La ruta registrada después tiene prioridad: este usuario es de posgrado.
         await page.route(`${API}/auth/me`, (ruta) =>
             ruta.fulfill({ status: 200, json: { user: { ...USUARIOS.estudiante, nivel: "POSGRADO" } } }),
