@@ -71,7 +71,7 @@ export class SolicitudesService {
     const consulta = `
       SELECT id_solicitud, id_periodo, tipo_solicitud, estado
       FROM solicitud_grado
-      WHERE id_estudiante = $1
+      WHERE id_estudiante = $1 AND estado NOT IN ('CANCELADA','CERRADA')
       ORDER BY id_solicitud DESC
       LIMIT 1;
     `;
@@ -105,7 +105,7 @@ export class SolicitudesService {
     const resultado = await this.databaseService.query<SolicitudResumen>(
       `SELECT id_solicitud, tipo_solicitud, estado
        FROM solicitud_grado
-       WHERE id_estudiante = $1
+       WHERE id_estudiante = $1 AND estado NOT IN ('CANCELADA','CERRADA')
        ORDER BY id_solicitud DESC
        LIMIT 1`,
       [idEstudiante],
@@ -126,7 +126,7 @@ export class SolicitudesService {
       return {
         ok: true,
         estado: 'BORRADOR',
-        destino: '/estudiante/iniciar_preinscripcion',
+        destino: `/estudiante/iniciar_preinscripcion?nivel=${nivel}`,
         id_solicitud: fila.id_solicitud,
         nivel,
       };
@@ -188,7 +188,7 @@ export class SolicitudesService {
         const resSolicitud = await client.query<SolicitudResumen>(
           `SELECT id_solicitud, id_periodo, tipo_solicitud, estado
          FROM solicitud_grado
-         WHERE id_estudiante = $1
+         WHERE id_estudiante = $1 AND estado NOT IN ('CANCELADA','CERRADA')
          ORDER BY id_solicitud DESC
          LIMIT 1
          FOR UPDATE;`,
@@ -221,7 +221,7 @@ export class SolicitudesService {
           );
         }
 
-        await this.asegurarPeriodo(client, solicitud);
+        await this.asegurarPeriodo(client, solicitud, idEstudiante);
 
         await client.query(
           `DELETE FROM documentos WHERE id_solicitud = $1 AND id_entrega IS NULL
@@ -304,13 +304,14 @@ export class SolicitudesService {
         }
       >(
         `SELECT id_solicitud, id_periodo, tipo_solicitud, estado, segundo_programa, fecha_actualizacion
-         FROM solicitud_grado WHERE id_estudiante = $1 ORDER BY id_solicitud DESC LIMIT 1`,
+         FROM solicitud_grado WHERE id_estudiante = $1 AND estado NOT IN ('CANCELADA','CERRADA') ORDER BY id_solicitud DESC LIMIT 1`,
         [idEstudiante],
       );
       const solicitud = res.rows[0];
       const periodos = await consultarContextoPeriodo(
         client,
         solicitud?.id_periodo ?? null,
+        idEstudiante,
       );
       if (!solicitud || solicitud.estado !== 'BORRADOR') {
         return {
@@ -406,7 +407,7 @@ export class SolicitudesService {
       );
       const res = await client.query<SolicitudResumen>(
         `SELECT id_solicitud, id_periodo, tipo_solicitud, estado FROM solicitud_grado
-         WHERE id_estudiante = $1 ORDER BY id_solicitud DESC LIMIT 1 FOR UPDATE`,
+         WHERE id_estudiante = $1 AND estado NOT IN ('CANCELADA','CERRADA') ORDER BY id_solicitud DESC LIMIT 1 FOR UPDATE`,
         [idEstudiante],
       );
       let solicitud = res.rows[0];
@@ -428,7 +429,7 @@ export class SolicitudesService {
         );
         solicitud = insert.rows[0];
       }
-      await this.asegurarPeriodo(client, solicitud);
+      await this.asegurarPeriodo(client, solicitud, idEstudiante);
       const id = solicitud.id_solicitud;
       if (nivel !== solicitud.tipo_solicitud) {
         // Limpiar los hijos antes de cambiar el nivel, respetando los triggers SQL.
@@ -598,7 +599,7 @@ export class SolicitudesService {
         id_solicitud: id,
         estado: 'BORRADOR',
         mensaje: 'Borrador guardado exitosamente',
-        periodos: await consultarContextoPeriodo(client, solicitud.id_periodo!),
+        periodos: await consultarContextoPeriodo(client, solicitud.id_periodo!, idEstudiante),
         guardadoEn: new Date(
           actualizado.rows[0].fecha_actualizacion,
         ).toISOString(),
@@ -609,10 +610,11 @@ export class SolicitudesService {
   private async asegurarPeriodo(
     client: PoolClient,
     solicitud: SolicitudResumen,
+    idEstudiante: number,
   ) {
     if (solicitud.id_periodo) return;
     // Incluye borradores históricos sin periodo: se vinculan una sola vez al siguiente guardado.
-    const idPeriodo = await requerirPeriodoElegible(client);
+    const idPeriodo = await requerirPeriodoElegible(client, idEstudiante);
     await client.query(
       'UPDATE solicitud_grado SET id_periodo = $2 WHERE id_solicitud = $1 AND id_periodo IS NULL',
       [solicitud.id_solicitud, idPeriodo],
