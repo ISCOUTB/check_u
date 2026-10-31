@@ -26,7 +26,7 @@ const RESULTADOS: Record<string, string> = {
 };
 const ESTADOS: Record<string, string> = {
     BORRADOR: 'Borrador', EN_PROCESO: 'En proceso', POR_REVISAR: 'Por revisar',
-    VALIDA: 'Aceptada', CERRADA: 'Anulada', NO_VALIDA: 'No válida', INCONSISTENTE: 'Inconsistente',
+    VALIDA: 'Aceptada', CERRADA: 'Anulada', CANCELADA: 'Cancelada', NO_VALIDA: 'No válida', INCONSISTENTE: 'Inconsistente',
 };
 function estadoDocumento(doc: DocumentoSolicitud) {
     return doc.resultados.find(r => r.estado === 'no_valido' || r.estado === 'inconsistente')?.estado ?? doc.resultados[0]?.estado ?? 'por_revisar';
@@ -73,7 +73,7 @@ function DetalleSolicitud({id}: {id: string}) {
     }, [usuario, id, intento]);
 
     const corregibles = detalle?.documentos.filter(d => estadoDocumento(d) !== 'valido') ?? [];
-    const admiteDecision = !!detalle && !['BORRADOR', 'VALIDA', 'CERRADA'].includes(detalle.estadoSolicitud);
+    const admiteDecision = !!detalle && !['BORRADOR', 'VALIDA', 'CERRADA', 'CANCELADA'].includes(detalle.estadoSolicitud);
     function preparar(evento: FormEvent) {
         evento.preventDefault(); setErrorEnvio(''); setMensaje('');
         if (accion === 'comentario' && !comentario.trim()) { setErrorEnvio('Escribe el comentario.'); return; }
