@@ -110,6 +110,24 @@ export class SolicitudesController {
     );
   }
 
+  @Get('funcionario/documentos/:id/original')
+  async documentoOriginalFuncionario(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    const sesion = readSessionId(req);
+    const user = sesion ? this.authService.getUser(sesion) : null;
+    if (!user) throw new UnauthorizedException('Sesión no válida o expirada');
+    if (user.role !== 'funcionario') throw new ForbiddenException('Acceso restringido al rol autorizado.');
+    const a = await this.reenvios.originalFuncionario(id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(a.nombre)}`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(a.bytes);
+  }
+
   @Get('estudiante/documentos/:id/original')
   async documentoOriginal(
     @Req() req: Request,

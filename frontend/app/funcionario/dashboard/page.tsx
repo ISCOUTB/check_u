@@ -10,9 +10,10 @@ import PageHeader from "@/app/components/ui/PageHeader";
 import StatusBadge from "@/app/components/ui/StatusBadge";
 import { useSesion } from "@/app/lib/useSesion";
 import {
-    DESCRIPCION_CONTADOR, ESTADOS_SOLICITUD, ETIQUETA_PLURAL, ETIQUETA_SOLICITUD,
-    SOLICITUDES, type EstadoSolicitud, type NivelAcademico,
+    DESCRIPCION_CONTADOR, ESTADOS_SOLICITUD, ETIQUETA_PLURAL,
+    type EstadoSolicitud, type NivelAcademico,
 } from "./datos";
+import { obtenerSolicitudes, type ResumenFuncionaria } from '../solicitudes-api';
 import GraficoEstados from "./GraficoEstados";
 import styles from "./dashboard.module.css";
 
@@ -42,6 +43,20 @@ async function obtenerPeriodos(): Promise<Periodo[]> {
 
 export default function Dashboard() {
     const { usuario, cargando } = useSesion("funcionario");
+    const [solicitudes, setSolicitudes] = useState<ResumenFuncionaria[]>([]);
+    const [cargandoSolicitudes, setCargandoSolicitudes] = useState(true);
+    const [errorSolicitudes, setErrorSolicitudes] = useState('');
+    const [intentoSolicitudes, setIntentoSolicitudes] = useState(0);
+    useEffect(() => {
+        if (!usuario) return;
+        const controlador = new AbortController();
+        obtenerSolicitudes(controlador.signal).then(data => {
+            if (!controlador.signal.aborted) { setSolicitudes(data); setErrorSolicitudes(''); }
+        }).catch(error => {
+            if (!controlador.signal.aborted) setErrorSolicitudes(error instanceof Error ? error.message : 'No fue posible consultar las solicitudes.');
+        }).finally(() => { if (!controlador.signal.aborted) setCargandoSolicitudes(false); });
+        return () => controlador.abort();
+    }, [usuario, intentoSolicitudes]);
     const [nivel, setNivel] = useState<NivelAcademico>("PREGRADO");
     const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos");
     const [fechaInicial, setFechaInicial] = useState("");
@@ -109,10 +124,8 @@ export default function Dashboard() {
     const solicitudesPeriodo = useMemo(() => {
         const periodo = periodos.find((p) => p.id === periodoId);
         if (!periodo) return [];
-        // SOLICITUDES es un conjunto local de demostración: aún no hay entidad de solicitudes en la API.
-        // Por ello la pertenencia al periodo se simula mediante fechas, no se presenta como asociación real.
-        return SOLICITUDES.filter((s) => s.fechaRegistro.slice(0, 10) >= periodo.fechaInicio && s.fechaRegistro.slice(0, 10) <= periodo.fechaFin);
-    }, [periodos, periodoId]);
+        return solicitudes.filter(s => s.periodId === periodo.id);
+    }, [periodos, periodoId, solicitudes]);
 
     const porNivelYFecha = useMemo(() => solicitudesPeriodo.filter((s) => {
         if (s.nivel !== nivel) return false;
@@ -348,20 +361,24 @@ export default function Dashboard() {
 
                 <Card id="solicitudes" tituloId="titulo-solicitudes" titulo="Solicitudes de grado" acciones={<p aria-live="polite" className={styles.conteo}>{filtradas.length === 1 ? "1 solicitud" : `${filtradas.length} solicitudes`}</p>}>
                     <p className={styles.textoSecundario}>Solicitudes registradas para los filtros seleccionados.</p>
-                    {!periodoId ? <div className={styles.vacio}><h3>Selecciona un periodo</h3><p>Para consultar solicitudes, selecciona un periodo de grado registrado.</p></div>
+                    {cargandoSolicitudes && <p role="status">Cargando solicitudes...</p>}
+                    {errorSolicitudes && <div role="alert"><p>{errorSolicitudes}</p><Button onClick={() => { setCargandoSolicitudes(true); setIntentoSolicitudes(i => i + 1); }}>Reintentar solicitudes</Button></div>}
+                    {!cargandoSolicitudes && !errorSolicitudes && (!periodoId ? <div className={styles.vacio}><h3>Selecciona un periodo</h3><p>Para consultar solicitudes, selecciona un periodo de grado registrado.</p></div>
                     : filtradas.length === 0 ? <div className={styles.vacio}><h3>No hay solicitudes</h3><p>No hay solicitudes para la combinación de periodo, nivel, estado y fechas seleccionada.</p></div>
                     : <>
+                        <div className={styles.tablaContenedor} role="region" aria-label="Tabla de solicitudes de grado" tabIndex={0}>
                         <table className={styles.tabla}>
                             <caption className="solo-lector">Solicitudes de grado. Nivel: {nivel === "PREGRADO" ? "Pregrado" : "Posgrado"}. Estado: {filtroEstado === "todos" ? "Todas" : ETIQUETA_PLURAL[filtroEstado]}.</caption>
                             <thead><tr><th scope="col">No. solicitud</th><th scope="col">Fecha y hora</th><th scope="col">Estudiante</th><th scope="col">Nivel</th><th scope="col">Estado</th><th scope="col"><span className="solo-lector">Acción</span></th></tr></thead>
-                            <tbody>{filtradas.map((s) => <tr key={s.numero}><td className={styles.numero}>{s.numero}</td><td className={styles.fecha}>{s.fecha}</td><td>{s.estudiante}</td><td>{s.nivel === "PREGRADO" ? "Pregrado" : "Posgrado"}</td><td><StatusBadge estado={s.estado} etiqueta={ETIQUETA_SOLICITUD[s.estado]} /></td><td className={styles.accion}><Button href={`/funcionario/detalle_preinscripcion/${s.numero}`} variante="secundario" aria-label={`Ver solicitud ${s.numero}`}>Ver solicitud</Button></td></tr>)}</tbody>
+                            <tbody>{filtradas.map((s) => <tr key={s.numero}><td className={styles.numero}>{s.numero}</td><td className={styles.fecha}>{s.fecha}</td><td>{s.estudiante}</td><td>{s.nivel === "PREGRADO" ? "Pregrado" : "Posgrado"}</td><td><StatusBadge estado={s.estado} etiqueta={s.etiqueta} /></td><td className={styles.accion}><Button href={`/funcionario/detalle_preinscripcion/${s.numero}`} variante="secundario" aria-label={`Ver solicitud ${s.numero}`}>Ver solicitud</Button></td></tr>)}</tbody>
                         </table>
+                        </div>
                         <ul aria-label="Solicitudes de grado" className={styles.tarjetas}>{filtradas.map((s) => <li key={s.numero} className={styles.tarjeta}>
-                            <div className={styles.tarjetaCabecera}><span className={styles.numero}>{s.numero}</span><StatusBadge estado={s.estado} etiqueta={ETIQUETA_SOLICITUD[s.estado]} /></div>
+                            <div className={styles.tarjetaCabecera}><span className={styles.numero}>{s.numero}</span><StatusBadge estado={s.estado} etiqueta={s.etiqueta} /></div>
                             <p className={styles.tarjetaEstudiante}>{s.estudiante}</p><p>Nivel: {s.nivel === "PREGRADO" ? "Pregrado" : "Posgrado"}</p><p className={styles.fecha}>{s.fecha}</p>
                             <Button href={`/funcionario/detalle_preinscripcion/${s.numero}`} variante="secundario" aria-label={`Ver solicitud ${s.numero}`} className={styles.tarjetaAccion}>Ver solicitud</Button>
                         </li>)}</ul>
-                    </>}
+                    </>)}
                 </Card>
             </main>
         </>

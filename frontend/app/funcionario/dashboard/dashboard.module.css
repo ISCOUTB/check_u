@@ -561,3 +561,8 @@
         flex-shrink: 0;
     }
 }
+
+/* Las tablas amplias se desplazan dentro de su región, sin ampliar la página. */
+.tablaContenedor { display: none; max-width: 100%; overflow-x: auto; }
+.tablaContenedor:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
+@media (min-width: 768px) { .tablaContenedor { display: block; } }

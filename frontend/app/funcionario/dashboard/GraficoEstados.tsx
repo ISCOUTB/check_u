@@ -114,7 +114,8 @@ export default function GraficoEstados({ tipo, titulo, descripcion, datos }: Gra
                 <div className={styles.lienzo}>
                     <canvas ref={lienzoRef} role="img" aria-label={`${titulo}. ${resumen}.`} />
                 </div>
-                <table className="solo-lector">
+                <div className="solo-lector">
+                <table>
                     <caption>{titulo}</caption>
                     <thead>
                         <tr>
@@ -133,6 +134,7 @@ export default function GraficoEstados({ tipo, titulo, descripcion, datos }: Gra
                         ))}
                     </tbody>
                 </table>
+                </div>
             </figure>
         </Card>
     );

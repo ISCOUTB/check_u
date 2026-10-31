@@ -6,6 +6,7 @@ import type { DatabaseService } from '../database/database.service.js';
 export async function detalleAnalisis(
   db: DatabaseService,
   idEstudiante: number,
+  idSolicitud?: number,
 ) {
   return db.transaction(async (client) => {
     await client.query(
@@ -17,8 +18,8 @@ export async function detalleAnalisis(
       u.nombres, u.apellidos, u.codigo_estudiante, u.correo, pe.*
       FROM solicitud_grado s JOIN usuarios u ON u.id_usuario = s.id_estudiante
       LEFT JOIN perfil_estudiante pe ON pe.id_usuario = u.id_usuario
-      WHERE s.id_estudiante = $1 ORDER BY s.id_solicitud DESC LIMIT 1`,
-      [idEstudiante],
+      WHERE s.id_estudiante = $1 AND ($2::integer IS NULL OR s.id_solicitud=$2) ORDER BY s.id_solicitud DESC LIMIT 1`,
+      [idEstudiante, idSolicitud ?? null],
     );
     const s = res.rows[0];
     if (!s) throw new NotFoundException('No hay preinscripción registrada.');

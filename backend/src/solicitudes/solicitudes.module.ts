@@ -1,3 +1,4 @@
+import { NotificacionesModule } from '../notificaciones/notificaciones.module.js';
 import { ReenviosService } from './reenvios.service.js';
 import { DocumentosModule } from '../documentos/documentos.module.js';
 import { ArchivosTemporalesService } from './archivos-temporales.service.js';
@@ -9,7 +10,7 @@ import { SolicitudesController } from './solicitudes.controller.js';
 import { SolicitudesService } from './solicitudes.service.js';
 
 @Module({
-  imports: [DatabaseModule, AuthModule, DocumentosModule],
+  imports: [DatabaseModule, AuthModule, DocumentosModule, NotificacionesModule],
   controllers: [SolicitudesController],
   providers: [
     ReenviosService,

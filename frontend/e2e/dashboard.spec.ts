@@ -39,8 +39,8 @@ test.describe("dashboard", () => {
         await page.setViewportSize({ width: 1280, height: 900 });
         await sesionComo(page, "funcionario");
         await page.goto(DASHBOARD);
-        await page.getByRole("link", { name: "Ver solicitud GR-2026-001" }).click();
-        await expect(page).toHaveURL("/funcionario/detalle_preinscripcion/GR-2026-001");
+        await page.getByRole("link", { name: "Ver solicitud 1" }).click();
+        await expect(page).toHaveURL("/funcionario/detalle_preinscripcion/1");
     });
 
     test("los filtros indican cuál está activo y anuncian el conteo", async ({ page }) => {
@@ -86,7 +86,7 @@ test.describe("dashboard", () => {
         await abrirFiltros(page);
         await page.getByLabel("Nivel académico").selectOption("POSGRADO");
         await expect(page.locator("[aria-live=polite]")).toHaveText("2 solicitudes");
-        await expect(page.getByRole("cell", { name: "GR-2026-003", exact: true })).toBeVisible();
+        await expect(page.getByRole("cell", { name: "3", exact: true })).toBeVisible();
     });
 
     test("el rango de fechas filtra la lista y se puede limpiar", async ({ page }) => {
@@ -235,4 +235,41 @@ test.describe("dashboard", () => {
         await expect(page.locator("figure").first()).toHaveAttribute("data-tema", "dark");
         await expect.poll(() => lienzo.evaluate((c) => (c as HTMLCanvasElement).toDataURL())).not.toBe(antes);
     });
+});
+
+test('la asociación real al periodo prevalece sobre la fecha de registro', async ({page}) => {
+    await sesionComo(page,'funcionario');
+    await page.route(`${API}/funcionario/solicitudes`, r => r.fulfill({json:[{
+        id:'99',estado:'EN_PROCESO',estudiante:'Solicitud de otro periodo',nivel:'PREGRADO',
+        periodId:'otro-periodo',fechaRegistro:'2026-10-04T10:00:00-05:00',
+    }]}));
+    await page.goto(DASHBOARD);
+    await expect(page.getByRole('heading',{name:'No hay solicitudes',exact:true})).toBeVisible();
+    await expect(page.getByRole('link',{name:'Ver solicitud 99',exact:true})).toHaveCount(0);
+});
+test('un error del listado no muestra solicitudes ficticias y permite reintentar', async ({page}) => {
+    await sesionComo(page,'funcionario');
+    let fallo=true;
+    await page.route(`${API}/funcionario/solicitudes`, r => fallo
+        ? r.fulfill({status:503,json:{message:'Base no disponible'}}) : r.fallback());
+    await page.goto(DASHBOARD);
+    await expect(page.locator('main').getByRole('alert')).toContainText('Base no disponible');
+    await expect(page.getByRole('link',{name:/Ver solicitud/})).toHaveCount(0);
+    fallo=false;
+    await page.getByRole('button',{name:'Reintentar solicitudes'}).click();
+    await expect(page.getByRole('link',{name:'Ver solicitud 1',exact:true}).first()).toBeVisible();
+});
+test('el listado no bloquea indefinidamente el dashboard si la API queda pendiente', async ({page}) => {
+    await sesionComo(page,'funcionario'); await page.clock.install();
+    let liberar!:()=>void;
+    const pendiente=new Promise<void>(r=>{liberar=r;});
+    await page.route(`${API}/funcionario/solicitudes`, async r=>{await pendiente;await r.abort().catch(()=>{});});
+    try {
+        const peticion=page.waitForRequest(`${API}/funcionario/solicitudes`);
+        await page.goto(DASHBOARD); await peticion;
+        await expect(page.getByRole('heading',{name:'Dashboard de solicitudes de grado'})).toBeVisible();
+        await page.clock.fastForward(15_001);
+        await expect(page.locator('main').getByRole('alert')).toContainText('tardó demasiado');
+        await expect(page.getByRole('button',{name:'Reintentar solicitudes'})).toBeVisible();
+    } finally {liberar();}
 });

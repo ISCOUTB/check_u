@@ -78,6 +78,29 @@ export const OPCIONES_CAMPO_DEMO: readonly OpcionCampoDemo[] = [
     { id: 21, campo: "TIPO_DISCAPACIDAD", valor: "OTRA", etiqueta: "Otra", orden: 5 },
 ];
 
+/** Solicitudes sintéticas exclusivas de pruebas, servidas con el contrato de la API. */
+export const SOLICITUDES_FUNCIONARIA = ['VALIDA','NO_VALIDA','INCONSISTENTE','POR_REVISAR','VALIDA'].map((estado, i) => ({
+    id: String(i + 1), estado, estudiante: `Estudiante Prueba ${i + 1}`,
+    nivel: i === 2 || i === 4 ? 'POSGRADO' : 'PREGRADO',
+    periodId: PERIODO_DEMO.id, fechaRegistro: `2026-10-04T${String(8 + i).padStart(2,'0')}:30:00-05:00`,
+}));
+export const DETALLE_FUNCIONARIA = {
+    id: '1', estadoSolicitud: 'EN_PROCESO', estadoAnalisis: 'registrado',
+    estudiante: { codigo:'T00000001', nombre:'Ana Prueba', tipoDocumento:'CC', numeroDocumento:'1000000001',
+        fechaNacimiento:'2004-03-12', programa:'Ingeniería', facultad:'', nivel:'PREGRADO', correo:'prueba@example.org', telefono:'', ciudad:'Cartagena', fechaSolicitud:'2026-10-04' },
+    informacion: { nombres:'Ana',apellidos:'Prueba',codigoEstudiantil:'T00000001', correo:'prueba@example.org',
+        tipoDocumento:'CC',numeroDocumento:'1000000001',fechaNacimiento:'2004-03-12',genero:'FEMENINO',telefonoFijo:'',telefonoCelular:'',
+        departamento:'Bolívar',ciudad:'Cartagena',direccion:'',modalidad:'PRESENCIAL',programa:'Ingeniería',
+        tieneDiscapacidad:true,tipoDiscapacidad:'Física',detallesAsistencia:'Requiere acceso para silla de ruedas.' },
+    documentos: [
+        {id:'10',nombre:'Documento de identidad',tipo:'identification',orden:1,version:1,fileName:'identidad.pdf',descripcion:'identidad.pdf',archivoDisponible:false,resubmission_allowed:false,
+            resultados:[{estado:'valido',mensaje:'Identidad verificada.'}],analisis:{extracted_data:{full_name_student:{value:'Ana Prueba',confidence:1}}}},
+        {id:'11',nombre:'Estampilla Pro-Cultura',tipo:'estampilla_pro_cultura',orden:1,version:1,fileName:'estampilla.pdf',descripcion:'estampilla.pdf',archivoDisponible:false,resubmission_allowed:true,
+            resultados:[{estado:'inconsistente',mensaje:'El valor pagado no coincide. Adjunta el comprobante correcto.'}],analisis:null},
+    ],
+    politicaReenvios:{usados:0,limite:3,zona:'America/Bogota'}, revisiones:[],
+};
+
 /** 320 px equivale a un zoom del 400 % en 1280 (WCAG 1.4.10, reflujo). */
 export const ANCHOS = [320, 360, 768, 1280] as const;
 
@@ -91,6 +114,14 @@ export async function sesionComo(page: Page, rol: Rol | null, nombre?: string): 
     await page.route(`${API}/auth/logout`, (ruta) =>
         ruta.fulfill({ status: 201, json: { message: "Sesión cerrada correctamente" } }),
     );
+    await page.route(`${API}/funcionario/solicitudes`, ruta => ruta.fulfill({
+        status: rol === 'funcionario' ? 200 : rol ? 403 : 401,
+        json: rol === 'funcionario' ? SOLICITUDES_FUNCIONARIA : {message:'Acceso restringido'},
+    }));
+    await page.route(`${API}/funcionario/solicitudes/*`, ruta => ruta.fulfill({
+        status: rol === 'funcionario' ? 200 : rol ? 403 : 401,
+        json: rol === 'funcionario' ? {...DETALLE_FUNCIONARIA,id:new URL(ruta.request().url()).pathname.split('/').pop()} : {message:'Acceso restringido'},
+    }));
     let periodos: PeriodoDemo[] = [{ ...PERIODO_DEMO }];
     await page.route(`${API}/periodos-grado`, async (ruta) => {
         if (rol !== "funcionario") {
@@ -331,6 +362,11 @@ export async function sesionComo(page: Page, rol: Rol | null, nombre?: string): 
             json: { status: "ok", service: "CheckU API", message: "Backend conectado correctamente" },
         }),
     );
+    // Tarea 41: avisos vacíos por defecto; cada prueba del módulo define sus casos.
+    await page.route(`${API}/estudiante/notificaciones`, ruta => ruta.fulfill({
+        status: rol === "estudiante" ? 200 : rol ? 403 : 401,
+        json: rol === "estudiante" ? {notificaciones: [], noLeidas: 0} : {message: "Acceso restringido"},
+    }));
     await page.route(`${API}/estudiante/solicitud`, (ruta) =>
         rol === "estudiante"
             ? ruta.fulfill({

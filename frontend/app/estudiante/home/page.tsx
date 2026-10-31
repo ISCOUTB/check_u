@@ -1,27 +1,29 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+
 import Navbar from '@/app/components/navbar/Navbar';
 import Button from '@/app/components/ui/Button';
 import Card from '@/app/components/ui/Card';
 import Icono from '@/app/components/ui/Icono';
 import PageHeader from '@/app/components/ui/PageHeader';
 import StatusBadge from '@/app/components/ui/StatusBadge';
+
 import { useEstadoNavegacion } from '@/app/lib/useEstadoNavegacion';
 import { useSesion } from '@/app/lib/useSesion';
+
 import styles from './home.module.css';
+import NotificacionesPanel from './NotificacionesPanel';
+
 import {
   type DocumentoSolicitud,
   type EstadoDocumentoCompleto,
   type NivelAcademico,
-  type Notificacion,
   type PoliticaReenvios,
   type Solicitud,
   DOCUMENTOS_POR_NIVEL,
-  formatearFecha,
   obtenerNivelSimulado,
-  obtenerNotificaciones,
   obtenerPoliticaReenvios,
   obtenerSolicitudActiva,
 } from './api';
@@ -41,14 +43,14 @@ const DETALLE_ESTADO: Partial<Record<EstadoDocumentoCompleto, string>> = {
   procesando: 'Procesando y validando documento...',
 };
 
-const NOTIFICACIONES_VISIBLES = 3;
-
 function documentosCargados(solicitud: Solicitud): number {
-  return solicitud.documentos.filter((d) => d.estado !== 'falta_cargar').length;
+  return solicitud.documentos.filter((d) => d.estado !== 'falta_cargar')
+    .length;
 }
 
 export default function Home() {
   const { usuario, cargando: cargandoSesion } = useSesion('estudiante');
+
   const router = useRouter();
   const pathname = usePathname();
 
@@ -59,41 +61,33 @@ export default function Home() {
     reintentar: reintentarEstado,
   } = useEstadoNavegacion(Boolean(usuario));
 
+  const [nivel, setNivel] = useState<NivelAcademico | null>(null);
+  const [solicitud, setSolicitud] = useState<Solicitud | null | undefined>(
+    undefined,
+  );
+  const [politica, setPolitica] = useState<PoliticaReenvios | null>(null);
+
+  // Redirigir según el estado real de la solicitud.
   useEffect(() => {
     if (!estadoNav?.destino) return;
+
     if (estadoNav.destino !== pathname) {
       router.replace(estadoNav.destino);
     }
   }, [estadoNav, pathname, router]);
 
-  const idListaNotificaciones = useId();
-
-  const [nivel, setNivel] = useState<NivelAcademico | null>(null);
-  const [solicitud, setSolicitud] = useState<Solicitud | null | undefined>(
-    undefined,
-  );
-  const [notificaciones, setNotificaciones] = useState<Notificacion[] | null>(
-    null,
-  );
-  const [errorNotificaciones, setErrorNotificaciones] = useState(false);
-  const [politica, setPolitica] = useState<PoliticaReenvios | null>(null);
-  const [verTodas, setVerTodas] = useState(false);
-
+  // Cargar información del portal cuando la solicitud está enviada.
   useEffect(() => {
     if (!usuario || estadoNav?.estado !== 'ENVIADA') return;
 
     obtenerNivelSimulado().then(setNivel);
+
     obtenerSolicitudActiva()
       .then(setSolicitud)
       .catch(() => {
         setSolicitud(null);
       });
-    obtenerNotificaciones()
-      .then(setNotificaciones)
-      .catch(() => {
-        setNotificaciones([]);
-        setErrorNotificaciones(true);
-      });
+
     obtenerPoliticaReenvios()
       .then(setPolitica)
       .catch(() => setPolitica(null));
@@ -141,9 +135,13 @@ export default function Home() {
     );
   }
 
-  const datosListos = solicitud !== undefined && notificaciones !== null;
-  const nivelEfectivo: NivelAcademico = nivel ?? usuario.nivel ?? 'PREGRADO';
-  const nombreNivel = nivelEfectivo === 'PREGRADO' ? 'pregrado' : 'posgrado';
+  const datosListos = solicitud !== undefined;
+  const nivelEfectivo: NivelAcademico =
+    nivel ?? usuario.nivel ?? 'PREGRADO';
+
+  const nombreNivel =
+    nivelEfectivo === 'PREGRADO' ? 'pregrado' : 'posgrado';
+
   const listaDocs = DOCUMENTOS_POR_NIVEL[nivelEfectivo] || [];
   const hrefContinuar = '/estudiante/preinscripcion';
 
@@ -167,6 +165,7 @@ export default function Home() {
         CheckU prevalida tus documentos; no reemplaza la decisión oficial de la
         Universidad.
       </p>
+
       {politica ? (
         <p className={styles.reenvios}>
           <strong>Reenvíos de corrección hoy:</strong>{' '}
@@ -176,57 +175,6 @@ export default function Home() {
         <p className={styles.textoSecundario}>
           Cargando política de reenvíos...
         </p>
-      )}
-    </Card>
-  );
-
-  const listaNotificaciones =
-    notificaciones &&
-    (verTodas
-      ? notificaciones
-      : notificaciones.slice(0, NOTIFICACIONES_VISIBLES));
-
-  const tarjetaNotificaciones = (
-    <Card titulo="Notificaciones" id="notificaciones">
-      {notificaciones === null && !errorNotificaciones && (
-        <p className={styles.textoSecundario}>Cargando notificaciones...</p>
-      )}
-      {errorNotificaciones && (
-        <p className={styles.textoError}>
-          No fue posible cargar las notificaciones.
-        </p>
-      )}
-      {notificaciones !== null &&
-        notificaciones.length === 0 &&
-        !errorNotificaciones && (
-          <p className={styles.textoSecundario}>No tienes notificaciones.</p>
-        )}
-      {listaNotificaciones && listaNotificaciones.length > 0 && (
-        <ul id={idListaNotificaciones} className={styles.notificaciones}>
-          {listaNotificaciones.map((n) => (
-            <li key={n.id} className={styles.notificacion}>
-              <div className={styles.notificacionCabecera}>
-                <span className={styles.notificacionTitulo}>{n.titulo}</span>
-                <time dateTime={n.fecha} className={styles.notificacionFecha}>
-                  {formatearFecha(n.fecha)}
-                </time>
-              </div>
-              <p className={styles.notificacionTexto}>{n.descripcion}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-      {notificaciones && notificaciones.length > NOTIFICACIONES_VISIBLES && (
-        <Button
-          variante="sutil"
-          aria-expanded={verTodas}
-          aria-controls={idListaNotificaciones}
-          onClick={() => setVerTodas((valor) => !valor)}
-        >
-          {verTodas
-            ? 'Ver menos notificaciones'
-            : 'Ver todas las notificaciones'}
-        </Button>
       )}
     </Card>
   );
@@ -241,6 +189,7 @@ export default function Home() {
             etiqueta={ETIQUETA_PARA_ESTUDIANTE[doc.estado]}
           />
         </div>
+
         {doc.estado === 'no_valido' && doc.motivoRechazo ? (
           <p className={styles.motivo}>{doc.motivoRechazo}</p>
         ) : (
@@ -251,12 +200,17 @@ export default function Home() {
           )
         )}
       </div>
+
       {(doc.estado === 'falta_cargar' || doc.correccionAutorizada) && (
         <Button
           href="/estudiante/preinscripcion"
           variante="secundario"
           className={styles.documentoAccion}
-          aria-label={`${doc.estado === 'falta_cargar' ? 'Subir documento' : 'Subir nueva versión'}: ${doc.nombre}`}
+          aria-label={`${
+            doc.estado === 'falta_cargar'
+              ? 'Subir documento'
+              : 'Subir nueva versión'
+          }: ${doc.nombre}`}
         >
           {doc.estado === 'falta_cargar'
             ? 'Subir documento'
@@ -274,6 +228,7 @@ export default function Home() {
         </Card>
       );
     }
+
     if (!solicitud) {
       return (
         <Card titulo="Mi solicitud de grado" id="mi-solicitud">
@@ -292,6 +247,7 @@ export default function Home() {
         <p className={styles.progresoTexto}>
           {cargados} de {total} documentos cargados
         </p>
+
         <div
           className={styles.progreso}
           role="progressbar"
@@ -308,6 +264,7 @@ export default function Home() {
             }}
           />
         </div>
+
         <ul className={styles.documentos}>
           {solicitud.documentos.map(filaDocumento)}
         </ul>
@@ -322,6 +279,7 @@ export default function Home() {
         nombreUsuario={usuario.name}
         nivel={nivelEfectivo}
       />
+
       <main
         id="contenido"
         tabIndex={-1}
@@ -342,17 +300,26 @@ export default function Home() {
             <span className={styles.bienvenidaIcono}>
               <Icono nombre="escudo" tamano={26} />
             </span>
+
             <div>
-              <h2 id="titulo-bienvenida" className={styles.bienvenidaTitulo}>
+              <h2
+                id="titulo-bienvenida"
+                className={styles.bienvenidaTitulo}
+              >
                 Tu solicitud de grado está en curso
               </h2>
+
               <p className={styles.bienvenidaTexto}>
                 Sube los documentos que faltan y revisa si cumplen los
                 requisitos antes de la inscripción formal.
               </p>
             </div>
           </div>
-          <Button href={hrefContinuar} className={styles.bienvenidaAccion}>
+
+          <Button
+            href={hrefContinuar}
+            className={styles.bienvenidaAccion}
+          >
             Continuar mi preinscripción
           </Button>
         </section>
@@ -362,9 +329,10 @@ export default function Home() {
             {tarjetaDocumentos}
             {tarjetaSolicitud()}
           </div>
+
           <div className={styles.columna}>
             {tarjetaAviso}
-            {tarjetaNotificaciones}
+            <NotificacionesPanel />
           </div>
         </div>
       </main>

@@ -1,3 +1,4 @@
+import { NotificacionesService } from '../notificaciones/notificaciones.service.js';
 import { etapaDocumento, type InformarAvance } from './progreso-envio.js';
 import {
   BadGatewayException,
@@ -67,6 +68,7 @@ export class AnalisisPreinscripcionService {
     private readonly motor: DocumentosService,
     private readonly temporales: ArchivosTemporalesService,
     private readonly db: DatabaseService,
+    private readonly notificaciones: NotificacionesService,
   ) {}
 
   obtenerDetalle(idEstudiante: number) {
@@ -255,6 +257,7 @@ export class AnalisisPreinscripcionService {
           'Análisis de la entrega registrado; el resultado completo se conserva en validaciones.detalle.',
         ],
       );
+      await this.notificaciones.porDocumento(client, v.rows[0].id_validacion);
     }
     informar('Generando análisis documental.');
   }
