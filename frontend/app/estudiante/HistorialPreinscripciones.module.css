@@ -1,8 +1,0 @@
-.panel { margin-top: 24px; }
-.lista { display: grid; gap: 16px; list-style: none; padding: 0; }
-.registro { display: grid; gap: 8px; min-width: 0; padding: 16px; border: 1px solid var(--color-border); border-radius: 8px; overflow-wrap: anywhere; }
-.registro[data-estado=CANCELADA], .registro[data-estado=CERRADA] { background: var(--color-surface-muted); }
-.registro[data-estado=CANCELADA] strong { color: var(--color-text-secondary); }
-.registro[data-estado=CERRADA] strong { color: var(--status-invalid-text); }
-.enlace { display: inline-flex; align-items: center; justify-self: start; min-height: 44px; color: var(--color-accent-text); text-decoration: underline; }
-.enlace:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 3px; }
