@@ -10,10 +10,10 @@ test.describe("decisión de bienvenida basada en solicitud_grado", () => {
     test.describe("en /estudiante/home", () => {
         test("sin solicitud redirige a /estudiante/bienvenida", async ({ page }) => {
             await sesionComo(page, "estudiante");
-            await page.route(`${API}/estudiante/solicitud`, (ruta) =>
+            await page.route(`${API}/solicitudes/estado`, (ruta) =>
                 ruta.fulfill({
                     status: 200,
-                    json: { tiene_solicitud: false, solicitud: null },
+                    json: { ok:true, estado:"SIN_SOLICITUD", destino:RUTA_BIENVENIDA },
                 }),
             );
 
@@ -23,12 +23,11 @@ test.describe("decisión de bienvenida basada en solicitud_grado", () => {
 
         test("con solicitud permanece en /estudiante/home y no redirige", async ({ page }) => {
             await sesionComo(page, "estudiante");
-            await page.route(`${API}/estudiante/solicitud`, (ruta) =>
+            await page.route(`${API}/solicitudes/estado`, (ruta) =>
                 ruta.fulfill({
                     status: 200,
                     json: {
-                        tiene_solicitud: true,
-                        solicitud: { id_solicitud: 1, tipo_solicitud: "PREGRADO", estado: "BORRADOR" },
+                        ok:true,estado:"ENVIADA",destino:RUTA_HOME,id_solicitud:1,nivel:"PREGRADO",
                     },
                 }),
             );
@@ -40,7 +39,7 @@ test.describe("decisión de bienvenida basada en solicitud_grado", () => {
 
         test("si la consulta falla (error de BD), no redirige y muestra error con opción de reintentar", async ({ page }) => {
             await sesionComo(page, "estudiante");
-            await page.route(`${API}/estudiante/solicitud`, (ruta) =>
+            await page.route(`${API}/solicitudes/estado`, (ruta) =>
                 ruta.fulfill({
                     status: 503,
                     json: { message: "Base de datos no disponible" },
@@ -49,7 +48,7 @@ test.describe("decisión de bienvenida basada en solicitud_grado", () => {
 
             await page.goto(RUTA_HOME);
             await expect(page).toHaveURL(RUTA_HOME);
-            await expect(page.getByText("No fue posible cargar la solicitud. Intenta recargar la página.")).toBeVisible();
+            await expect(page.getByText("No se pudo obtener el estado de la solicitud.")).toBeVisible();
             await expect(page.getByRole("button", { name: "Reintentar" })).toBeVisible();
         });
     });
