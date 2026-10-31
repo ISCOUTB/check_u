@@ -106,6 +106,15 @@ export const ANCHOS = [320, 360, 768, 1280] as const;
 
 /** Simula el backend: la sesión (o su ausencia), el cierre de sesión y el chequeo de salud. */
 export async function sesionComo(page: Page, rol: Rol | null, nombre?: string): Promise<void> {
+    // La tarea 34 consulta este contrato para las guardas; cada prueba puede sustituirlo.
+    await page.route(`${API}/solicitudes/estado`,async ruta=>{
+        if(rol!=='estudiante')return ruta.fulfill({status:rol?403:401,json:{message:'Acceso restringido'}});
+        const escenario=await page.evaluate(()=>(window as unknown as {__CHECKU_ESCENARIO__?:string}).__CHECKU_ESCENARIO__).catch(()=>undefined);
+        const path=new URL(page.url()).pathname;
+        const estado=escenario==='sin_solicitud'||path==='/estudiante/bienvenida'?'SIN_SOLICITUD':path==='/estudiante/iniciar_preinscripcion'?'BORRADOR':'ENVIADA';
+        return ruta.fulfill({json:{ok:true,estado,destino:estado==='SIN_SOLICITUD'?'/estudiante/bienvenida':estado==='BORRADOR'?'/estudiante/iniciar_preinscripcion':'/estudiante/home',id_solicitud:estado==='SIN_SOLICITUD'?undefined:1,nivel:'PREGRADO'}});
+    });
+    await page.route(`${API}/estudiante/solicitudes`,ruta=>ruta.fulfill({status:rol==='estudiante'?200:rol?403:401,json:rol==='estudiante'?{solicitudes:[]}:{message:'Acceso restringido'}}));
     await page.route(`${API}/auth/me`, (ruta) =>
         rol
             ? ruta.fulfill({ status: 200, json: { user: { ...USUARIOS[rol], ...(nombre ? { name: nombre } : {}) } } })
