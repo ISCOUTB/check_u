@@ -12,6 +12,16 @@ export interface RespuestaSolicitudEstudiante {
   solicitud: SolicitudResumen | null;
 }
 
+export type EstadoNavegacion = 'SIN_SOLICITUD' | 'BORRADOR' | 'ENVIADA';
+
+export interface RespuestaEstadoNavegacion {
+  ok: true;
+  estado: EstadoNavegacion;
+  destino: string;
+  id_solicitud?: number;
+  nivel?: 'PREGRADO' | 'POSGRADO';
+}
+
 export interface RespuestaEnvioPreinscripcion {
   ok: true;
   id_solicitud: number;

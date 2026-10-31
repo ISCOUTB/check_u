@@ -4,17 +4,33 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import { AnalisisPreinscripcionService, validarArchivos, type PdfPreinscripcion } from './analisis-preinscripcion.service.js';
+import {
+  AnalisisPreinscripcionService,
+  validarArchivos,
+  type PdfPreinscripcion,
+} from './analisis-preinscripcion.service.js';
 import type { PoolClient } from 'pg';
-import { consultarContextoPeriodo, requerirPeriodoElegible } from '../periodos/asignacion-periodo.js';
+import {
+  consultarContextoPeriodo,
+  requerirPeriodoElegible,
+} from '../periodos/asignacion-periodo.js';
 import { TypeDocument } from '../contratos/enums.js';
-import { validarBorrador, proyeccion, PERFIL, PREGRADO, POSGRADO, PROGRAMA, EXPERIENCIA } from './borrador.js';
+import {
+  validarBorrador,
+  proyeccion,
+  PERFIL,
+  PREGRADO,
+  POSGRADO,
+  PROGRAMA,
+  EXPERIENCIA,
+} from './borrador.js';
 import { DatabaseService } from '../database/database.service.js';
 import { TIPO_DOCUMENTO_LEGADO } from '../contratos/mapeo.js';
 import type {
   DatosEnvioPreinscripcion,
   DocumentoCargadoDTO,
   RespuestaEnvioPreinscripcion,
+  RespuestaEstadoNavegacion,
   RespuestaGuardarBorrador,
   RespuestaObtenerBorrador,
   RespuestaSolicitudEstudiante,
@@ -37,13 +53,17 @@ const DOCUMENTOS_REQUERIDOS_POSGRADO = [
 
 function normalizarTipoDocumento(tipo: string): string {
   const limpio = tipo.trim().toLowerCase();
-  if (limpio === 'estampilla2' || limpio === 'estampilla_pro_cultura-2') return 'estampilla_pro_cultura';
+  if (limpio === 'estampilla2' || limpio === 'estampilla_pro_cultura-2')
+    return 'estampilla_pro_cultura';
   return TIPO_DOCUMENTO_LEGADO[limpio] ?? limpio;
 }
 
 @Injectable()
 export class SolicitudesService {
-  constructor(private readonly databaseService: DatabaseService, private readonly analisis: AnalisisPreinscripcionService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly analisis: AnalisisPreinscripcionService,
+  ) {}
 
   async obtenerSolicitudEstudiante(
     idEstudiante: number,
@@ -79,6 +99,49 @@ export class SolicitudesService {
     };
   }
 
+  async obtenerEstadoNavegacion(
+    idEstudiante: number,
+  ): Promise<RespuestaEstadoNavegacion> {
+    const resultado = await this.databaseService.query<SolicitudResumen>(
+      `SELECT id_solicitud, tipo_solicitud, estado
+       FROM solicitud_grado
+       WHERE id_estudiante = $1
+       ORDER BY id_solicitud DESC
+       LIMIT 1`,
+      [idEstudiante],
+    );
+
+    if (resultado.rows.length === 0) {
+      return {
+        ok: true,
+        estado: 'SIN_SOLICITUD',
+        destino: '/estudiante/bienvenida',
+      };
+    }
+
+    const fila = resultado.rows[0];
+    const nivel = fila.tipo_solicitud === 'POSGRADO' ? 'POSGRADO' : 'PREGRADO';
+
+    if (fila.estado === 'BORRADOR') {
+      return {
+        ok: true,
+        estado: 'BORRADOR',
+        destino: '/estudiante/iniciar_preinscripcion',
+        id_solicitud: fila.id_solicitud,
+        nivel,
+      };
+    }
+
+    // EN_PROCESO u otro estado no borrador = ya envió
+    return {
+      ok: true,
+      estado: 'ENVIADA',
+      destino: '/estudiante/home',
+      id_solicitud: fila.id_solicitud,
+      nivel,
+    };
+  }
+
   async enviarPreinscripcion(
     idEstudiante: number,
     payload?: DatosEnvioPreinscripcion,
@@ -90,104 +153,140 @@ export class SolicitudesService {
     informar('Documentos cargados.');
     // Primero guarda el borrador. Un fallo del motor no pierde los campos del estudiante.
     const datos = validarBorrador(payload);
-    const tiposPermitidos = datos.nivel === 'POSGRADO' ? DOCUMENTOS_REQUERIDOS_POSGRADO : DOCUMENTOS_REQUERIDOS_PREGRADO;
-    const esperados = [...tiposPermitidos, ...(datos.nivel === 'PREGRADO' && datos.segundoPrograma ? ['estampilla_pro_cultura-2'] : [])];
-    if (archivos.length !== esperados.length || esperados.some(t => !archivos.some(a => a.tipo === t)))
-      throw new BadRequestException('Adjunta los documentos requeridos para tu nivel académico.');
-    const payloadReal = { ...datos, documentos: archivos.map(a => ({ id: a.tipo, nombre: a.originalname, tamano: a.buffer.length })) };
+    const tiposPermitidos =
+      datos.nivel === 'POSGRADO'
+        ? DOCUMENTOS_REQUERIDOS_POSGRADO
+        : DOCUMENTOS_REQUERIDOS_PREGRADO;
+    const esperados = [
+      ...tiposPermitidos,
+      ...(datos.nivel === 'PREGRADO' && datos.segundoPrograma
+        ? ['estampilla_pro_cultura-2']
+        : []),
+    ];
+    if (
+      archivos.length !== esperados.length ||
+      esperados.some((t) => !archivos.some((a) => a.tipo === t))
+    )
+      throw new BadRequestException(
+        'Adjunta los documentos requeridos para tu nivel académico.',
+      );
+    const payloadReal = {
+      ...datos,
+      documentos: archivos.map((a) => ({
+        id: a.tipo,
+        nombre: a.originalname,
+        tamano: a.buffer.length,
+      })),
+    };
     informar('Registrando solicitud de preinscripción.');
     await this.guardarBorrador(idEstudiante, payloadReal);
     informar('Solicitud de preinscripción almacenada.');
     const creados: string[] = [];
-    return this.databaseService.transaction<RespuestaEnvioPreinscripcion>(async (client) => {
-      // 1. Obtener y bloquear la solicitud activa
-      const resSolicitud = await client.query<SolicitudResumen>(
-        `SELECT id_solicitud, id_periodo, tipo_solicitud, estado
+    return this.databaseService
+      .transaction<RespuestaEnvioPreinscripcion>(async (client) => {
+        // 1. Obtener y bloquear la solicitud activa
+        const resSolicitud = await client.query<SolicitudResumen>(
+          `SELECT id_solicitud, id_periodo, tipo_solicitud, estado
          FROM solicitud_grado
          WHERE id_estudiante = $1
          ORDER BY id_solicitud DESC
          LIMIT 1
          FOR UPDATE;`,
-        [idEstudiante],
-      );
+          [idEstudiante],
+        );
 
-      let solicitud = resSolicitud.rows[0];
+        let solicitud = resSolicitud.rows[0];
 
-      if (!solicitud) {
-        if (payload?.nivel || payload?.tipo_solicitud) {
-          const nivel = (payload.nivel || payload.tipo_solicitud)!.toUpperCase();
-          const insertRes = await client.query<SolicitudResumen>(
-            `INSERT INTO solicitud_grado (id_estudiante, tipo_solicitud, estado)
+        if (!solicitud) {
+          if (payload?.nivel || payload?.tipo_solicitud) {
+            const nivel = (payload.nivel ||
+              payload.tipo_solicitud)!.toUpperCase();
+            const insertRes = await client.query<SolicitudResumen>(
+              `INSERT INTO solicitud_grado (id_estudiante, tipo_solicitud, estado)
              VALUES ($1, $2, 'BORRADOR')
              RETURNING id_solicitud, id_periodo, tipo_solicitud, estado;`,
-            [idEstudiante, nivel],
-          );
-          solicitud = insertRes.rows[0];
-        } else {
-          throw new BadRequestException('No existe una solicitud de grado para el estudiante');
+              [idEstudiante, nivel],
+            );
+            solicitud = insertRes.rows[0];
+          } else {
+            throw new BadRequestException(
+              'No existe una solicitud de grado para el estudiante',
+            );
+          }
         }
-      }
 
-      if (solicitud.estado !== 'BORRADOR') {
-        throw new ConflictException(
-          `La solicitud ya ha sido enviada o no se encuentra en estado BORRADOR (estado actual: ${solicitud.estado})`,
-        );
-      }
+        if (solicitud.estado !== 'BORRADOR') {
+          throw new ConflictException(
+            `La solicitud ya ha sido enviada o no se encuentra en estado BORRADOR (estado actual: ${solicitud.estado})`,
+          );
+        }
 
-      await this.asegurarPeriodo(client, solicitud);
+        await this.asegurarPeriodo(client, solicitud);
 
-      await client.query(`DELETE FROM documentos WHERE id_solicitud = $1 AND id_entrega IS NULL
+        await client.query(
+          `DELETE FROM documentos WHERE id_solicitud = $1 AND id_entrega IS NULL
         AND NOT (tipo_documento || CASE WHEN orden = 2 THEN '-2' ELSE '' END = ANY($2::text[]))`,
-        [solicitud.id_solicitud, archivos.map(a => a.tipo)]);
+          [solicitud.id_solicitud, archivos.map((a) => a.tipo)],
+        );
 
-      // 3. Validar completitud de campos obligatorios e información documental
-      await this.validarRequisitosCompletos(
-        client,
-        idEstudiante,
-        solicitud.id_solicitud,
-        solicitud.tipo_solicitud,
-      );
+        // 3. Validar completitud de campos obligatorios e información documental
+        await this.validarRequisitosCompletos(
+          client,
+          idEstudiante,
+          solicitud.id_solicitud,
+          solicitud.tipo_solicitud,
+        );
 
-      // 4. Insertar fila en entregas (tipo_entrega = 'INICIAL', numero_entrega = 1)
-      const resEntrega = await client.query<{ id_entrega: number }>(
-        `INSERT INTO entregas (id_solicitud, numero_entrega, tipo_entrega, fecha_entrega)
+        // 4. Insertar fila en entregas (tipo_entrega = 'INICIAL', numero_entrega = 1)
+        const resEntrega = await client.query<{ id_entrega: number }>(
+          `INSERT INTO entregas (id_solicitud, numero_entrega, tipo_entrega, fecha_entrega)
          VALUES ($1, 1, 'INICIAL', CURRENT_TIMESTAMP)
          RETURNING id_entrega;`,
-        [solicitud.id_solicitud],
-      );
-      const idEntrega = resEntrega.rows[0].id_entrega;
+          [solicitud.id_solicitud],
+        );
+        const idEntrega = resEntrega.rows[0].id_entrega;
 
-      // 5. Asignar id_entrega a los documentos no asociados y cambiar su estado a 'POR_VALIDAR'
-      await client.query(
-        `UPDATE documentos
+        // 5. Asignar id_entrega a los documentos no asociados y cambiar su estado a 'POR_VALIDAR'
+        await client.query(
+          `UPDATE documentos
          SET id_entrega = $1, estado = 'POR_VALIDAR'
          WHERE id_solicitud = $2 AND id_entrega IS NULL;`,
-        [idEntrega, solicitud.id_solicitud],
-      );
+          [idEntrega, solicitud.id_solicitud],
+        );
 
-      informar('Enviando documentos al motor de análisis documental.');
-      await this.analisis.procesar(client, solicitud.id_solicitud, idEntrega, idEstudiante,
-        solicitud.tipo_solicitud, archivos, creados, informar);
+        informar('Enviando documentos al motor de análisis documental.');
+        await this.analisis.procesar(
+          client,
+          solicitud.id_solicitud,
+          idEntrega,
+          idEstudiante,
+          solicitud.tipo_solicitud,
+          archivos,
+          creados,
+          informar,
+        );
 
-      // 6. Transicionar el estado de la solicitud a 'EN_PROCESO'
-      await client.query(
-        `UPDATE solicitud_grado
+        // 6. Transicionar el estado de la solicitud a 'EN_PROCESO'
+        await client.query(
+          `UPDATE solicitud_grado
          SET estado = 'EN_PROCESO'
          WHERE id_solicitud = $1;`,
-        [solicitud.id_solicitud],
-      );
+          [solicitud.id_solicitud],
+        );
 
-      return {
-        ok: true,
-        id_solicitud: solicitud.id_solicitud,
-        id_entrega: idEntrega,
-        estado: 'EN_PROCESO',
-        mensaje: 'Preinscripción registrada. Consulta los resultados del análisis documental.',
-      };
-    }).catch(async (error: unknown) => {
-      await this.analisis.descartar(creados);
-      throw error;
-    });
+        return {
+          ok: true,
+          id_solicitud: solicitud.id_solicitud,
+          id_entrega: idEntrega,
+          estado: 'EN_PROCESO',
+          mensaje:
+            'Preinscripción registrada. Consulta los resultados del análisis documental.',
+        };
+      })
+      .catch(async (error: unknown) => {
+        await this.analisis.descartar(creados);
+        throw error;
+      });
   }
 
   async obtenerBorrador(
@@ -209,7 +308,10 @@ export class SolicitudesService {
         [idEstudiante],
       );
       const solicitud = res.rows[0];
-      const periodos = await consultarContextoPeriodo(client, solicitud?.id_periodo ?? null);
+      const periodos = await consultarContextoPeriodo(
+        client,
+        solicitud?.id_periodo ?? null,
+      );
       if (!solicitud || solicitud.estado !== 'BORRADOR') {
         return {
           ok: true,
@@ -504,7 +606,10 @@ export class SolicitudesService {
     });
   }
 
-  private async asegurarPeriodo(client: PoolClient, solicitud: SolicitudResumen) {
+  private async asegurarPeriodo(
+    client: PoolClient,
+    solicitud: SolicitudResumen,
+  ) {
     if (solicitud.id_periodo) return;
     // Incluye borradores históricos sin periodo: se vinculan una sola vez al siguiente guardado.
     const idPeriodo = await requerirPeriodoElegible(client);
@@ -565,8 +670,15 @@ export class SolicitudesService {
       [idEstudiante],
     );
     const u = resUsuario.rows[0];
-    if (!u || !u.nombres?.trim() || !u.apellidos?.trim() || !u.codigo_estudiante?.trim()) {
-      throw new BadRequestException('Faltan nombres, apellidos o código estudiantil del estudiante');
+    if (
+      !u ||
+      !u.nombres?.trim() ||
+      !u.apellidos?.trim() ||
+      !u.codigo_estudiante?.trim()
+    ) {
+      throw new BadRequestException(
+        'Faltan nombres, apellidos o código estudiantil del estudiante',
+      );
     }
 
     // Validar perfil_estudiante
@@ -586,7 +698,9 @@ export class SolicitudesService {
       !perfil.numero_documento?.trim() ||
       !/^[A-Za-z0-9]+$/.test(perfil.numero_documento.trim())
     ) {
-      throw new BadRequestException('Perfil de estudiante incompleto o número de documento inválido');
+      throw new BadRequestException(
+        'Perfil de estudiante incompleto o número de documento inválido',
+      );
     }
 
     // Validar solicitud_programa
@@ -604,7 +718,9 @@ export class SolicitudesService {
     );
     const prog1 = resPrograma.rows.find((p) => p.orden === 1);
     if (!prog1 || !prog1.programa?.trim() || !prog1.modalidad?.trim()) {
-      throw new BadRequestException('Información académica incompleta: falta programa principal o modalidad');
+      throw new BadRequestException(
+        'Información académica incompleta: falta programa principal o modalidad',
+      );
     }
 
     if (tipoSolicitud === 'PREGRADO') {
@@ -618,14 +734,19 @@ export class SolicitudesService {
         [idSolicitud],
       );
       if (resPreg.rows.length === 0) {
-        throw new BadRequestException('Falta información requerida de pregrado');
+        throw new BadRequestException(
+          'Falta información requerida de pregrado',
+        );
       }
       const preg = resPreg.rows[0];
       if (
         preg.conoce_registro_saber_pro === true &&
-        (!preg.numero_registro_saber_pro || !preg.numero_registro_saber_pro.trim())
+        (!preg.numero_registro_saber_pro ||
+          !preg.numero_registro_saber_pro.trim())
       ) {
-        throw new BadRequestException('Debe registrar el número de registro Saber Pro');
+        throw new BadRequestException(
+          'Debe registrar el número de registro Saber Pro',
+        );
       }
     } else if (tipoSolicitud === 'POSGRADO') {
       const resPos = await client.query<{
@@ -638,16 +759,26 @@ export class SolicitudesService {
         [idSolicitud],
       );
       if (resPos.rows.length === 0) {
-        throw new BadRequestException('Falta información de estudios de posgrado');
+        throw new BadRequestException(
+          'Falta información de estudios de posgrado',
+        );
       }
       const pos = resPos.rows[0];
-      if (!pos.nivel_estudios_alcanzado?.trim() || !pos.titulo_obtenido?.trim()) {
-        throw new BadRequestException('Debe completar nivel de estudios y título obtenido');
+      if (
+        !pos.nivel_estudios_alcanzado?.trim() ||
+        !pos.titulo_obtenido?.trim()
+      ) {
+        throw new BadRequestException(
+          'Debe completar nivel de estudios y título obtenido',
+        );
       }
     }
 
     // Validar documentos cargados
-    const resDocs = await client.query<{ tipo_documento: string; orden?: number | null }>(
+    const resDocs = await client.query<{
+      tipo_documento: string;
+      orden?: number | null;
+    }>(
       `SELECT tipo_documento, orden FROM documentos
        WHERE id_solicitud = $1 AND (id_entrega IS NULL OR estado = 'CARGADO');`,
       [idSolicitud],
@@ -665,9 +796,13 @@ export class SolicitudesService {
     const faltantes = requeridos.filter((tipo) => !tiposExistentes.has(tipo));
 
     // Doble programa en pregrado: una estampilla Pro-Cultura por programa (la del segundo, con orden 2).
-    const hayPrograma2 = resPrograma.rows.some((p) => p.orden === 2 && p.programa?.trim());
+    const hayPrograma2 = resPrograma.rows.some(
+      (p) => p.orden === 2 && p.programa?.trim(),
+    );
     const hayEstampilla2 = resDocs.rows.some(
-      (d) => normalizarTipoDocumento(d.tipo_documento) === 'estampilla_pro_cultura' && (d.orden ?? 1) === 2,
+      (d) =>
+        normalizarTipoDocumento(d.tipo_documento) ===
+          'estampilla_pro_cultura' && (d.orden ?? 1) === 2,
     );
     if (tipoSolicitud === 'PREGRADO' && hayPrograma2 && !hayEstampilla2) {
       faltantes.push('estampilla_pro_cultura (segundo programa)');
