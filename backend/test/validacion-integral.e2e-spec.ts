@@ -534,6 +534,23 @@ describe('Tarea 42: flujo de la solicitud', () => {
       expect(r.body.message).toBe('La solicitud ya fue decidida.');
     });
 
+    it('después de resolverlo, el detalle conserva el análisis del motor', async () => {
+      flujo.clasificacion.saber_pro = 'to_check';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const doc = (await documentosActuales(flujo, id)).saber_pro;
+      expect(doc.estado).toBe('POR_REVISAR');
+      await resolver(doc.id_documento, { resultado: 'VALIDO' }).expect(201);
+      const detalle = await flujo.funcionaria
+        .get(`/api/funcionario/solicitudes/${id}`)
+        .expect(200);
+      const saber = detalle.body.documentos.find(
+        (d: { tipo: string }) => d.tipo === 'saber_pro',
+      );
+      expect(saber.analisis.validation_version).toBe('prueba@1');
+      expect(saber.resultados[0].mensaje).toContain('funcionaria');
+    });
+
     it('un estudiante no puede resolver documentos', async () => {
       const { paz } = await conPazYSalvoPorRevisar();
       await resolver(paz, { resultado: 'VALIDO' }, flujo.estudiante).expect(
