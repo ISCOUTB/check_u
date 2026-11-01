@@ -258,4 +258,101 @@ describe('Tarea 42: flujo de la solicitud', () => {
       }
     });
   });
+
+  describe('reenvíos', () => {
+    /** Envía con Saber Pro no válido y devuelve el id de la solicitud y el del documento. */
+    async function conSaberProInvalido() {
+      flujo.clasificacion.saber_pro = 'invalid';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const docs = await documentosActuales(flujo, id);
+      return { id, docs, saberPro: docs.saber_pro.id_documento };
+    }
+    async function moverFin(dias: number) {
+      await flujo.base.db.query(
+        `UPDATE periodos_grado SET fecha_fin=(CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date+$1::int`,
+        [dias],
+      );
+    }
+    async function entregas(id: number) {
+      const r = await flujo.base.db.query<{ n: number }>(
+        'SELECT count(*)::int AS n FROM entregas WHERE id_solicitud=$1',
+        [id],
+      );
+      return r.rows[0].n;
+    }
+
+    it('el día fecha_fin − 7 todavía se puede reenviar', async () => {
+      const { id, saberPro } = await conSaberProInvalido();
+      await moverFin(7);
+      await reenviar(flujo, id, [saberPro]).expect(201);
+    });
+
+    it('desde fecha_fin − 6 el reenvío se rechaza y no crea entrega', async () => {
+      const { id, saberPro } = await conSaberProInvalido();
+      await moverFin(6);
+      const corte = (
+        await flujo.base.db.query<{ corte: string }>(
+          `SELECT (fecha_fin-7)::text AS corte FROM periodos_grado`,
+        )
+      ).rows[0].corte;
+      const r = await reenviar(flujo, id, [saberPro]).expect(409);
+      expect(r.body.message).toBe(
+        `El plazo para corregir documentos terminó el ${corte}.`,
+      );
+      expect(await entregas(id)).toBe(1);
+      const analisis = await flujo.estudiante
+        .get('/api/estudiante/solicitud/analisis')
+        .expect(200);
+      expect(analisis.body.fechaCorteCorreccion).toBe(corte);
+      expect(
+        analisis.body.documentos.every(
+          (d: { resubmission_allowed: boolean }) => !d.resubmission_allowed,
+        ),
+      ).toBe(true);
+    });
+
+    it('el 4.º reenvío del día se rechaza con un mensaje claro', async () => {
+      const { id } = await conSaberProInvalido();
+      for (let i = 0; i < 3; i++) {
+        const docs = await documentosActuales(flujo, id);
+        await reenviar(flujo, id, [docs.saber_pro.id_documento]).expect(201);
+      }
+      const docs = await documentosActuales(flujo, id);
+      const r = await reenviar(flujo, id, [docs.saber_pro.id_documento]).expect(
+        409,
+      );
+      expect(r.body.message).toContain('Alcanzaste los tres reenvíos de hoy');
+    });
+
+    it('un documento VALIDO no se puede reenviar', async () => {
+      const { id, docs } = await conSaberProInvalido();
+      await reenviar(flujo, id, [docs.identification.id_documento]).expect(403);
+    });
+
+    it('un documento POR_REVISAR sí se puede reenviar', async () => {
+      flujo.biblioteca.respuesta = 'error';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      expect(envio.body.estado).toBe('POR_REVISAR');
+      const docs = await documentosActuales(flujo, id);
+      flujo.biblioteca.respuesta = 'paz_y_salvo';
+      const r = await reenviar(flujo, id, [
+        docs.paz_y_salvo_bib.id_documento,
+      ]).expect(201);
+      expect(r.body.estado).toBe('VALIDA');
+    });
+
+    it('un error técnico del motor no consume un reenvío', async () => {
+      const { id, saberPro } = await conSaberProInvalido();
+      flujo.motor.estado = 500;
+      const r = await reenviar(flujo, id, [saberPro]);
+      expect(r.status).toBeGreaterThanOrEqual(500);
+      expect(await entregas(id)).toBe(1);
+      const analisis = await flujo.estudiante
+        .get('/api/estudiante/solicitud/analisis')
+        .expect(200);
+      expect(analisis.body.politicaReenvios.usados).toBe(0);
+    });
+  });
 });

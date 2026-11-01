@@ -1,5 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
-import { consultarContextoPeriodo } from '../periodos/asignacion-periodo.js';
+import {
+  consultarContextoPeriodo,
+  dentroDelPlazoCorreccion,
+  fechaCorteCorreccion,
+} from '../periodos/asignacion-periodo.js';
 import { observacionesDocumento } from './observaciones-documento.js';
 import type { DatabaseService } from '../database/database.service.js';
 
@@ -42,12 +46,16 @@ export async function detalleAnalisis(
       AND fecha_entrega_bogota=(CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date`,
       [s.id_solicitud],
     );
-    const admite = [
-      'EN_PROCESO',
-      'POR_REVISAR',
-      'NO_VALIDA',
-      'INCONSISTENTE',
-    ].includes(s.estado);
+    const fin = await client.query<{ fecha_fin: string | null }>(
+      'SELECT fecha_fin::text AS fecha_fin FROM periodos_grado WHERE id = $1',
+      [s.id_periodo ?? null],
+    );
+    const fechaFin = fin.rows[0]?.fecha_fin ?? null;
+    // Tarea 42a: después de fecha_fin − 7 ya no se corrige.
+    const admite =
+      ['EN_PROCESO', 'POR_REVISAR', 'NO_VALIDA', 'INCONSISTENTE'].includes(
+        s.estado,
+      ) && (!fechaFin || dentroDelPlazoCorreccion(fechaFin));
     const documentos = await client.query(
       `SELECT d.*, v.detalle, v.mensaje,
       (SELECT MAX(r.expira_en) FROM rutas r WHERE r.id_documento = d.id_documento) AS expira_en,
@@ -166,6 +174,7 @@ export async function detalleAnalisis(
       informacion,
       documentos: documentosUi,
       periodos,
+      fechaCorteCorreccion: fechaFin ? fechaCorteCorreccion(fechaFin) : null,
       politicaReenvios: {
         usados: cuenta.rows[0].usados,
         limite: admite ? 3 : 0,

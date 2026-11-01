@@ -32,6 +32,20 @@ export function fechaInstitucional(instante = new Date()): string {
   return `${valor('year')}-${valor('month')}-${valor('day')}`;
 }
 
+/** Último día para corregir documentos (Tarea 42a): fecha_fin − 7, en fechas de calendario. */
+export function fechaCorteCorreccion(fechaFin: string): string {
+  const [a, m, d] = fechaFin.split('-').map(Number);
+  return new Date(Date.UTC(a, m - 1, d - 7)).toISOString().slice(0, 10);
+}
+
+/** El día del corte todavía se permite. `hoy` es la fecha institucional (Bogotá). */
+export function dentroDelPlazoCorreccion(
+  fechaFin: string,
+  hoy = fechaInstitucional(),
+): boolean {
+  return hoy <= fechaCorteCorreccion(fechaFin);
+}
+
 const COLUMNAS = `id, nombre, fecha_inicio::text AS "fechaInicio",
   fecha_fin::text AS "fechaFin", fecha_graduacion::text AS "fechaGraduacion",
   (fecha_fin - 7)::text AS "fechaCorte", estado`;
