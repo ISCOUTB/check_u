@@ -16,6 +16,7 @@ import {
 import { ArchivosTemporalesService } from './archivos-temporales.service.js';
 import type { InformarAvance } from './progreso-envio.js';
 import { claveDocumento, MAXIMO_DOCUMENTOS } from './requisitos-documentales.js';
+import { recalcularEstado } from './recalcular-estado.js';
 
 export type ArchivoCorreccion = Omit<PdfPreinscripcion, 'tipo'> & {
   id: number;
@@ -195,14 +196,13 @@ export class ReenviosService {
           creados,
           informar,
         );
-        await client.query(
-          "UPDATE solicitud_grado SET estado='EN_PROCESO' WHERE id_solicitud=$1",
-          [idSolicitud],
-        );
+        // Tarea 42a: el estado se recalcula una sola vez, al terminar el reenvío.
+        const estado = await recalcularEstado(client, idSolicitud);
         return {
           ok: true,
           id_solicitud: idSolicitud,
           id_entrega: idEntrega,
+          estado,
           mensaje:
             'Corrección registrada. Consulta los resultados actualizados.',
         };

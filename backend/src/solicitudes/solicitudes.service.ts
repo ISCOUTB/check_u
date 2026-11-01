@@ -26,6 +26,7 @@ import {
 } from './borrador.js';
 import { DatabaseService } from '../database/database.service.js';
 import { TIPO_DOCUMENTO_LEGADO } from '../contratos/mapeo.js';
+import { recalcularEstado } from './recalcular-estado.js';
 import {
   admiteSegundo,
   claveDocumento,
@@ -252,19 +253,16 @@ export class SolicitudesService {
           informar,
         );
 
-        // 6. Transicionar el estado de la solicitud a 'EN_PROCESO'
-        await client.query(
-          `UPDATE solicitud_grado
-         SET estado = 'EN_PROCESO'
-         WHERE id_solicitud = $1;`,
-          [solicitud.id_solicitud],
-        );
+        // 6. El estado de la solicitud sale de sus documentos (Tarea 42a), una sola vez por envío.
+        const estado = await recalcularEstado(client, solicitud.id_solicitud, {
+          envioInicial: true,
+        });
 
         return {
           ok: true,
           id_solicitud: solicitud.id_solicitud,
           id_entrega: idEntrega,
-          estado: 'EN_PROCESO',
+          estado,
           mensaje:
             'Preinscripción registrada. Consulta los resultados del análisis documental.',
         };

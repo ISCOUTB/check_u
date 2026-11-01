@@ -172,7 +172,7 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
     'persiste %s doble=%s y consulta después de nueva sesión',
     async (nivel, doble, cantidad, llamadas) => {
       const envio = await enviar(nivel, doble).expect(201);
-      expect(envio.body.estado).toBe('EN_PROCESO');
+      expect(envio.body.estado).toBe('VALIDA'); // Tarea 42a: estado calculado
       expect(motor).toHaveBeenCalledTimes(llamadas);
       const docs = await base.db.query(
         'SELECT * FROM documentos ORDER BY id_documento',

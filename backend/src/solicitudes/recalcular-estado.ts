@@ -13,11 +13,13 @@ export const ESTADOS_FINALES: readonly string[] = Object.freeze([
 
 /**
  * Recalcula y guarda el estado dentro de la transacción del llamador (envío, reenvío o
- * resolución). Un borrador o una solicitud decidida se devuelven sin cambios.
+ * resolución). Una solicitud decidida se devuelve sin cambios, y un borrador también, salvo en
+ * su envío inicial (`envioInicial`), que es cuando deja de serlo.
  */
 export async function recalcularEstado(
   client: PoolClient,
   idSolicitud: number,
+  { envioInicial = false }: { envioInicial?: boolean } = {},
 ): Promise<string> {
   const s = await client.query<{
     tipo_solicitud: string;
@@ -33,7 +35,7 @@ export async function recalcularEstado(
   const solicitud = s.rows[0];
   if (!solicitud) throw new Error(`No existe la solicitud ${idSolicitud}`);
   if (
-    solicitud.estado === 'BORRADOR' ||
+    (solicitud.estado === 'BORRADOR' && !envioInicial) ||
     ESTADOS_FINALES.includes(solicitud.estado)
   )
     return solicitud.estado;

@@ -182,7 +182,7 @@ describe('Tarea 38: progreso, PDF privado, correcciones versionadas y autorizaci
     expect(
       (await base.db.query('SELECT estado FROM solicitud_grado')).rows[0]
         .estado,
-    ).toBe('EN_PROCESO');
+    ).toBe('NO_VALIDA'); // Tarea 42a: estado calculado de los documentos
   });
   it('entrega progreso por HTTP mientras el motor aún está trabajando', async () => {
     let liberar!: () => void;

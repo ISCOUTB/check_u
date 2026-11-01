@@ -61,7 +61,10 @@ export interface Flujo {
   base: Awaited<ReturnType<typeof crearDbBorrador>>;
   estudiante: ReturnType<typeof request.agent>;
   funcionaria: ReturnType<typeof request.agent>;
-  /** Clasificación que devuelve el motor por clave (`saber_pro`, `academic_evaluation`…). */
+  /**
+   * Clasificación que devuelve el motor. Se busca por el nombre del archivo sin `.pdf` (el envío usa
+   * la clave, p. ej. `academic_evaluation-2`) y después por el tipo (`saber_pro`).
+   */
   clasificacion: Record<string, Clasificacion>;
   /** Respuesta de Biblioteca; 'error' hace que la consulta lance. */
   biblioteca: { respuesta: RespuestaPazYSalvo | 'error' };
@@ -137,18 +140,29 @@ export async function reiniciar(flujo: Flujo, diasHastaFin = 30) {
     flujo.motor.llamadas.push(tipo);
     if (flujo.motor.estado !== 200)
       return new Response('falla', { status: flujo.motor.estado });
+    // El nombre del archivo distingue el documento del segundo programa (`academic_evaluation-2.pdf`).
+    const archivo = (opts.body.get('documentos') as File | null)?.name ?? '';
+    const clave = archivo.replace(/\.pdf$/, '');
     return Response.json(
-      respuestaMotor(tipo, flujo.clasificacion[tipo] ?? 'valid'),
+      respuestaMotor(
+        tipo,
+        flujo.clasificacion[clave] ?? flujo.clasificacion[tipo] ?? 'valid',
+        JSON.parse(opts.body.get('estudiante') as string).nivel as string,
+      ),
     );
   });
 }
 
 /** El motor recibe un documento por llamada y siempre responde document_order 1. */
-function respuestaMotor(tipo: string, clasificacion: Clasificacion) {
+function respuestaMotor(
+  tipo: string,
+  clasificacion: Clasificacion,
+  nivel: string,
+) {
   const cumple = clasificacion === 'valid';
   return {
     id_student: 'T00000001',
-    nivel: 'PREGRADO',
+    nivel,
     estado_general: clasificacion,
     errores: [],
     resultados: [

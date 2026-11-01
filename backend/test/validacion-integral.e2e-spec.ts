@@ -4,6 +4,7 @@ import {
   enviar,
   estadoSolicitud,
   montarFlujo,
+  reenviar,
   reiniciar,
   type Flujo,
 } from './soporte/flujo-tarea42.js';
@@ -151,8 +152,110 @@ describe('Tarea 42: flujo de la solicitud', () => {
         expect(paz.resultados[0].mensaje).not.toContain(
           'pendiente de integración',
         );
-        void estadoSolicitud;
       },
     );
+  });
+
+  describe('estado tras el envío', () => {
+    it('pregrado con 5 válidos queda VALIDA', async () => {
+      const envio = await enviar(flujo).expect(201);
+      expect(envio.body.estado).toBe('VALIDA');
+      expect(await estadoSolicitud(flujo, envio.body.id_solicitud)).toBe(
+        'VALIDA',
+      );
+    });
+
+    it('posgrado con 3 válidos queda VALIDA', async () => {
+      const envio = await enviar(flujo, { nivel: 'POSGRADO' }).expect(201);
+      expect(envio.body.estado).toBe('VALIDA');
+    });
+
+    it('Saber Pro con 95 deja NO_VALIDA; corregirlo con un archivo válido deja VALIDA', async () => {
+      flujo.clasificacion.saber_pro = 'invalid';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      expect(envio.body.estado).toBe('NO_VALIDA');
+      flujo.clasificacion.saber_pro = 'valid';
+      const docs = await documentosActuales(flujo, id);
+      const r = await reenviar(flujo, id, [docs.saber_pro.id_documento]).expect(
+        201,
+      );
+      expect(r.body.estado).toBe('VALIDA');
+      expect(await estadoSolicitud(flujo, id)).toBe('VALIDA');
+    });
+
+    it('Saber Pro reenviado igual sigue NO_VALIDA', async () => {
+      flujo.clasificacion.saber_pro = 'invalid';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const docs = await documentosActuales(flujo, id);
+      const r = await reenviar(flujo, id, [docs.saber_pro.id_documento]).expect(
+        201,
+      );
+      expect(r.body.estado).toBe('NO_VALIDA');
+    });
+
+    it('una cédula inconsistente con el resto válido deja INCONSISTENTE', async () => {
+      flujo.clasificacion.identification = 'inconsistent';
+      const envio = await enviar(flujo).expect(201);
+      expect(envio.body.estado).toBe('INCONSISTENTE');
+    });
+
+    it('un reenvío con 3 documentos cuenta como 1 de 3', async () => {
+      for (const t of ['identification', 'academic_evaluation', 'saber_pro'])
+        flujo.clasificacion[t] = 'invalid';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const docs = await documentosActuales(flujo, id);
+      await reenviar(flujo, id, [
+        docs.identification.id_documento,
+        docs.academic_evaluation.id_documento,
+        docs.saber_pro.id_documento,
+      ]).expect(201);
+      const analisis = await flujo.estudiante
+        .get('/api/estudiante/solicitud/analisis')
+        .expect(200);
+      expect(analisis.body.politicaReenvios.usados).toBe(1);
+    });
+
+    it('doble programa exige 7 documentos y la evaluación 2 se analiza con su orden', async () => {
+      const seis = [
+        'identification',
+        'academic_evaluation',
+        'paz_y_salvo_bib',
+        'estampilla_pro_cultura',
+        'estampilla_pro_cultura-2',
+        'saber_pro',
+      ];
+      await enviar(flujo, { doble: true, claves: seis }).expect(400);
+      flujo.clasificacion['academic_evaluation-2'] = 'invalid';
+      const envio = await enviar(flujo, { doble: true }).expect(201);
+      const docs = await documentosActuales(flujo, envio.body.id_solicitud);
+      expect(Object.keys(docs).sort()).toEqual([
+        'academic_evaluation',
+        'academic_evaluation-2',
+        'estampilla_pro_cultura',
+        'estampilla_pro_cultura-2',
+        'identification',
+        'paz_y_salvo_bib',
+        'saber_pro',
+      ]);
+      expect(docs.academic_evaluation.estado).toBe('VALIDO');
+      expect(docs['academic_evaluation-2'].estado).toBe('NO_VALIDO');
+      expect(envio.body.estado).toBe('NO_VALIDA');
+    });
+
+    it('el estado se calcula una sola vez por envío', async () => {
+      const espia = vi.spyOn(flujo.base.db, 'query');
+      try {
+        await enviar(flujo).expect(201);
+        const actualizaciones = espia.mock.calls.filter(([sql]) =>
+          /UPDATE solicitud_grado\s+SET estado/i.test(String(sql)),
+        );
+        expect(actualizaciones).toHaveLength(1);
+      } finally {
+        espia.mockRestore();
+      }
+    });
   });
 });

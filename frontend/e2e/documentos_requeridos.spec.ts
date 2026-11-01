@@ -26,16 +26,23 @@ test("posgrado pide 3", () => {
     expect(documentos[0].etiqueta).toBe("Documento de identidad");
 });
 
-test("segundo programa en pregrado agrega la segunda estampilla al final, con id estampilla_pro_cultura-2", () => {
+test("segundo programa en pregrado agrega al final la segunda evaluación de Banner y la segunda estampilla (7 en total)", () => {
     const documentos = documentosRequeridos("PREGRADO", true);
-    expect(documentos).toHaveLength(6);
-    expect(documentos[5]).toEqual({
-        id: "estampilla_pro_cultura-2",
-        tipo: "estampilla_pro_cultura",
-        etiqueta: "Estampilla Pro-Cultura (segundo programa)",
-    });
+    expect(documentos).toHaveLength(7);
+    expect(documentos.slice(5)).toEqual([
+        {
+            id: "academic_evaluation-2",
+            tipo: "academic_evaluation",
+            etiqueta: "Evaluación de Grado (Banner) (segundo programa)",
+        },
+        {
+            id: "estampilla_pro_cultura-2",
+            tipo: "estampilla_pro_cultura",
+            etiqueta: "Estampilla Pro-Cultura (segundo programa)",
+        },
+    ]);
     // Los ids no se repiten: cada zona de carga necesita el suyo.
-    expect(new Set(documentos.map((d) => d.id)).size).toBe(6);
+    expect(new Set(documentos.map((d) => d.id)).size).toBe(7);
 });
 
 test("segundo programa en posgrado no agrega comprobante", () => {

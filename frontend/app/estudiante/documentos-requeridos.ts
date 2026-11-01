@@ -30,7 +30,7 @@ export interface RequisitoDocumento {
      * Retirarlo del flujo solo requerirá quitar esta entrada del arreglo.
      */
     retirando?: boolean;
-    /** La estampilla en pregrado: pide un segundo comprobante si hay segundo programa. */
+    /** En pregrado con segundo programa se pide otro documento de este tipo (evaluación y estampilla). */
     unoPorPrograma?: boolean;
 }
 
@@ -38,7 +38,7 @@ export type DocumentoRequerido = RequisitoDocumento;
 
 /** Un documento tal como lo pide el formulario: con un id propio por zona de carga. */
 export interface DocumentoDelFormulario {
-    /** El tipo, o `estampilla_pro_cultura-2` para el segundo comprobante */
+    /** El tipo, o `{tipo}-2` para el documento del segundo programa */
     id: string;
     tipo: string;
     etiqueta: string;
@@ -60,6 +60,8 @@ export const DOCUMENTOS_REQUERIDOS: Record<NivelAcademico, RequisitoDocumento[]>
             tipo: "academic_evaluation",
             nombre: "Evaluación de grado expedida por Banner.",
             etiqueta: "Evaluación de Grado (Banner)",
+            nota: "(En caso de doble programa, una por programa.)",
+            unoPorPrograma: true,
         },
         {
             // TODO: Próximo a retirar del flujo de grado cuando se automatice la consulta con biblioteca.
