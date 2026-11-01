@@ -32,9 +32,9 @@ async function consultar(ruta: string, opciones: RequestInit = {}, signal?: Abor
 }
 const ESTADOS: Record<string, [EstadoSolicitud, string]> = {
     BORRADOR: ['por_revisar', 'Borrador'], EN_PROCESO: ['por_revisar', 'En proceso'],
-    POR_REVISAR: ['por_revisar', 'Por revisar'], VALIDA: ['valido', 'Aceptada'],
+    POR_REVISAR: ['por_revisar', 'Por revisar'], VALIDA: ['valido', 'Válida'],
     NO_VALIDA: ['no_valido', 'No válida'], INCONSISTENTE: ['inconsistente', 'Inconsistente'],
-    CERRADA: ['no_valido', 'Anulada'],
+    ACEPTADA: ['valido', 'Aceptada'], CERRADA: ['no_valido', 'Anulada'],
 };
 export async function obtenerSolicitudes(signal?: AbortSignal): Promise<ResumenFuncionaria[]> {
     const data = await consultar('/funcionario/solicitudes', {}, signal);
@@ -51,6 +51,13 @@ export async function obtenerDetalle(id: string, signal?: AbortSignal): Promise<
     const data = await consultar(`/funcionario/solicitudes/${encodeURIComponent(id)}`, {}, signal);
     if (!data?.estudiante || !data.informacion || !Array.isArray(data.documentos) || !Array.isArray(data.revisiones)) throw new Error('Detalle de solicitud inválido.');
     return data;
+}
+/** Tarea 42a: la funcionaria resuelve un documento «Por revisar». */
+export async function resolverDocumento(id: string, resultado: 'VALIDO' | 'NO_VALIDO', comentario: string) {
+    return consultar(`/funcionario/documentos/${encodeURIComponent(id)}/resolucion`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resultado, ...(comentario ? { comentario } : {}) }),
+    });
 }
 export async function registrarRevision(id: string, accion: AccionRevision, comentario: string, documentos: number[]) {
     return consultar(`/funcionario/solicitudes/${encodeURIComponent(id)}/revisiones`, {

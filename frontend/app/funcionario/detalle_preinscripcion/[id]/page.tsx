@@ -13,7 +13,7 @@ import { InformacionEstudiante } from '@/app/components/informacion_estudiante';
 import { useSesion } from '@/app/lib/useSesion';
 import { etiquetaPropiedad, valorVisible } from '@/app/estudiante/preinscripcion/etiquetas';
 import type { DocumentoSolicitud } from '@/app/estudiante/preinscripcion/types';
-import { obtenerDetalle, registrarRevision, type AccionRevision, type DetalleFuncionaria } from '../../solicitudes-api';
+import { obtenerDetalle, registrarRevision, resolverDocumento, type AccionRevision, type DetalleFuncionaria } from '../../solicitudes-api';
 import styles from './detalle.module.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api';
@@ -23,11 +23,13 @@ const ACCIONES: Record<AccionRevision, string> = {
 const RESULTADOS: Record<string, string> = {
     APROBADA: 'Solicitud aceptada', RECHAZADA: 'Solicitud anulada',
     CORRECCION_REQUERIDA: 'Corrección solicitada', POR_REVISAR: 'Comentario',
+    DOCUMENTO_RESUELTO: 'Documento resuelto',
 };
 const ESTADOS: Record<string, string> = {
     BORRADOR: 'Borrador', EN_PROCESO: 'En proceso', POR_REVISAR: 'Por revisar',
-    VALIDA: 'Aceptada', CERRADA: 'Anulada', NO_VALIDA: 'No válida', INCONSISTENTE: 'Inconsistente',
+    VALIDA: 'Válida', ACEPTADA: 'Aceptada', CERRADA: 'Anulada', NO_VALIDA: 'No válida', INCONSISTENTE: 'Inconsistente',
 };
+type Resolucion = { documento: DocumentoSolicitud; resultado: 'VALIDO' | 'NO_VALIDO' };
 function estadoDocumento(doc: DocumentoSolicitud) {
     return doc.resultados.find(r => r.estado === 'no_valido' || r.estado === 'inconsistente')?.estado ?? doc.resultados[0]?.estado ?? 'por_revisar';
 }
@@ -60,6 +62,9 @@ function DetalleSolicitud({id}: {id: string}) {
     const [errorEnvio, setErrorEnvio] = useState('');
     const [mensaje, setMensaje] = useState('');
     const [requiereConsulta, setRequiereConsulta] = useState(false);
+    const [resolucion, setResolucion] = useState<Resolucion | null>(null);
+    const [motivo, setMotivo] = useState('');
+    const [errorResolucion, setErrorResolucion] = useState('');
     const ocupado = useRef(false);
     const vigente = useRef(true);
     useEffect(() => { vigente.current = true; return () => { vigente.current = false; }; }, []);
@@ -73,7 +78,31 @@ function DetalleSolicitud({id}: {id: string}) {
     }, [usuario, id, intento]);
 
     const corregibles = detalle?.documentos.filter(d => estadoDocumento(d) !== 'valido') ?? [];
-    const admiteDecision = !!detalle && !['BORRADOR', 'VALIDA', 'CERRADA'].includes(detalle.estadoSolicitud);
+    // Tarea 42a: ACEPTADA y CERRADA son decisiones finales; solo se acepta una solicitud VALIDA.
+    const admiteDecision = !!detalle && !['BORRADOR', 'ACEPTADA', 'CERRADA'].includes(detalle.estadoSolicitud);
+    const admiteAceptar = admiteDecision && detalle?.estadoSolicitud === 'VALIDA';
+    const admiteRecarga = admiteDecision && detalle?.estadoSolicitud !== 'VALIDA' && corregibles.length > 0;
+    function abrirResolucion(documento: DocumentoSolicitud, resultado: Resolucion['resultado']) {
+        setMotivo(''); setErrorResolucion(''); setMensaje(''); setResolucion({ documento, resultado });
+    }
+    async function confirmarResolucion() {
+        if (!resolucion?.documento.id || ocupado.current) return;
+        if (resolucion.resultado === 'NO_VALIDO' && !motivo.trim()) { setErrorResolucion('Escribe el motivo.'); return; }
+        ocupado.current = true; setEnviando(true); setErrorResolucion('');
+        try {
+            await resolverDocumento(resolucion.documento.id, resolucion.resultado, motivo.trim());
+            if (!vigente.current) return;
+            setResolucion(null);
+            setMensaje('Documento resuelto. La notificación del estudiante quedó guardada.');
+            const nuevo = await obtenerDetalle(id);
+            if (vigente.current) { setDetalle(nuevo); setError(''); }
+        } catch (e) {
+            if (vigente.current) setErrorResolucion(e instanceof Error ? e.message : 'No se pudo resolver el documento.');
+        } finally {
+            ocupado.current = false;
+            if (vigente.current) setEnviando(false);
+        }
+    }
     function preparar(evento: FormEvent) {
         evento.preventDefault(); setErrorEnvio(''); setMensaje('');
         if (accion === 'comentario' && !comentario.trim()) { setErrorEnvio('Escribe el comentario.'); return; }
@@ -125,6 +154,10 @@ function DetalleSolicitud({id}: {id: string}) {
                             <p>{doc.fileName} · Versión {doc.version}</p>
                             {doc.resultados.map((r, i) => <p key={i}>{r.mensaje}</p>)}
                             <Button variante="secundario" onClick={() => setAnalisis(analisisPersistido(doc))} aria-label={`Ver análisis automático: ${doc.nombre}`}>Ver análisis automático</Button>
+                            {admiteDecision && doc.estado === 'POR_REVISAR' && <div className={styles.acciones}>
+                                <Button variante="secundario" disabled={enviando} onClick={() => abrirResolucion(doc, 'VALIDO')} aria-label={`Marcar válido: ${doc.nombre}`}>Marcar válido</Button>
+                                <Button variante="secundario" disabled={enviando} onClick={() => abrirResolucion(doc, 'NO_VALIDO')} aria-label={`Marcar no válido: ${doc.nombre}`}>Marcar no válido</Button>
+                            </div>}
                         </article>
                     </li>)}</ul>
                 </Card>
@@ -132,11 +165,12 @@ function DetalleSolicitud({id}: {id: string}) {
                     <form onSubmit={preparar} className={styles.formRevision}>
                         <label>Acción<select value={accion} onChange={e => { setAccion(e.target.value as AccionRevision); setErrorEnvio(''); }} disabled={enviando}>
                             <option value="comentario">Enviar comentario</option>
-                            <option value="recarga" disabled={!admiteDecision || !corregibles.length}>Solicitar corrección</option>
-                            <option value="aceptada" disabled={!admiteDecision}>Aceptar solicitud</option>
+                            <option value="recarga" disabled={!admiteRecarga}>Solicitar corrección</option>
+                            <option value="aceptada" disabled={!admiteAceptar}>Aceptar solicitud</option>
                             <option value="anulada" disabled={!admiteDecision}>Anular solicitud</option>
                         </select></label>
                         {!admiteDecision && <p>El estado actual solo permite agregar comentarios.</p>}
+                        {admiteDecision && !admiteAceptar && <p>Solo se puede aceptar una solicitud válida.</p>}
                         {accion === 'recarga' && <fieldset><legend>Documentos que debe volver a subir</legend>
                             {corregibles.map(doc => <label key={doc.id} className={styles.opcionDocumento}><input type="checkbox" checked={seleccionados.includes(Number(doc.id))} disabled={enviando}
                                 onChange={e => setSeleccionados(prev => e.target.checked ? [...prev, Number(doc.id)] : prev.filter(d => d !== Number(doc.id)))} />{doc.nombre}</label>)}
@@ -144,7 +178,7 @@ function DetalleSolicitud({id}: {id: string}) {
                         <label>Comentario{accion === 'comentario' ? ' (obligatorio)' : ' (opcional)'}<textarea value={comentario} maxLength={5000} required={accion === 'comentario'} rows={4} disabled={enviando} onChange={e => setComentario(e.target.value)} /></label>
                         <p>Al enviar un comentario, la notificación mostrará sus primeros 15 caracteres. El historial conserva el texto completo.</p>
                         <div className={styles.acciones}>
-                            <Button type="submit" disabled={enviando || requiereConsulta || !!error || (accion !== 'comentario' && !admiteDecision)}>{ACCIONES[accion]}</Button>
+                            <Button type="submit" disabled={enviando || requiereConsulta || !!error || (accion !== 'comentario' && !admiteDecision) || (accion === 'aceptada' && !admiteAceptar)}>{ACCIONES[accion]}</Button>
                             <Button variante="secundario" disabled={enviando} onClick={() => setIntento(i => i + 1)}>Actualizar solicitud</Button>
                         </div>
                         {errorEnvio && <p role="alert">{errorEnvio}</p>}
@@ -166,6 +200,14 @@ function DetalleSolicitud({id}: {id: string}) {
             <p>{accion === 'recarga' ? corregibles.filter(d => seleccionados.includes(Number(d.id))).map(d => d.nombre).join(', ') : ACCIONES[accion]}</p>
             {comentario && <p className={styles.comentarioConfirmacion}>{comentario}</p>}
             <div className={styles.acciones}><Button cargando={enviando} textoCargando="Guardando..." onClick={enviar}>Confirmar acción</Button><Button variante="secundario" disabled={enviando} onClick={() => setConfirmando(false)}>Cancelar</Button></div>
+        </Dialog>
+        <Dialog abierto={!!resolucion} alCerrar={() => { if (!enviando) setResolucion(null); }}
+            titulo={resolucion?.resultado === 'VALIDO' ? 'Marcar documento como válido' : 'Marcar documento como no válido'}
+            descripcion="La resolución quedará en el historial, recalculará el estado de la solicitud y generará una notificación para el estudiante.">
+            <p>{resolucion?.documento.nombre}</p>
+            {resolucion?.resultado === 'NO_VALIDO' && <label>Motivo (obligatorio)<textarea value={motivo} maxLength={5000} rows={4} disabled={enviando} onChange={e => setMotivo(e.target.value)} /></label>}
+            {errorResolucion && <p role="alert">{errorResolucion}</p>}
+            <div className={styles.acciones}><Button cargando={enviando} textoCargando="Guardando..." onClick={confirmarResolucion}>Confirmar</Button><Button variante="secundario" disabled={enviando} onClick={() => setResolucion(null)}>Cancelar</Button></div>
         </Dialog>
         <DocumentAnalysis open={!!analisis} data={analisis} onClose={() => setAnalisis(null)} />
     </>;
