@@ -56,10 +56,14 @@ test.describe("decisión de bienvenida basada en solicitud_grado", () => {
     test.describe("en /estudiante/preinscripcion", () => {
         test("sin solicitud redirige a /estudiante/bienvenida", async ({ page }) => {
             await sesionComo(page, "estudiante");
-            await page.route(`${API}/estudiante/solicitud/analisis`, (ruta) =>
+            await page.route(`${API}/solicitudes/estado`, (ruta) =>
                 ruta.fulfill({
-                    status: 404,
-                    json: { message: "No hay preinscripción registrada." },
+                    status: 200,
+                    json: {
+                        ok: true,
+                        estado: "SIN_SOLICITUD",
+                        destino: RUTA_BIENVENIDA,
+                    },
                 }),
             );
 
