@@ -2,6 +2,11 @@ import { ReenviosService, type ArchivoCorreccion } from './reenvios.service.js';
 import { flujoProgreso, type InformarAvance } from './progreso-envio.js';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { MAXIMO_DOCUMENTOS } from './requisitos-documentales.js';
+import {
+  ResolucionesService,
+  type CuerpoResolucion,
+} from './resoluciones.service.js';
 import {
   AnalisisPreinscripcionService,
   type PdfPreinscripcion,
@@ -18,6 +23,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Header,
   Post,
   Req,
   UnauthorizedException,
@@ -42,6 +48,7 @@ export class SolicitudesController {
     private readonly authService: AuthService,
     private readonly analisis: AnalisisPreinscripcionService,
     private readonly reenvios: ReenviosService,
+    private readonly resoluciones: ResolucionesService,
   ) {}
 
   @Get('estudiante/solicitud')
@@ -71,7 +78,7 @@ export class SolicitudesController {
 
   @Post('solicitudes/enviar')
   @UseInterceptors(
-    FilesInterceptor('documentos', 6, {
+    FilesInterceptor('documentos', MAXIMO_DOCUMENTOS, {
       storage: memoryStorage(),
       limits: { fileSize: 25 * 1024 * 1024, fieldSize: 1024 * 1024, fields: 3 },
     }),
@@ -128,6 +135,22 @@ export class SolicitudesController {
     res.send(a.bytes);
   }
 
+  /** Tarea 42a: la funcionaria marca un documento «Por revisar» como válido o no válido. */
+  @Post('funcionario/documentos/:id/resolucion')
+  @Header('Cache-Control', 'private, no-store')
+  resolverDocumento(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: CuerpoResolucion,
+  ) {
+    const sesion = readSessionId(req);
+    const user = sesion ? this.authService.getUser(sesion) : null;
+    if (!user) throw new UnauthorizedException('Sesión no válida o expirada');
+    if (user.role !== 'funcionario')
+      throw new ForbiddenException('Acceso restringido al rol autorizado.');
+    return this.resoluciones.resolver(user.id, id, body);
+  }
+
   @Get('estudiante/documentos/:id/original')
   async documentoOriginal(
     @Req() req: Request,
@@ -150,7 +173,7 @@ export class SolicitudesController {
 
   @Post('solicitudes/:id/correcciones')
   @UseInterceptors(
-    FilesInterceptor('documentos', 6, {
+    FilesInterceptor('documentos', MAXIMO_DOCUMENTOS, {
       storage: memoryStorage(),
       limits: { fileSize: 25 * 1024 * 1024, fieldSize: 4096, fields: 2 },
     }),

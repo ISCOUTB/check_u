@@ -35,6 +35,8 @@ export interface ResultadoAnalisis {
 
 export interface DocumentoSolicitud {
   version?: number;
+  /** Estado guardado del documento (VALIDO, NO_VALIDO, INCONSISTENTE, POR_REVISAR…). */
+  estado?: string;
   id?: string;
   orden?: number;
   expiraEn?: string;

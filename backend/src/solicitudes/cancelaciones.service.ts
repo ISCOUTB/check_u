@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ESTADOS_CANCELABLES } from './recalcular-estado.js';
 import { DatabaseService } from '../database/database.service.js';
 import { detalleAnalisis } from './detalle-analisis.js';
 
@@ -35,7 +36,7 @@ export class CancelacionesService {
       if (!solicitud)
         throw new NotFoundException('Preinscripción no disponible.');
       const repetida = solicitud.estado === 'CANCELADA';
-      if (!repetida && solicitud.estado !== 'EN_PROCESO')
+      if (!repetida && !ESTADOS_CANCELABLES.includes(solicitud.estado))
         throw new ConflictException({
           codigo: 'ESTADO_NO_CANCELABLE',
           message: 'Solo puedes cancelar una preinscripción en proceso.',

@@ -69,15 +69,18 @@ async function preparar(page: Page, estado = 'EN_PROCESO') {
     );
     return { envios: () => envios, detalle: () => detalle };
 }
-for (const estado of [
-    'BORRADOR',
-    'POR_REVISAR',
-    'VALIDA',
-    'NO_VALIDA',
-    'INCONSISTENTE',
-    'CERRADA',
-    'CANCELADA',
-]) {
+// Tarea 42: con el estado calculado, «en proceso» es cualquier solicitud enviada que la funcionaria
+// aún no decide.
+for (const estado of ['POR_REVISAR', 'VALIDA', 'NO_VALIDA', 'INCONSISTENTE']) {
+    test(`ofrece cancelación en ${estado}`, async ({ page }) => {
+        await preparar(page, estado);
+        await page.goto(`${RUTA}?solicitud=1`);
+        await expect(
+            page.getByRole('button', { name: 'Cancelar preinscripción', exact: true }),
+        ).toBeVisible();
+    });
+}
+for (const estado of ['BORRADOR', 'ACEPTADA', 'CERRADA', 'CANCELADA']) {
     test(`no ofrece cancelación en ${estado}`, async ({ page }) => {
         await preparar(page, estado);
         await page.goto(`${RUTA}?solicitud=1`);
