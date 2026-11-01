@@ -544,11 +544,14 @@ describe('Tarea 42: flujo de la solicitud', () => {
 
   describe('barrido de plazos', () => {
     const plazos = () => flujo.app.get(PlazosSolicitudService);
-    /** Inserta una solicitud del estudiante 1 en el periodo de prueba, sin documentos. */
+    /**
+     * Inserta una solicitud del estudiante 1 en el periodo de prueba, sin documentos. Su estado se
+     * calculó hace 10 días, es decir, antes de que venciera el plazo.
+     */
     async function solicitud(estado: string, nivel = 'PREGRADO') {
       const r = await flujo.base.db.query<{ id: number }>(
-        `INSERT INTO solicitud_grado(id_estudiante,tipo_solicitud,estado,id_periodo)
-        VALUES(1,$1,$2,$3) RETURNING id_solicitud AS id`,
+        `INSERT INTO solicitud_grado(id_estudiante,tipo_solicitud,estado,id_periodo,fecha_actualizacion)
+        VALUES(1,$1,$2,$3,CURRENT_TIMESTAMP - interval '10 days') RETURNING id_solicitud AS id`,
         [nivel, estado, PERIODO],
       );
       return r.rows[0].id;
@@ -608,6 +611,76 @@ describe('Tarea 42: flujo de la solicitud', () => {
       expect(
         await Promise.all(otras.map((id) => estadoSolicitud(flujo, id))),
       ).toEqual(['POR_REVISAR', 'VALIDA', 'ACEPTADA']);
+    });
+
+    it('una POR_REVISAR por corrección pedida y nunca corregida se anula si sus documentos no son válidos', async () => {
+      flujo.clasificacion.saber_pro = 'invalid';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const docs = await documentosActuales(flujo, id);
+      await flujo.funcionaria
+        .post(`/api/funcionario/solicitudes/${id}/revisiones`)
+        .send({ accion: 'recarga', documentos: [docs.saber_pro.id_documento] })
+        .expect(201);
+      expect(await estadoSolicitud(flujo, id)).toBe('POR_REVISAR');
+      await flujo.base.db.query(
+        "UPDATE periodos_grado SET fecha_fin=(CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date-1",
+      );
+      // El cambio de estado fue hace días: el plazo venció después.
+      await flujo.base.db.query(
+        'ALTER TABLE solicitud_grado DISABLE TRIGGER trg_solicitud_fecha_actualizacion',
+      );
+      await flujo.base.db.query(
+        "UPDATE solicitud_grado SET fecha_actualizacion=CURRENT_TIMESTAMP - interval '10 days' WHERE id_solicitud=$1",
+        [id],
+      );
+      await flujo.base.db.query(
+        'ALTER TABLE solicitud_grado ENABLE TRIGGER trg_solicitud_fecha_actualizacion',
+      );
+      await expect(plazos().ejecutar()).resolves.toMatchObject({ anuladas: 1 });
+      expect(await estadoSolicitud(flujo, id)).toBe('CERRADA');
+    });
+
+    it('una POR_REVISAR con algo de verdad por revisar no se anula al cierre', async () => {
+      const id = await solicitud('POR_REVISAR');
+      await moverFin(6);
+      await expect(plazos().ejecutar()).resolves.toMatchObject({ anuladas: 0 });
+      expect(await estadoSolicitud(flujo, id)).toBe('POR_REVISAR');
+    });
+
+    it('una solicitud vieja recalculada después del vencimiento no se anula sola', async () => {
+      flujo.clasificacion.saber_pro = 'invalid';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      await flujo.base.db.query(
+        "UPDATE solicitud_grado SET estado='EN_PROCESO' WHERE id_solicitud=$1",
+        [id],
+      );
+      await moverFin(3);
+      await plazos().ejecutar();
+      expect(await estadoSolicitud(flujo, id)).toBe('NO_VALIDA');
+      await expect(plazos().ejecutar()).resolves.toMatchObject({ anuladas: 0 });
+      expect(await estadoSolicitud(flujo, id)).toBe('NO_VALIDA');
+    });
+
+    it('pedir corrección después del plazo se rechaza', async () => {
+      flujo.clasificacion.saber_pro = 'invalid';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const docs = await documentosActuales(flujo, id);
+      await moverFin(6);
+      const corte = (
+        await flujo.base.db.query<{ corte: string }>(
+          'SELECT (fecha_fin-7)::text AS corte FROM periodos_grado',
+        )
+      ).rows[0].corte;
+      const r = await flujo.funcionaria
+        .post(`/api/funcionario/solicitudes/${id}/revisiones`)
+        .send({ accion: 'recarga', documentos: [docs.saber_pro.id_documento] })
+        .expect(409);
+      expect(r.body.message).toBe(
+        `El plazo para corregir documentos terminó el ${corte}.`,
+      );
     });
 
     it('el último día para corregir no anula nada', async () => {

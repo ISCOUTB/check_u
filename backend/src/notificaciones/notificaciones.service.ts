@@ -8,6 +8,10 @@ import type { PoolClient } from 'pg';
 import { DatabaseService } from '../database/database.service.js';
 import { detalleAnalisis } from '../solicitudes/detalle-analisis.js';
 import { observacionesDocumento } from '../solicitudes/observaciones-documento.js';
+import {
+  dentroDelPlazoCorreccion,
+  fechaCorteCorreccion,
+} from '../periodos/asignacion-periodo.js';
 
 export type TipoNotificacion = 'success' | 'warning' | 'error' | 'info';
 export type ActorNotificacion = 'system' | 'motor' | 'funcionario';
@@ -192,7 +196,8 @@ export class NotificacionesService {
       );
     return this.db.transaction(async (client) => {
       const r = await client.query(
-        'SELECT estado FROM solicitud_grado WHERE id_solicitud=$1 FOR UPDATE',
+        `SELECT s.estado, p.fecha_fin::text AS fecha_fin FROM solicitud_grado s
+        LEFT JOIN periodos_grado p ON p.id=s.id_periodo WHERE s.id_solicitud=$1 FOR UPDATE OF s`,
         [solicitudId],
       );
       if (!r.rows.length)
@@ -211,6 +216,12 @@ export class NotificacionesService {
       if (accion === 'aceptada' && r.rows[0].estado !== 'VALIDA')
         throw new ConflictException(
           'Solo se puede aceptar una solicitud válida.',
+        );
+      // Tarea 42a: después de fecha_fin − 7 el estudiante ya no puede corregir; no se le pide.
+      const fin = r.rows[0].fecha_fin as string | null;
+      if (accion === 'recarga' && fin && !dentroDelPlazoCorreccion(fin))
+        throw new ConflictException(
+          `El plazo para corregir documentos terminó el ${fechaCorteCorreccion(fin)}.`,
         );
       if (accion === 'recarga') {
         const docs = await client.query(
