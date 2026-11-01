@@ -1,0 +1,304 @@
+.pagina {
+    width: 100%;
+    max-width: 1280px;
+    min-height: calc(100dvh - var(--altura-barra));
+    margin: 0 auto;
+    padding: 36px 6%;
+}
+
+.cargando {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    min-height: calc(100dvh - var(--altura-barra));
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+.spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: girar 0.8s linear infinite;
+}
+
+@keyframes girar {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.descripcion {
+    margin-bottom: var(--space-4);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+    text-wrap: pretty;
+}
+
+.accionesCabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.conteo {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.avisoError {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+    padding: var(--space-4);
+    background: var(--status-invalid-bg);
+    border: 1px solid var(--status-invalid-mark);
+    border-radius: var(--radius-control);
+    color: var(--status-invalid-text);
+    font-size: 14px;
+}
+
+.textoError {
+    margin-bottom: var(--space-4);
+    color: var(--status-invalid-text);
+    font-size: 14px;
+}
+
+.vacio {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-6) 0 var(--space-2);
+}
+
+.vacio h3 {
+    color: var(--color-title);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.vacio p {
+    max-width: 60ch;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* Tabla: solo desde 768 px; en pantallas menores se usan tarjetas. */
+
+.tablaContenedor {
+    display: none;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.tablaContenedor:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 3px;
+}
+
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.tabla th {
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    vertical-align: bottom;
+    white-space: nowrap;
+}
+
+.tabla td {
+    padding: var(--space-4) var(--space-3);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text);
+    vertical-align: middle;
+}
+
+.tabla tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.tabla tbody tr[data-activa="false"] {
+    background: var(--color-surface-muted);
+}
+
+.tabla tbody tr[data-activa="false"] td:first-child {
+    box-shadow: inset 4px 0 0 var(--status-neutral-mark);
+}
+
+.tabla tbody tr[data-activa="false"] .periodo span,
+.tabla tbody tr[data-activa="false"] .etiquetaHistorial {
+    color: var(--color-text);
+}
+
+.estadoCelda {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.etiquetaHistorial {
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.id {
+    color: var(--color-title);
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.periodo {
+    display: flex;
+    min-width: 170px;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.periodo strong {
+    color: var(--color-title);
+    font-size: 14px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.periodo span,
+.fechas {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.accion {
+    text-align: right;
+}
+
+/* Tarjetas: una columna en el celular. */
+
+.tarjetas {
+    display: grid;
+    gap: var(--space-3);
+    list-style: none;
+}
+
+.tarjeta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+}
+
+.tarjetaHistorial {
+    background: var(--color-surface-muted);
+    border-inline-start: 4px solid var(--status-neutral-mark);
+}
+
+/* El fondo del historial exige texto principal para conservar el contraste. */
+.tarjetaHistorial .etiquetaCampo,
+.tarjetaHistorial .etiquetaHistorial,
+.tarjetaHistorial .detalle dt,
+.tarjetaHistorial .periodo span,
+.tarjetaHistorial .fechas {
+    color: var(--color-text);
+}
+
+.tarjetaCabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.etiquetaCampo {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.detalle {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.detalle dt {
+    margin-bottom: 2px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.detalle dd {
+    margin: 0;
+    color: var(--color-title);
+    font-size: 14px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.fechas {
+    display: block;
+    margin-top: 2px;
+    font-weight: 400;
+}
+
+.tarjetaAccion {
+    align-self: flex-start;
+}
+
+@media (min-width: 540px) {
+    .detalle {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .detalleAncho {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (min-width: 768px) {
+    .tablaContenedor {
+        display: block;
+    }
+
+    .tarjetas {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .pagina {
+        padding: var(--space-5) var(--space-4);
+    }
+}

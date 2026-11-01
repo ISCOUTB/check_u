@@ -16,7 +16,7 @@ interface NavbarProps {
 
 const ENLACES: Record<NavbarProps["tipoUsuario"], { texto: string; href: string; icono: NombreIcono }[]> = {
     estudiante: [
-        { texto: "Mis solicitudes", href: "/estudiante/home#mi-solicitud", icono: "lista" },
+        { texto: "Mis solicitudes", href: "/estudiante/solicitudes", icono: "lista" },
         { texto: "Notificaciones", href: "/estudiante/home#notificaciones", icono: "campana" },
     ],
     funcionario: [
