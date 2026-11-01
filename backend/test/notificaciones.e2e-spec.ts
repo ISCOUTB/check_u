@@ -166,7 +166,9 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     await revisar(id, {accion:'comentario', comentario:'Historial completo de la primera solicitud'}).expect(201);
     const listado = await funcionaria.get('/api/funcionario/solicitudes').expect(200);
     expect(listado.headers['cache-control']).toBe('private, no-store');
-    expect(listado.body.map((r: {id: string}) => r.id)).toEqual([String(segundo),String(id)]);
+    // Tarea 42b: el dashboard no muestra borradores.
+    expect(listado.body.map((r: {id: string}) => r.id)).toEqual([String(id)]);
+    expect(segundo).toBeGreaterThan(id);
     const detalle = await funcionaria.get(`/api/funcionario/solicitudes/${id}`).expect(200);
     expect(detalle.body.id).toBe(String(id));
     expect(detalle.body.estadoSolicitud).toBe('EN_PROCESO');

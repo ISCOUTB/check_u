@@ -578,4 +578,62 @@ describe('Tarea 42: flujo de la solicitud', () => {
       expect(await estadoSolicitud(flujo, id)).toBe('NO_VALIDA');
     });
   });
+
+  describe('listado del dashboard', () => {
+    async function solicitudEnviada(estado: string, envio: string | null) {
+      const r = await flujo.base.db.query<{ id: number }>(
+        `INSERT INTO solicitud_grado(id_estudiante,tipo_solicitud,estado,id_periodo)
+        VALUES(1,'PREGRADO',$1,$2) RETURNING id_solicitud AS id`,
+        [estado, PERIODO],
+      );
+      const id = r.rows[0].id;
+      if (envio)
+        await flujo.base.db.query(
+          `INSERT INTO entregas(id_solicitud,numero_entrega,tipo_entrega,fecha_entrega) VALUES($1,1,'INICIAL',$2)`,
+          [id, envio],
+        );
+      return id;
+    }
+
+    it('excluye borradores y trae la fecha del primer envío en hora de Bogotá', async () => {
+      await solicitudEnviada('BORRADOR', null);
+      const noche = await solicitudEnviada('VALIDA', '2026-11-01T01:00:00Z');
+      const manana = await solicitudEnviada(
+        'NO_VALIDA',
+        '2026-10-30T14:00:00Z',
+      );
+      const r = await flujo.funcionaria
+        .get('/api/funcionario/solicitudes')
+        .expect(200);
+      expect(
+        r.body.map((s: { id: string; fechaEnvio: string; envioEn: string }) => [
+          s.id,
+          s.fechaEnvio,
+          s.envioEn,
+        ]),
+      ).toEqual([
+        [String(noche), '2026-10-31', '2026-11-01T01:00:00.000Z'],
+        [String(manana), '2026-10-30', '2026-10-30T14:00:00.000Z'],
+      ]);
+      expect(r.body[0]).toMatchObject({
+        estado: 'VALIDA',
+        nivel: 'PREGRADO',
+        periodId: PERIODO,
+        estudiante: expect.any(String),
+      });
+    });
+
+    it('una solicitud vieja sin entrega aparece al final, sin fecha de envío', async () => {
+      const vieja = await solicitudEnviada('EN_PROCESO', null);
+      const enviada = await solicitudEnviada('VALIDA', '2026-10-30T14:00:00Z');
+      const r = await flujo.funcionaria
+        .get('/api/funcionario/solicitudes')
+        .expect(200);
+      expect(r.body.map((s: { id: string }) => s.id)).toEqual([
+        String(enviada),
+        String(vieja),
+      ]);
+      expect(r.body[1]).toMatchObject({ fechaEnvio: null, envioEn: null });
+    });
+  });
 });
