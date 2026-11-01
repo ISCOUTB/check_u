@@ -14,6 +14,7 @@ import {
     type EstadoSolicitud, type NivelAcademico,
 } from "./datos";
 import { obtenerSolicitudes, type ResumenFuncionaria } from '../solicitudes-api';
+import { validarPeriodo, type ErrorPeriodo } from "./validacion-periodos";
 import GraficoEstados from "./GraficoEstados";
 import styles from "./dashboard.module.css";
 
@@ -36,9 +37,16 @@ function elegirPeriodo(periodos: Periodo[], actual: string): string {
 }
 
 async function obtenerPeriodos(): Promise<Periodo[]> {
-    const response = await fetch(`${API_URL}/periodos-grado`, { credentials: "include", cache: "no-store" });
-    if (!response.ok) throw new Error(response.status === 401 ? "La sesión no es válida para consultar periodos." : "No fue posible consultar los periodos.");
-    return response.json() as Promise<Periodo[]>;
+    const controlador = new AbortController();
+    const limite = setTimeout(() => controlador.abort(), 15000);
+    try {
+        const response = await fetch(`${API_URL}/periodos-grado`, { credentials: "include", cache: "no-store", signal: controlador.signal });
+        if (!response.ok) throw new Error(response.status === 401 ? "La sesión no es válida para consultar periodos." : "No fue posible consultar los periodos.");
+        return await response.json() as Periodo[];
+    } catch (error) {
+        if (controlador.signal.aborted) throw new Error("La consulta de periodos tardó demasiado. Reintenta la consulta.");
+        throw error;
+    } finally { clearTimeout(limite); }
 }
 
 export default function Dashboard() {
@@ -65,6 +73,7 @@ export default function Dashboard() {
     const [periodos, setPeriodos] = useState<Periodo[]>([]);
     const [periodoId, setPeriodoId] = useState("");
     const [errorPeriodos, setErrorPeriodos] = useState("");
+    const consultaPeriodosRef = useRef(0);
     const [cargandoPeriodos, setCargandoPeriodos] = useState(true);
     const [mostrarFiltros, setMostrarFiltros] = useState(false);
     const [gestionAbierta, setGestionAbierta] = useState(false);
@@ -76,6 +85,9 @@ export default function Dashboard() {
     const [estadoPeriodo, setEstadoPeriodo] = useState<EstadoPeriodo>("ABIERTO");
     const [mensajePeriodo, setMensajePeriodo] = useState("");
     const [guardandoPeriodo, setGuardandoPeriodo] = useState(false);
+    const guardandoPeriodoRef = useRef(false);
+    const [errorCampoPeriodo, setErrorCampoPeriodo] = useState<ErrorPeriodo['campo'] | null>(null);
+    const [falloPeriodo, setFalloPeriodo] = useState(false);
     const [errorRango, setErrorRango] = useState("");
     const formPeriodoRef = useRef<HTMLFormElement>(null);
 
@@ -89,34 +101,37 @@ export default function Dashboard() {
     }, []);
 
     const cargarPeriodos = useCallback(async () => {
+        const consulta = ++consultaPeriodosRef.current;
         setCargandoPeriodos(true);
         setErrorPeriodos("");
         try {
             const data = await obtenerPeriodos();
+            if (consulta !== consultaPeriodosRef.current) return;
             setPeriodos(data);
             setPeriodoId((actual) => elegirPeriodo(data, actual));
         } catch (error) {
-            setErrorPeriodos(error instanceof Error ? error.message : "Error al consultar los periodos.");
+            if (consulta === consultaPeriodosRef.current) setErrorPeriodos(error instanceof Error ? error.message : "Error al consultar los periodos.");
         } finally {
-            setCargandoPeriodos(false);
+            if (consulta === consultaPeriodosRef.current) setCargandoPeriodos(false);
         }
     }, []);
 
     useEffect(() => {
         if (!usuario) return;
         let vigente = true;
+        const consulta = ++consultaPeriodosRef.current;
         // Los estados se actualizan en las callbacks: el cuerpo del efecto solo lanza la consulta.
         obtenerPeriodos()
             .then((data) => {
-                if (!vigente) return;
+                if (!vigente || consulta !== consultaPeriodosRef.current) return;
                 setPeriodos(data);
                 setPeriodoId((actual) => elegirPeriodo(data, actual));
             })
             .catch((error) => {
-                if (vigente) setErrorPeriodos(error instanceof Error ? error.message : "Error al consultar los periodos.");
+                if (vigente && consulta === consultaPeriodosRef.current) setErrorPeriodos(error instanceof Error ? error.message : "Error al consultar los periodos.");
             })
             .finally(() => {
-                if (vigente) setCargandoPeriodos(false);
+                if (vigente && consulta === consultaPeriodosRef.current) setCargandoPeriodos(false);
             });
         return () => { vigente = false; };
     }, [usuario]);
@@ -166,6 +181,7 @@ export default function Dashboard() {
 
     const limpiarFormulario = useCallback(() => {
         setPeriodoEditando(null);
+        setErrorCampoPeriodo(null); setFalloPeriodo(false);
         setNombrePeriodo(""); setInicioPeriodo(""); setFinPeriodo(""); setGraduacionPeriodo(""); setEstadoPeriodo("ABIERTO"); setMensajePeriodo("");
     }, []);
 
@@ -176,8 +192,15 @@ export default function Dashboard() {
 
     const guardarPeriodo = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        setMensajePeriodo("");
-        if (inicioPeriodo > finPeriodo) { setMensajePeriodo("La fecha inicial no puede ser posterior a la fecha final."); return; }
+        if (guardandoPeriodoRef.current) return;
+        setMensajePeriodo(""); setErrorCampoPeriodo(null); setFalloPeriodo(false);
+        const error = validarPeriodo({ nombre: nombrePeriodo, fechaInicio: inicioPeriodo, fechaFin: finPeriodo, fechaGraduacion: graduacionPeriodo }, periodos, periodoEditando?.id);
+        if (error) {
+            setMensajePeriodo(error.mensaje); setErrorCampoPeriodo(error.campo); setFalloPeriodo(true);
+            formPeriodoRef.current?.querySelector<HTMLInputElement>(`[name="${error.campo}"]`)?.focus();
+            return;
+        }
+        guardandoPeriodoRef.current = true;
         setGuardandoPeriodo(true);
         try {
             const response = await fetch(`${API_URL}/periodos-grado${periodoEditando ? `/${periodoEditando.id}` : ""}`, {
@@ -187,13 +210,14 @@ export default function Dashboard() {
                 body: JSON.stringify({ nombre: nombrePeriodo, fechaInicio: inicioPeriodo, fechaFin: finPeriodo, fechaGraduacion: graduacionPeriodo, estado: estadoPeriodo }),
             });
             const data = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(data?.message ?? "No fue posible guardar el periodo.");
+            if (!response.ok) throw new Error(Array.isArray(data?.message) ? data.message.join(" ") : data?.message ?? "No fue posible guardar el periodo.");
             setMensajePeriodo("Periodo guardado correctamente.");
             setNombrePeriodo(""); setInicioPeriodo(""); setFinPeriodo(""); setGraduacionPeriodo(""); setEstadoPeriodo("ABIERTO"); setPeriodoEditando(null);
-            await cargarPeriodos();
+            void cargarPeriodos();
         } catch (error) {
-            setMensajePeriodo(error instanceof Error ? error.message : "Ocurrió un error al guardar.");
-        } finally { setGuardandoPeriodo(false); }
+            setFalloPeriodo(true);
+            setMensajePeriodo(error instanceof Error ? error.message : "Ocurrió un error al guardar. Revisa la conexión e intenta nuevamente.");
+        } finally { guardandoPeriodoRef.current = false; setGuardandoPeriodo(false); }
     };
 
     const abrirGestion = () => {
@@ -202,6 +226,7 @@ export default function Dashboard() {
     };
 
     const editarPeriodo = (periodo: Periodo) => {
+        setErrorCampoPeriodo(null); setFalloPeriodo(false);
         setPeriodoEditando(periodo); setNombrePeriodo(periodo.nombre);
         setInicioPeriodo(periodo.fechaInicio); setFinPeriodo(periodo.fechaFin); setGraduacionPeriodo(periodo.fechaGraduacion); setEstadoPeriodo(periodo.estado); setMensajePeriodo("");
         enfocarFormulario();
@@ -316,17 +341,17 @@ export default function Dashboard() {
                             <div className={styles.cabeceraBloque}>
                                 <h3 id="titulo-form-periodo">{periodoEditando ? "Editar periodo" : "Nuevo periodo"}</h3>
                             </div>
-                            <form ref={formPeriodoRef} className={styles.formPeriodo} onSubmit={guardarPeriodo}>
-                                <label className={`${styles.campo} ${styles.campoAncho}`}>Nombre del periodo<input className={styles.control} required maxLength={120} value={nombrePeriodo} onChange={(e) => setNombrePeriodo(e.target.value)} placeholder="Ej. Grados octubre 2026" /></label>
-                                <label className={styles.campo}>Fecha de inicio<input className={styles.control} required type="date" value={inicioPeriodo} onChange={(e) => setInicioPeriodo(e.target.value)} /></label>
-                                <label className={styles.campo}>Fecha de finalización<input className={styles.control} required type="date" min={inicioPeriodo || undefined} value={finPeriodo} onChange={(e) => setFinPeriodo(e.target.value)} /></label>
-                                <label className={styles.campo}>Fecha de graduación<input className={styles.control} required type="date" value={graduacionPeriodo} onChange={(e) => setGraduacionPeriodo(e.target.value)} /></label>
+                            <form ref={formPeriodoRef} className={styles.formPeriodo} onSubmit={guardarPeriodo} noValidate>
+                                <label className={`${styles.campo} ${styles.campoAncho}`}>Nombre del periodo<input className={styles.control} name="nombre" aria-invalid={errorCampoPeriodo === "nombre" || undefined} aria-describedby={errorCampoPeriodo === "nombre" ? "mensaje-periodo" : undefined} required maxLength={120} value={nombrePeriodo} onChange={(e) => setNombrePeriodo(e.target.value)} placeholder="Ej. Grados octubre 2026" /></label>
+                                <label className={styles.campo}>Fecha de inicio<input className={styles.control} name="fechaInicio" aria-invalid={errorCampoPeriodo === "fechaInicio" || undefined} aria-describedby={errorCampoPeriodo === "fechaInicio" ? "mensaje-periodo" : undefined} required type="date" value={inicioPeriodo} onChange={(e) => setInicioPeriodo(e.target.value)} /></label>
+                                <label className={styles.campo}>Fecha de finalización<input className={styles.control} name="fechaFin" aria-invalid={errorCampoPeriodo === "fechaFin" || undefined} aria-describedby={errorCampoPeriodo === "fechaFin" ? "mensaje-periodo" : undefined} required type="date" value={finPeriodo} onChange={(e) => setFinPeriodo(e.target.value)} /></label>
+                                <label className={styles.campo}>Fecha de graduación<input className={styles.control} name="fechaGraduacion" aria-invalid={errorCampoPeriodo === "fechaGraduacion" || undefined} aria-describedby={errorCampoPeriodo === "fechaGraduacion" ? "mensaje-periodo" : undefined} required type="date" value={graduacionPeriodo} onChange={(e) => setGraduacionPeriodo(e.target.value)} /></label>
                                 <label className={`${styles.campo} ${styles.campoAncho}`}>Estado del periodo<select className={styles.control} required value={estadoPeriodo} onChange={(e) => setEstadoPeriodo(e.target.value as EstadoPeriodo)}><option value="ABIERTO">ABIERTO — recibe solicitudes</option><option value="CERRADO">CERRADO — no recibe solicitudes</option></select></label>
                                 <div className={`${styles.accionesFormulario} ${styles.campoAncho}`}>
                                     <Button type="submit" disabled={guardandoPeriodo}>{guardandoPeriodo ? "Guardando..." : periodoEditando ? "Guardar cambios" : "Registrar periodo"}</Button>
                                     {periodoEditando && <Button type="button" variante="secundario" onClick={limpiarFormulario}>Cancelar edición</Button>}
                                 </div>
-                                {mensajePeriodo && <p role="status" className={`${styles.mensajePeriodo} ${styles.campoAncho}`}>{mensajePeriodo}</p>}
+                                {mensajePeriodo && <p id="mensaje-periodo" role={falloPeriodo ? "alert" : "status"} className={`${styles.mensajePeriodo} ${styles.campoAncho}`}>{mensajePeriodo}</p>}
                             </form>
                         </section>
 
@@ -335,7 +360,13 @@ export default function Dashboard() {
                                 <h3 id="titulo-lista-periodos">Periodos registrados</h3>
                                 <span className={styles.conteo}>{periodos.length === 1 ? "1 periodo" : `${periodos.length} periodos`}</span>
                             </div>
-                            {periodos.length === 0
+                            {cargandoPeriodos ? <p aria-live="polite">Consultando periodos registrados...</p>
+                                : errorPeriodos ? <div role="alert" className={styles.error}>
+                                    <p>{errorPeriodos}</p>
+                                    <p>Puedes intentar registrar el periodo. Se comprobará que no esté duplicado al guardarlo.</p>
+                                    <Button variante="secundario" onClick={() => { void cargarPeriodos(); }}>Reintentar consulta de periodos</Button>
+                                </div>
+                                : periodos.length === 0
                                 ? <p className={styles.textoSinPeriodos}>Aún no hay periodos registrados. Crea el primero con el formulario.</p>
                                 : <ul className={styles.listaPeriodos} aria-label="Periodos de grado registrados" tabIndex={0}>{periodos.map((p) => <li key={p.id}><span><strong>{p.nombre} · {p.estado}</strong><small>Recepción: {p.fechaInicio} – {p.fechaFin} · Graduación: {p.fechaGraduacion}</small></span><Button variante="secundario" onClick={() => editarPeriodo(p)} aria-label={`Editar ${p.nombre}`}>Editar</Button></li>)}</ul>}
                         </section>
