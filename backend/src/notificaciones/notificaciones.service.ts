@@ -198,11 +198,17 @@ export class NotificacionesService {
       if (!r.rows.length)
         throw new NotFoundException('Solicitud no disponible.');
       if (
-        accion !== 'comentario' &&
-        ['BORRADOR', 'VALIDA', 'CERRADA'].includes(r.rows[0].estado)
+        (accion !== 'comentario' &&
+          ['BORRADOR', 'ACEPTADA', 'CERRADA'].includes(r.rows[0].estado)) ||
+        (accion === 'recarga' && r.rows[0].estado === 'VALIDA')
       )
         throw new ConflictException(
           'La solicitud no admite esa revisión en su estado actual.',
+        );
+      // Tarea 42a: aceptar cierra la solicitud, y solo cuando cumple todos los requisitos.
+      if (accion === 'aceptada' && r.rows[0].estado !== 'VALIDA')
+        throw new ConflictException(
+          'Solo se puede aceptar una solicitud válida.',
         );
       if (accion === 'recarga') {
         const docs = await client.query(
@@ -230,7 +236,7 @@ export class NotificacionesService {
         ],
       );
       const estado = {
-        aceptada: 'VALIDA',
+        aceptada: 'ACEPTADA',
         anulada: 'CERRADA',
         recarga: 'POR_REVISAR',
       }[accion];

@@ -4,6 +4,10 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { MAXIMO_DOCUMENTOS } from './requisitos-documentales.js';
 import {
+  ResolucionesService,
+  type CuerpoResolucion,
+} from './resoluciones.service.js';
+import {
   AnalisisPreinscripcionService,
   type PdfPreinscripcion,
 } from './analisis-preinscripcion.service.js';
@@ -19,6 +23,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Header,
   Post,
   Req,
   UnauthorizedException,
@@ -43,6 +48,7 @@ export class SolicitudesController {
     private readonly authService: AuthService,
     private readonly analisis: AnalisisPreinscripcionService,
     private readonly reenvios: ReenviosService,
+    private readonly resoluciones: ResolucionesService,
   ) {}
 
   @Get('estudiante/solicitud')
@@ -127,6 +133,22 @@ export class SolicitudesController {
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(a.bytes);
+  }
+
+  /** Tarea 42a: la funcionaria marca un documento «Por revisar» como válido o no válido. */
+  @Post('funcionario/documentos/:id/resolucion')
+  @Header('Cache-Control', 'private, no-store')
+  resolverDocumento(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: CuerpoResolucion,
+  ) {
+    const sesion = readSessionId(req);
+    const user = sesion ? this.authService.getUser(sesion) : null;
+    if (!user) throw new UnauthorizedException('Sesión no válida o expirada');
+    if (user.role !== 'funcionario')
+      throw new ForbiddenException('Acceso restringido al rol autorizado.');
+    return this.resoluciones.resolver(user.id, id, body);
   }
 
   @Get('estudiante/documentos/:id/original')

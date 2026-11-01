@@ -16,6 +16,20 @@ export function observacionesDocumento(
     typeof detalle.mensaje === 'string'
   )
     return [{ estado, mensaje: detalle.mensaje }];
+  // Tarea 42a: resolución manual de la funcionaria, con su comentario.
+  if (
+    detalle.fuente === 'revision_manual' &&
+    typeof detalle.mensaje === 'string'
+  )
+    return [
+      {
+        estado,
+        mensaje:
+          typeof detalle.comentario === 'string' && detalle.comentario
+            ? `${detalle.mensaje} ${detalle.comentario}`
+            : detalle.mensaje,
+      },
+    ];
   if (detalle.estado_procesamiento === 'pendiente_integracion')
     return [
       {

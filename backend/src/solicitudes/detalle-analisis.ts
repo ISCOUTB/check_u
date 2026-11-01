@@ -86,6 +86,7 @@ export async function detalleAnalisis(
       tipo: d.tipo_documento,
       orden: d.orden,
       version: d.version,
+      estado: d.estado,
       nombre:
         (etiquetas[d.tipo_documento] ?? d.tipo_documento) +
         (d.orden === 2 ? ' · segundo programa' : ''),

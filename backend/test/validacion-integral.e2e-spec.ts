@@ -355,4 +355,151 @@ describe('Tarea 42: flujo de la solicitud', () => {
       expect(analisis.body.politicaReenvios.usados).toBe(0);
     });
   });
+
+  describe('funcionaria', () => {
+    function decidir(id: number, accion: string) {
+      return flujo.funcionaria
+        .post(`/api/funcionario/solicitudes/${id}/revisiones`)
+        .send({ accion });
+    }
+    function resolver(
+      idDocumento: number,
+      body: Record<string, unknown>,
+      agente = flujo.funcionaria,
+    ) {
+      return agente
+        .post(`/api/funcionario/documentos/${idDocumento}/resolucion`)
+        .send(body);
+    }
+    async function revisiones(id: number) {
+      const r = await flujo.base.db.query<{ resultado: string }>(
+        'SELECT resultado FROM revisiones WHERE id_solicitud=$1',
+        [id],
+      );
+      return r.rows.map((f) => f.resultado);
+    }
+    /** Envía con Paz y Salvo sin respuesta de Biblioteca: queda un documento por revisar. */
+    async function conPazYSalvoPorRevisar() {
+      flujo.biblioteca.respuesta = 'sin_respuesta';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const docs = await documentosActuales(flujo, id);
+      return { id, envio, docs, paz: docs.paz_y_salvo_bib.id_documento };
+    }
+
+    it('aceptar una solicitud que no es VALIDA responde 409 y no crea revisión', async () => {
+      flujo.clasificacion.saber_pro = 'invalid';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const r = await decidir(id, 'aceptada').expect(409);
+      expect(r.body.message).toBe(
+        'Solo se puede aceptar una solicitud válida.',
+      );
+      expect(await revisiones(id)).toEqual([]);
+      expect(await estadoSolicitud(flujo, id)).toBe('NO_VALIDA');
+    });
+
+    it('aceptar una VALIDA la deja ACEPTADA y bloquea reenvíos y otra decisión', async () => {
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      await decidir(id, 'aceptada').expect(201);
+      expect(await estadoSolicitud(flujo, id)).toBe('ACEPTADA');
+      const docs = await documentosActuales(flujo, id);
+      const r = await reenviar(flujo, id, [docs.saber_pro.id_documento]).expect(
+        409,
+      );
+      expect(r.body.message).toBe(
+        'La solicitud no admite correcciones en su estado actual.',
+      );
+      await decidir(id, 'anulada').expect(409);
+    });
+
+    it('a una solicitud VALIDA no se le pide corrección, pero se puede anular', async () => {
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const docs = await documentosActuales(flujo, id);
+      await flujo.funcionaria
+        .post(`/api/funcionario/solicitudes/${id}/revisiones`)
+        .send({ accion: 'recarga', documentos: [docs.saber_pro.id_documento] })
+        .expect(409);
+      await decidir(id, 'anulada').expect(201);
+      expect(await estadoSolicitud(flujo, id)).toBe('CERRADA');
+    });
+
+    it('marcar válido el único documento por revisar deja la solicitud VALIDA y avisa', async () => {
+      const { id, envio, paz } = await conPazYSalvoPorRevisar();
+      expect(envio.body.estado).toBe('POR_REVISAR');
+      const r = await resolver(paz, { resultado: 'VALIDO' }).expect(201);
+      expect(r.body).toEqual({ ok: true, estadoSolicitud: 'VALIDA' });
+      expect(await estadoSolicitud(flujo, id)).toBe('VALIDA');
+      const n = (
+        await flujo.estudiante.get('/api/estudiante/notificaciones').expect(200)
+      ).body.notificaciones;
+      expect(n[0]).toMatchObject({
+        tipo: 'success',
+        titulo: 'Documento validado',
+        generado_por: 'funcionario',
+      });
+      const detalle = await flujo.funcionaria
+        .get(`/api/funcionario/solicitudes/${id}`)
+        .expect(200);
+      const doc = detalle.body.documentos.find(
+        (d: { tipo: string }) => d.tipo === 'paz_y_salvo_bib',
+      );
+      expect(doc.estado).toBe('VALIDO');
+      expect(doc.resultados[0].mensaje).toContain('funcionaria');
+      expect(await revisiones(id)).toEqual(['DOCUMENTO_RESUELTO']);
+    });
+
+    it('marcar no válido exige comentario y deja NO_VALIDA', async () => {
+      const { id, paz } = await conPazYSalvoPorRevisar();
+      await resolver(paz, { resultado: 'NO_VALIDO' }).expect(400);
+      await resolver(paz, { resultado: 'NO_VALIDO', comentario: '   ' }).expect(
+        400,
+      );
+      await resolver(paz, { resultado: 'OTRO', comentario: 'x' }).expect(400);
+      await resolver(paz, {
+        resultado: 'NO_VALIDO',
+        comentario: 'x'.repeat(5001),
+      }).expect(400);
+      await resolver(paz, {
+        resultado: 'NO_VALIDO',
+        comentario: 'El certificado no corresponde al estudiante.',
+      }).expect(201);
+      expect(await estadoSolicitud(flujo, id)).toBe('NO_VALIDA');
+      const n = (
+        await flujo.estudiante.get('/api/estudiante/notificaciones').expect(200)
+      ).body.notificaciones;
+      expect(n[0].msg).toContain(
+        'El certificado no corresponde al estudiante.',
+      );
+    });
+
+    it('resolver una versión vieja, un documento VALIDO o uno inexistente se rechaza', async () => {
+      const { id, docs, paz } = await conPazYSalvoPorRevisar();
+      await reenviar(flujo, id, [paz]).expect(201);
+      const r = await resolver(paz, { resultado: 'VALIDO' }).expect(409);
+      expect(r.body.message).toBe(
+        'El documento ya no está por revisar o no es la versión actual.',
+      );
+      await resolver(docs.identification.id_documento, {
+        resultado: 'VALIDO',
+      }).expect(409);
+      await resolver(999999, { resultado: 'VALIDO' }).expect(404);
+    });
+
+    it('una solicitud decidida no admite resoluciones', async () => {
+      const { id, paz } = await conPazYSalvoPorRevisar();
+      await decidir(id, 'anulada').expect(201);
+      const r = await resolver(paz, { resultado: 'VALIDO' }).expect(409);
+      expect(r.body.message).toBe('La solicitud ya fue decidida.');
+    });
+
+    it('un estudiante no puede resolver documentos', async () => {
+      const { paz } = await conPazYSalvoPorRevisar();
+      await resolver(paz, { resultado: 'VALIDO' }, flujo.estudiante).expect(
+        403,
+      );
+    });
+  });
 });
