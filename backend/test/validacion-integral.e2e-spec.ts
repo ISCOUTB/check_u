@@ -1,15 +1,15 @@
 import { crearDbBorrador } from './soporte/db-borrador.js';
+import { PlazosSolicitudService } from '../src/solicitudes/plazos-solicitud.service.js';
 import {
   documentosActuales,
   enviar,
   estadoSolicitud,
   montarFlujo,
+  PERIODO,
   reenviar,
   reiniciar,
   type Flujo,
 } from './soporte/flujo-tarea42.js';
-
-const PERIODO = '11111111-1111-4111-8111-111111111111';
 
 describe('Tarea 42: esquema', () => {
   let base: Awaited<ReturnType<typeof crearDbBorrador>>;
@@ -500,6 +500,82 @@ describe('Tarea 42: flujo de la solicitud', () => {
       await resolver(paz, { resultado: 'VALIDO' }, flujo.estudiante).expect(
         403,
       );
+    });
+  });
+
+  describe('barrido de plazos', () => {
+    const plazos = () => flujo.app.get(PlazosSolicitudService);
+    /** Inserta una solicitud del estudiante 1 en el periodo de prueba, sin documentos. */
+    async function solicitud(estado: string, nivel = 'PREGRADO') {
+      const r = await flujo.base.db.query<{ id: number }>(
+        `INSERT INTO solicitud_grado(id_estudiante,tipo_solicitud,estado,id_periodo)
+        VALUES(1,$1,$2,$3) RETURNING id_solicitud AS id`,
+        [nivel, estado, PERIODO],
+      );
+      return r.rows[0].id;
+    }
+    async function moverFin(dias: number) {
+      await flujo.base.db.query(
+        `UPDATE periodos_grado SET fecha_fin=(CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date+$1::int`,
+        [dias],
+      );
+    }
+    async function avisos(id: number) {
+      const r = await flujo.base.db.query<Record<string, string>>(
+        'SELECT tipo,titulo,generado_por FROM notificaciones WHERE solicitud_id=$1',
+        [id],
+      );
+      return r.rows;
+    }
+
+    it('recalcula una solicitud vieja EN_PROCESO con sus documentos válidos', async () => {
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      await flujo.base.db.query(
+        "UPDATE solicitud_grado SET estado='EN_PROCESO' WHERE id_solicitud=$1",
+        [id],
+      );
+      await expect(plazos().ejecutar()).resolves.toMatchObject({
+        recalculadas: 1,
+      });
+      expect(await estadoSolicitud(flujo, id)).toBe('VALIDA');
+    });
+
+    it('una EN_PROCESO sin documentos ni programas queda POR_REVISAR sin error', async () => {
+      const id = await solicitud('EN_PROCESO');
+      await plazos().ejecutar();
+      expect(await estadoSolicitud(flujo, id)).toBe('POR_REVISAR');
+    });
+
+    it('al vencer fecha_fin − 7 anula las NO_VALIDA e INCONSISTENTE con un aviso, una sola vez', async () => {
+      const noValida = await solicitud('NO_VALIDA');
+      const inconsistente = await solicitud('INCONSISTENTE');
+      const otras = await Promise.all(
+        ['POR_REVISAR', 'VALIDA', 'ACEPTADA'].map((e) => solicitud(e)),
+      );
+      await moverFin(6);
+      await expect(plazos().ejecutar()).resolves.toMatchObject({ anuladas: 2 });
+      await plazos().ejecutar();
+      for (const id of [noValida, inconsistente]) {
+        expect(await estadoSolicitud(flujo, id)).toBe('CERRADA');
+        expect(await avisos(id)).toEqual([
+          {
+            tipo: 'error',
+            titulo: 'Solicitud anulada',
+            generado_por: 'system',
+          },
+        ]);
+      }
+      expect(
+        await Promise.all(otras.map((id) => estadoSolicitud(flujo, id))),
+      ).toEqual(['POR_REVISAR', 'VALIDA', 'ACEPTADA']);
+    });
+
+    it('el último día para corregir no anula nada', async () => {
+      const id = await solicitud('NO_VALIDA');
+      await moverFin(7);
+      await expect(plazos().ejecutar()).resolves.toMatchObject({ anuladas: 0 });
+      expect(await estadoSolicitud(flujo, id)).toBe('NO_VALIDA');
     });
   });
 });
