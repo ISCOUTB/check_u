@@ -170,7 +170,7 @@ describe('Tarea 38: progreso, PDF privado, correcciones versionadas y autorizaci
       'Enviando documentos al motor de análisis documental.',
       'Verificando documento de identidad.',
       'Verificando evaluación de grado expedida por Banner.',
-      'Verificando paz y salvo con Biblioteca (validación pendiente de integración).',
+      'Verificando paz y salvo con Biblioteca.',
       'Verificando resultados Saber Pro.',
       'Verificando comprobante de estampilla.',
       'Generando análisis documental.',

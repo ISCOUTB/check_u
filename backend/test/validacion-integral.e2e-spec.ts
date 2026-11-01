@@ -1,4 +1,12 @@
 import { crearDbBorrador } from './soporte/db-borrador.js';
+import {
+  documentosActuales,
+  enviar,
+  estadoSolicitud,
+  montarFlujo,
+  reiniciar,
+  type Flujo,
+} from './soporte/flujo-tarea42.js';
 
 const PERIODO = '11111111-1111-4111-8111-111111111111';
 
@@ -104,6 +112,47 @@ describe('Tarea 42: esquema', () => {
     await expect(resolver(solicitud, [])).rejects.toThrow(/un documento/);
     await expect(resolver(solicitud, [documento, documento])).rejects.toThrow(
       /un documento/,
+    );
+  });
+});
+
+describe('Tarea 42: flujo de la solicitud', () => {
+  let flujo: Flujo;
+  beforeAll(async () => {
+    flujo = await montarFlujo();
+  }, 30000);
+  afterAll(async () => {
+    await flujo?.cerrar();
+  });
+  beforeEach(async () => {
+    await reiniciar(flujo);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  describe('Paz y Salvo', () => {
+    it.each([
+      ['paz_y_salvo', 'VALIDO'],
+      ['con_deuda', 'NO_VALIDO'],
+      ['error', 'POR_REVISAR'],
+    ] as const)(
+      'Biblioteca responde %s: el documento queda %s y el envío se completa',
+      async (respuesta, esperado) => {
+        flujo.biblioteca.respuesta = respuesta;
+        const envio = await enviar(flujo).expect(201);
+        const docs = await documentosActuales(flujo, envio.body.id_solicitud);
+        expect(docs.paz_y_salvo_bib.estado).toBe(esperado);
+        expect(flujo.motor.llamadas).not.toContain('paz_y_salvo_bib');
+        const analisis = await flujo.estudiante
+          .get('/api/estudiante/solicitud/analisis')
+          .expect(200);
+        const paz = analisis.body.documentos.find(
+          (d: { tipo: string }) => d.tipo === 'paz_y_salvo_bib',
+        );
+        expect(paz.resultados[0].mensaje).not.toContain(
+          'pendiente de integración',
+        );
+        void estadoSolicitud;
+      },
     );
   });
 });

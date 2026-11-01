@@ -104,7 +104,8 @@ export class NotificacionesService {
       titulo: estado.titulo,
       msg: `${d.nombre} · Versión ${d.version}: ${motivos}`,
       generadoPor:
-        d.detalle?.estado_procesamiento === 'pendiente_integracion'
+        d.detalle?.estado_procesamiento === 'pendiente_integracion' ||
+        d.detalle?.fuente === 'biblioteca_demo'
           ? 'system'
           : 'motor',
       clave: `validacion:${idValidacion}`,

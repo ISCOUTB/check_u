@@ -10,6 +10,12 @@ export function observacionesDocumento(
     return [
       { estado, mensaje: 'Análisis pendiente. No hay resultados registrados.' },
     ];
+  // Paz y Salvo: el estado lo da la consulta a Biblioteca, que deja su propio mensaje.
+  if (
+    detalle.fuente === 'biblioteca_demo' &&
+    typeof detalle.mensaje === 'string'
+  )
+    return [{ estado, mensaje: detalle.mensaje }];
   if (detalle.estado_procesamiento === 'pendiente_integracion')
     return [
       {

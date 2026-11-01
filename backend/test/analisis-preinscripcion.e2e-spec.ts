@@ -180,7 +180,7 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
       expect(docs.rows).toHaveLength(cantidad);
       expect(
         docs.rows.find((d) => d.tipo_documento === 'paz_y_salvo_bib')?.estado,
-      ).toBe('POR_REVISAR');
+      ).toBe('VALIDO'); // Tarea 42: lo decide Biblioteca (demo: T00000001 está a paz y salvo)
       expect(
         (await base.db.query('SELECT * FROM validaciones')).rows,
       ).toHaveLength(cantidad);
@@ -306,8 +306,11 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
     });
     await enviar().expect(201);
     expect(
-      (await base.db.query("SELECT * FROM documentos WHERE estado = 'VALIDO'"))
-        .rows,
+      (
+        await base.db.query(
+          "SELECT * FROM documentos WHERE estado = 'VALIDO' AND tipo_documento <> 'paz_y_salvo_bib'",
+        )
+      ).rows,
     ).toHaveLength(0);
   });
   it('limpia al reiniciar: respeta periodo extendido, borra vencidos y conserva todo el historial', async () => {

@@ -473,7 +473,7 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
         ),
       ).toBe(true);
       expect(n.find((n) => n.generado_por === 'system').msg).toContain(
-        'pendiente de integración',
+        'Biblioteca confirmó que estás a paz y salvo.',
       );
     },
   );

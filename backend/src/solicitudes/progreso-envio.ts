@@ -10,8 +10,7 @@ export function etapaDocumento(tipo: string, orden: number, doble: boolean) {
   const nombres: Record<string, string> = {
     identification: 'Verificando documento de identidad.',
     academic_evaluation: 'Verificando evaluación de grado expedida por Banner.',
-    paz_y_salvo_bib:
-      'Verificando paz y salvo con Biblioteca (validación pendiente de integración).',
+    paz_y_salvo_bib: 'Verificando paz y salvo con Biblioteca.',
     saber_pro: 'Verificando resultados Saber Pro.',
   };
   return (
