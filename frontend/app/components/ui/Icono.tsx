@@ -40,6 +40,13 @@ const TRAZOS = {
             <path d="m8.5 8.5 7 7" />
         </>
     ),
+    // Tarea 42: la funcionaria aceptó la solicitud.
+    aceptada: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="m8 12.5 3 3 5-6" />
+        </>
+    ),
     borrador: (
         <>
             <path d="M12 20h8" />
