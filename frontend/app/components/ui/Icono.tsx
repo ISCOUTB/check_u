@@ -22,16 +22,35 @@ const TRAZOS = {
         </>
     ),
     procesando: <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5" />,
+    en_proceso: (
+        <>
+            <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5" />
+            <path d="M12 8v4l2.5 1.5" />
+        </>
+    ),
+    cancelada: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M8 12h8" />
+        </>
+    ),
+    anulada: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="m8.5 8.5 7 7" />
+        </>
+    ),
+    // Tarea 42: la funcionaria aceptó la solicitud.
     aceptada: (
         <>
             <circle cx="12" cy="12" r="9" />
             <path d="m8 12.5 3 3 5-6" />
         </>
     ),
-    anulada: (
+    borrador: (
         <>
-            <circle cx="12" cy="12" r="9" />
-            <path d="M5.75 18.25 18.25 5.75" />
+            <path d="M12 20h8" />
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
         </>
     ),
     falta_cargar: (

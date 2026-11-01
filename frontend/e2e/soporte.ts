@@ -191,6 +191,87 @@ export const DETALLE_ESTUDIANTE = {
     politicaReenvios: { usados: 1, limite: 3, zona: "America/Bogota" },
 };
 
+/**
+ * Historial sintético para la vista de solicitudes (Tarea 45).
+ * Incluye una marca cercana a medianoche UTC para comprobar el día de Bogotá.
+ */
+export const LISTADO_ESTUDIANTE = {
+    solicitudes: [
+        {
+            id: "9",
+            nivel: "PREGRADO",
+            estado: "VALIDA",
+            activa: true,
+            fechaSolicitud: "2026-10-31T02:00:00.000Z",
+            fechaCreacion: "2026-10-28T15:00:00.000Z",
+            canceladaEn: null,
+            periodo: { ...PERIODO_DEMO, fechaCorte: "2026-10-24" },
+        },
+        {
+            id: "8",
+            nivel: "POSGRADO",
+            estado: "NO_VALIDA",
+            activa: true,
+            fechaSolicitud: "2026-10-20T15:00:00.000Z",
+            fechaCreacion: "2026-10-18T15:00:00.000Z",
+            canceladaEn: null,
+            periodo: {
+                id: "periodo-2026-2",
+                nombre: "Grado diciembre 2026",
+                fechaInicio: "2026-11-01",
+                fechaFin: "2026-11-30",
+                fechaCorte: "2026-11-23",
+            },
+        },
+        {
+            id: "7",
+            nivel: "PREGRADO",
+            estado: "INCONSISTENTE",
+            activa: true,
+            fechaSolicitud: "2026-10-10T15:00:00.000Z",
+            fechaCreacion: "2026-10-08T15:00:00.000Z",
+            canceladaEn: null,
+            periodo: { ...PERIODO_DEMO, fechaCorte: "2026-10-24" },
+        },
+        {
+            id: "6",
+            nivel: "PREGRADO",
+            estado: "POR_REVISAR",
+            activa: true,
+            fechaSolicitud: "2026-09-15T15:00:00.000Z",
+            fechaCreacion: "2026-09-12T15:00:00.000Z",
+            canceladaEn: null,
+            periodo: { ...PERIODO_DEMO, fechaCorte: "2026-10-24" },
+        },
+        {
+            id: "5",
+            nivel: "PREGRADO",
+            estado: "CANCELADA",
+            activa: false,
+            fechaSolicitud: "2026-08-15T15:00:00.000Z",
+            fechaCreacion: "2026-08-12T15:00:00.000Z",
+            canceladaEn: "2026-08-20T14:00:00.000Z",
+            periodo: { ...PERIODO_DEMO, fechaCorte: "2026-10-24" },
+        },
+        {
+            id: "4",
+            nivel: "POSGRADO",
+            estado: "CERRADA",
+            activa: false,
+            fechaSolicitud: "2026-07-15T15:00:00.000Z",
+            fechaCreacion: "2026-07-12T15:00:00.000Z",
+            canceladaEn: null,
+            periodo: {
+                id: "periodo-2026-0",
+                nombre: "Grado agosto 2026",
+                fechaInicio: "2026-08-01",
+                fechaFin: "2026-08-31",
+                fechaCorte: "2026-08-24",
+            },
+        },
+    ],
+};
+
 /** 320 px equivale a un zoom del 400 % en 1280 (WCAG 1.4.10, reflujo). */
 export const ANCHOS = [320, 360, 768, 1280] as const;
 

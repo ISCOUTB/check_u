@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
 import { crearDbBorrador } from './soporte/db-borrador.js';
 import { PlazosSolicitudService } from '../src/solicitudes/plazos-solicitud.service.js';
 import {
@@ -154,6 +155,61 @@ describe('Tarea 42: esquema', () => {
       /un documento/,
     );
   });
+});
+
+describe('Tarea 42: el esquema base solo, como lo aplica levantar.ps1', () => {
+  // levantar.ps1 aplica 01-schema.sql y 02-userbase.sql (también sobre una base existente), sin
+  // las migraciones: el esquema base debe quedar completo por sí mismo y poder repetirse.
+  it('trae ACEPTADA, la resolución manual y la cancelación desde un estado calculado', async () => {
+    const db = await PGlite.create();
+    try {
+      const esquema = await readFile(
+        new URL('../../db/init/01-schema.sql', import.meta.url),
+        'utf8',
+      );
+      await db.exec(esquema);
+      await db.exec(
+        await readFile(
+          new URL('../../db/init/02-userbase.sql', import.meta.url),
+          'utf8',
+        ),
+      );
+      await db.exec(esquema);
+      const s = await db.query<{ id: number }>(
+        "INSERT INTO solicitud_grado(id_estudiante,tipo_solicitud,estado) VALUES(1,'POSGRADO','ACEPTADA') RETURNING id_solicitud AS id",
+      );
+      const e = await db.query<{ id: number }>(
+        "INSERT INTO entregas(id_solicitud,numero_entrega,tipo_entrega) VALUES($1,1,'INICIAL') RETURNING id_entrega AS id",
+        [s.rows[0].id],
+      );
+      const d = await db.query<{ id: number }>(
+        `INSERT INTO documentos(id_solicitud,id_entrega,tipo_documento,orden,nombre_original,mime_type,tamano_bytes,version,estado)
+        VALUES($1,$2,'identification',1,'c.pdf','application/pdf',10,1,'VALIDO') RETURNING id_documento AS id`,
+        [s.rows[0].id, e.rows[0].id],
+      );
+      await db.query(
+        "INSERT INTO validaciones(id_documento,tipo_validacion,resultado) VALUES($1,'MANUAL','VALIDO')",
+        [d.rows[0].id],
+      );
+      await db.query(
+        "INSERT INTO revisiones(id_solicitud,id_funcionario,resultado,documentos_ids) VALUES($1,2,'DOCUMENTO_RESUELTO',$2)",
+        [s.rows[0].id, [d.rows[0].id]],
+      );
+      const c = await db.query<{ id: number }>(
+        "INSERT INTO solicitud_grado(id_estudiante,tipo_solicitud,estado) VALUES(1,'PREGRADO','NO_VALIDA') RETURNING id_solicitud AS id",
+      );
+      await db.query(
+        "UPDATE solicitud_grado SET estado='CANCELADA' WHERE id_solicitud=$1",
+        [c.rows[0].id],
+      );
+      const a = await db.query<{ estado_anterior: string }>(
+        'SELECT estado_anterior FROM cancelaciones_preinscripcion',
+      );
+      expect(a.rows).toEqual([{ estado_anterior: 'NO_VALIDA' }]);
+    } finally {
+      await db.close();
+    }
+  }, 30000);
 });
 
 describe('Tarea 42: flujo de la solicitud', () => {

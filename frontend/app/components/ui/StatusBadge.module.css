@@ -35,14 +35,25 @@
     color: var(--status-review-text);
 }
 
+.estado[data-estado="procesando"],
+.estado[data-estado="falta_cargar"],
+.estado[data-estado="cancelada"],
+.estado[data-estado="borrador"] {
+    background: var(--status-neutral-bg);
+    color: var(--status-neutral-text);
+}
+
+.estado[data-estado="en_proceso"] {
+    background: var(--status-review-bg);
+    color: var(--status-review-text);
+}
+
+.estado[data-estado="anulada"] {
+    background: var(--status-invalid-bg);
+    color: var(--status-invalid-text);
+}
+
 .estado[data-estado="aceptada"] {
     background: var(--status-accepted-bg);
     color: var(--status-accepted-text);
-}
-
-.estado[data-estado="procesando"],
-.estado[data-estado="falta_cargar"],
-.estado[data-estado="anulada"] {
-    background: var(--status-neutral-bg);
-    color: var(--status-neutral-text);
 }
