@@ -7,6 +7,11 @@ async function abrirFiltros(page: Page): Promise<void> {
     await page.getByRole("button", { name: "Mostrar filtros" }).click();
 }
 
+test.beforeEach(async ({ page }) => {
+    // El catálogo de prueba es de octubre: el periodo vigente no debe depender del día de ejecución.
+    await page.clock.setFixedTime(new Date("2026-10-15T15:00:00Z"));
+});
+
 test.describe("dashboard", () => {
     for (const tema of TEMAS)
         for (const ancho of ANCHOS)
