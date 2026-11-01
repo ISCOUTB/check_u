@@ -35,8 +35,14 @@
     color: var(--status-review-text);
 }
 
+.estado[data-estado="aceptada"] {
+    background: var(--status-accepted-bg);
+    color: var(--status-accepted-text);
+}
+
 .estado[data-estado="procesando"],
-.estado[data-estado="falta_cargar"] {
+.estado[data-estado="falta_cargar"],
+.estado[data-estado="anulada"] {
     background: var(--status-neutral-bg);
     color: var(--status-neutral-text);
 }

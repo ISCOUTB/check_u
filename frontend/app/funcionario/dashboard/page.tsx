@@ -129,7 +129,8 @@ export default function Dashboard() {
 
     const porNivelYFecha = useMemo(() => solicitudesPeriodo.filter((s) => {
         if (s.nivel !== nivel) return false;
-        if (rangoAplicado && (s.fechaRegistro.slice(0, 10) < rangoAplicado.inicio || s.fechaRegistro.slice(0, 10) > rangoAplicado.fin)) return false;
+        // Tarea 42b: el día del primer envío, ya calculado en Bogotá por el backend.
+        if (rangoAplicado && (!s.fechaEnvio || s.fechaEnvio < rangoAplicado.inicio || s.fechaEnvio > rangoAplicado.fin)) return false;
         return true;
     }), [solicitudesPeriodo, nivel, rangoAplicado]);
 

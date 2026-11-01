@@ -83,6 +83,8 @@ export const SOLICITUDES_FUNCIONARIA = ['VALIDA','NO_VALIDA','INCONSISTENTE','PO
     id: String(i + 1), estado, estudiante: `Estudiante Prueba ${i + 1}`,
     nivel: i === 2 || i === 4 ? 'POSGRADO' : 'PREGRADO',
     periodId: PERIODO_DEMO.id, fechaRegistro: `2026-10-04T${String(8 + i).padStart(2,'0')}:30:00-05:00`,
+    // Tarea 42b: el dashboard filtra por el primer envío, en hora de Bogotá.
+    fechaEnvio: '2026-10-04', envioEn: `2026-10-04T${String(13 + i).padStart(2,'0')}:30:00.000Z`,
 }));
 export const DETALLE_FUNCIONARIA = {
     id: '1', estadoSolicitud: 'EN_PROCESO', estadoAnalisis: 'registrado',

@@ -34,7 +34,8 @@ const ESTADOS: Record<string, [EstadoSolicitud, string]> = {
     BORRADOR: ['por_revisar', 'Borrador'], EN_PROCESO: ['por_revisar', 'En proceso'],
     POR_REVISAR: ['por_revisar', 'Por revisar'], VALIDA: ['valido', 'Válida'],
     NO_VALIDA: ['no_valido', 'No válida'], INCONSISTENTE: ['inconsistente', 'Inconsistente'],
-    ACEPTADA: ['valido', 'Aceptada'], CERRADA: ['no_valido', 'Anulada'],
+    // Tarea 42b: las decisiones de la funcionaria tienen su propio grupo en el dashboard.
+    ACEPTADA: ['aceptada', 'Aceptada'], CERRADA: ['anulada', 'Anulada'],
 };
 export async function obtenerSolicitudes(signal?: AbortSignal): Promise<ResumenFuncionaria[]> {
     const data = await consultar('/funcionario/solicitudes', {}, signal);
@@ -42,9 +43,11 @@ export async function obtenerSolicitudes(signal?: AbortSignal): Promise<ResumenF
     return data.map(s => {
         if (!s || typeof s.id !== 'string' || !ESTADOS[s.estado] || !['PREGRADO', 'POSGRADO'].includes(s.nivel)) throw new Error('Solicitud inválida.');
         const [estado, etiqueta] = ESTADOS[s.estado];
+        const envioEn = typeof s.envioEn === 'string' ? s.envioEn : null;
         return { numero: s.id, fechaRegistro: s.fechaRegistro, estudiante: s.estudiante, nivel: s.nivel,
             estado, etiqueta, periodId: s.periodId,
-            fecha: new Date(s.fechaRegistro).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) };
+            fechaEnvio: typeof s.fechaEnvio === 'string' ? s.fechaEnvio : null, envioEn,
+            fecha: new Date(envioEn ?? s.fechaRegistro).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) };
     });
 }
 export async function obtenerDetalle(id: string, signal?: AbortSignal): Promise<DetalleFuncionaria> {

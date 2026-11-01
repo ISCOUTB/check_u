@@ -22,6 +22,18 @@ const TRAZOS = {
         </>
     ),
     procesando: <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5" />,
+    aceptada: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="m8 12.5 3 3 5-6" />
+        </>
+    ),
+    anulada: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M5.75 18.25 18.25 5.75" />
+        </>
+    ),
     falta_cargar: (
         <>
             <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5" />

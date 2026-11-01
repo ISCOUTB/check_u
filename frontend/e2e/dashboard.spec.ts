@@ -273,3 +273,50 @@ test('el listado no bloquea indefinidamente el dashboard si la API queda pendien
         await expect(page.getByRole('button',{name:'Reintentar solicitudes'})).toBeVisible();
     } finally {liberar();}
 });
+
+/** Una solicitud de cada estado guardado (Tarea 42b), todas de pregrado en el periodo de prueba. */
+const SEIS_ESTADOS = ['VALIDA','NO_VALIDA','INCONSISTENTE','POR_REVISAR','ACEPTADA','CERRADA','EN_PROCESO'].map((estado, i) => ({
+    id: String(i + 1), estado, estudiante: `Estudiante Prueba ${i + 1}`, nivel: 'PREGRADO', periodId: PERIODO_DEMO.id,
+    fechaRegistro: '2026-09-01T10:00:00-05:00', fechaEnvio: '2026-10-04', envioEn: '2026-10-04T15:00:00.000Z',
+}));
+
+for (const tema of TEMAS)
+    test(`seis grupos: aceptadas y anuladas aparte de los estados calculados (${tema})`, async ({ page }) => {
+        await sesionComo(page, 'funcionario');
+        await page.route(`${API}/funcionario/solicitudes`, r => r.fulfill({ json: SEIS_ESTADOS }));
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.emulateMedia({ colorScheme: tema, reducedMotion: 'reduce' });
+        await page.goto(DASHBOARD);
+        for (const [nombre, cantidad] of [['Válidas', 1], ['No válidas', 1], ['Inconsistentes', 1], ['Por revisar', 2], ['Aceptadas', 1], ['Anuladas', 1]] as const)
+            await expect(page.getByRole('button', { name: new RegExp(`^${nombre} ${cantidad}\\b`) })).toBeVisible();
+        const barras = page.locator('figure canvas').first();
+        await expect(barras).toHaveAttribute('aria-label', /Aceptadas: 1/);
+        await expect(barras).toHaveAttribute('aria-label', /Anuladas: 1/);
+        const tabla = page.getByRole('table', { name: /Solicitudes de grado/ });
+        await expect(tabla.getByText('Aceptada', { exact: true })).toBeVisible();
+        await expect(tabla.getByText('Anulada', { exact: true })).toBeVisible();
+        await expect(tabla.getByText('Válida', { exact: true })).toBeVisible();
+        await abrirFiltros(page);
+        await page.getByRole('button', { name: 'Anuladas', exact: true }).click();
+        await expect(page.locator('[aria-live=polite]')).toHaveText('1 solicitud');
+        await revisarAxe(page);
+    });
+
+test('el rango de fechas usa el primer envío en hora de Bogotá', async ({ page }) => {
+    await sesionComo(page, 'funcionario');
+    await page.route(`${API}/funcionario/solicitudes`, r => r.fulfill({ json: [
+        // Enviada el 31/10 a las 20:00 de Bogotá (ya es 01/11 en UTC); el borrador se creó en septiembre.
+        { ...SEIS_ESTADOS[0], id: '7', fechaRegistro: '2026-09-15T10:00:00-05:00', fechaEnvio: '2026-10-31', envioEn: '2026-11-01T01:00:00.000Z' },
+        { ...SEIS_ESTADOS[1], id: '8', fechaEnvio: '2026-11-01', envioEn: '2026-11-01T15:00:00.000Z' },
+    ] }));
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(DASHBOARD);
+    await abrirFiltros(page);
+    await page.getByLabel('Fecha inicial').fill('2026-10-31');
+    await page.getByLabel('Fecha final').fill('2026-10-31');
+    await page.getByRole('button', { name: 'Aplicar fechas' }).click();
+    await expect(page.locator('[aria-live=polite]')).toHaveText('1 solicitud');
+    const fila = page.getByRole('row', { name: /Estudiante Prueba 1/ });
+    await expect(fila).toContainText('31/10/2026');
+    await expect(page.getByRole('link', { name: 'Ver solicitud 7', exact: true })).toHaveAttribute('href', '/funcionario/detalle_preinscripcion/7');
+});
