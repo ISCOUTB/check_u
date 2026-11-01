@@ -41,7 +41,7 @@ export class NotificacionesService {
       s.tipo_solicitud AS nivel,s.estado, s.fecha_creacion AS "fechaRegistro",
       u.nombres||' '||u.apellidos AS estudiante
       FROM solicitud_grado s JOIN usuarios u ON u.id_usuario=s.id_estudiante
-      ORDER BY s.fecha_creacion DESC,s.id_solicitud DESC`);
+      WHERE s.estado<>'CANCELADA' ORDER BY s.fecha_creacion DESC,s.id_solicitud DESC`);
     return r.rows;
   }
 
@@ -199,7 +199,9 @@ export class NotificacionesService {
         throw new NotFoundException('Solicitud no disponible.');
       if (
         (accion !== 'comentario' &&
-          ['BORRADOR', 'ACEPTADA', 'CERRADA'].includes(r.rows[0].estado)) ||
+          ['BORRADOR', 'ACEPTADA', 'CERRADA', 'CANCELADA'].includes(
+            r.rows[0].estado,
+          )) ||
         (accion === 'recarga' && r.rows[0].estado === 'VALIDA')
       )
         throw new ConflictException(

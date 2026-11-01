@@ -45,7 +45,7 @@ Fuera de alcance, se avisa en el PR:
 
 ## 3. Estados de la solicitud
 
-Migración `db/migrations/008-estado-solicitud.sql` (y el mismo cambio en `01-schema.sql`): se
+Migración `db/migrations/009-estado-solicitud.sql` (numerada 009 al integrar la 008 de la Tarea 44; y el mismo cambio en `01-schema.sql`): se
 agrega `ACEPTADA` a `chk_estado_solicitud`.
 
 | Estado | Quién lo pone | Significado |

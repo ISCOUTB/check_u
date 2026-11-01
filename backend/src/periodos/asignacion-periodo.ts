@@ -55,13 +55,16 @@ export async function buscarPeriodoElegible(
   client: PoolClient,
   fecha: string,
   bloquear = false,
+  idEstudiante?: number,
 ): Promise<PeriodoInscripcion | null> {
   const resultado = await client.query<PeriodoInscripcion>(
     `SELECT ${COLUMNAS} FROM periodos_grado
      WHERE estado = 'ABIERTO' AND fecha_inicio <= fecha_fin
        AND fecha_inicio <= $1::date AND $1::date < fecha_fin - 7
+       AND ($2::integer IS NULL OR NOT EXISTS (SELECT 1 FROM solicitud_grado s
+         WHERE s.id_estudiante=$2 AND s.id_periodo=periodos_grado.id AND s.estado='CANCELADA'))
      ORDER BY fecha_inicio ASC, fecha_fin ASC, id ASC LIMIT 1${bloquear ? ' FOR SHARE' : ''}`,
-    [fecha],
+    [fecha, idEstudiante ?? null],
   );
   return resultado.rows[0] ?? null;
 }
@@ -69,12 +72,14 @@ export async function buscarPeriodoElegible(
 /** Debe ejecutarse dentro de la misma transacción que crea o actualiza la solicitud. */
 export async function requerirPeriodoElegible(
   client: PoolClient,
+  idEstudiante?: number,
 ): Promise<string> {
   // FOR SHARE impide que una edición o cierre concurrente invalide la selección antes del COMMIT.
   const periodo = await buscarPeriodoElegible(
     client,
     fechaInstitucional(),
     true,
+    idEstudiante,
   );
   if (!periodo)
     throw new ConflictException({
@@ -90,6 +95,7 @@ export async function requerirPeriodoElegible(
 export async function consultarContextoPeriodo(
   client: PoolClient,
   idPeriodo: string | null,
+  idEstudiante?: number,
 ): Promise<ContextoPeriodo> {
   const fechaActual = fechaInstitucional();
   const asignado = idPeriodo
@@ -102,7 +108,7 @@ export async function consultarContextoPeriodo(
     : null;
   const disponible = idPeriodo
     ? null
-    : await buscarPeriodoElegible(client, fechaActual);
+    : await buscarPeriodoElegible(client, fechaActual, false, idEstudiante);
   const proximos = await client.query<PeriodoInscripcion>(
     `SELECT ${COLUMNAS} FROM periodos_grado
      WHERE estado = 'ABIERTO' AND fecha_inicio <= fecha_fin

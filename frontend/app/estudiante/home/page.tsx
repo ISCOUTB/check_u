@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
 import Navbar from '@/app/components/navbar/Navbar';
@@ -17,35 +17,30 @@ import styles from './home.module.css';
 import NotificacionesPanel from './NotificacionesPanel';
 
 import {
-  type DocumentoSolicitud,
-  type EstadoDocumentoCompleto,
-  type NivelAcademico,
-  type PoliticaReenvios,
-  type Solicitud,
-  DOCUMENTOS_POR_NIVEL,
-  obtenerNivelSimulado,
-  obtenerPoliticaReenvios,
-  obtenerSolicitudActiva,
+  ErrorConsultaSolicitud,
+  obtenerSolicitudDetalle,
+  type SolicitudDetalle,
 } from './api';
+import type { NivelAcademico } from '../documentos-requeridos';
+import {
+  construirRequisitos,
+  formatearFechaCorta,
+  periodoDeSolicitud,
+  progresoRequisitos,
+  type EstadoRequisito,
+  type RequisitoResumen,
+} from './resumen';
 
 /** El estudiante ve "Corrección requerida" donde el sistema dice "No válido". */
-const ETIQUETA_PARA_ESTUDIANTE: Partial<
-  Record<EstadoDocumentoCompleto, string>
-> = {
+const ETIQUETA_PARA_ESTUDIANTE: Partial<Record<EstadoRequisito, string>> = {
   no_valido: 'Corrección requerida',
 };
 
-const DETALLE_ESTADO: Partial<Record<EstadoDocumentoCompleto, string>> = {
-  valido: 'Cumple los requisitos revisados.',
-  por_revisar: 'En revisión; no necesitas hacer nada.',
-  falta_cargar: 'Aún no has cargado este documento.',
-  inconsistente: 'Inconsistencia detectada entre documentos.',
-  procesando: 'Procesando y validando documento...',
-};
-
-function documentosCargados(solicitud: Solicitud): number {
-  return solicitud.documentos.filter((d) => d.estado !== 'falta_cargar')
-    .length;
+function esCancelacion(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === 'AbortError') ||
+    (error instanceof Error && error.name === 'AbortError')
+  );
 }
 
 export default function Home() {
@@ -61,11 +56,12 @@ export default function Home() {
     reintentar: reintentarEstado,
   } = useEstadoNavegacion(Boolean(usuario));
 
-  const [nivel, setNivel] = useState<NivelAcademico | null>(null);
-  const [solicitud, setSolicitud] = useState<Solicitud | null | undefined>(
-    undefined,
-  );
-  const [politica, setPolitica] = useState<PoliticaReenvios | null>(null);
+  const [detalle, setDetalle] = useState<{
+    clave: string;
+    solicitud: SolicitudDetalle | null;
+    error: string | null;
+  } | null>(null);
+  const [intento, setIntento] = useState(0);
 
   // Redirigir según el estado real de la solicitud.
   useEffect(() => {
@@ -76,22 +72,67 @@ export default function Home() {
     }
   }, [estadoNav, pathname, router]);
 
-  // Cargar información del portal cuando la solicitud está enviada.
+  const claveDetalle =
+    usuario && estadoNav?.estado === 'ENVIADA'
+      ? `${estadoNav.estado}:${intento}`
+      : null;
+
+  // Cargar el detalle real cuando la solicitud ya fue enviada.
   useEffect(() => {
-    if (!usuario || estadoNav?.estado !== 'ENVIADA') return;
+    if (!claveDetalle) return;
 
-    obtenerNivelSimulado().then(setNivel);
+    const controlador = new AbortController();
+    let vigente = true;
 
-    obtenerSolicitudActiva()
-      .then(setSolicitud)
-      .catch(() => {
-        setSolicitud(null);
+    obtenerSolicitudDetalle(controlador.signal)
+      .then((solicitud) => {
+        if (vigente) setDetalle({ clave: claveDetalle, solicitud, error: null });
+      })
+      .catch((error: unknown) => {
+        if (!vigente || esCancelacion(error)) return;
+        if (error instanceof ErrorConsultaSolicitud && error.status === 404) {
+          setDetalle({ clave: claveDetalle, solicitud: null, error: null });
+          return;
+        }
+        setDetalle({
+          clave: claveDetalle,
+          solicitud: null,
+          error:
+            'No fue posible cargar el resumen de tu solicitud. Intenta recargar la página.',
+        });
       });
 
-    obtenerPoliticaReenvios()
-      .then(setPolitica)
-      .catch(() => setPolitica(null));
-  }, [usuario, estadoNav?.estado]);
+    return () => {
+      vigente = false;
+      controlador.abort();
+    };
+  }, [claveDetalle]);
+
+  const detalleVigente = detalle?.clave === claveDetalle ? detalle : null;
+  const solicitud = detalleVigente?.solicitud;
+  const errorSolicitud = detalleVigente?.error ?? null;
+
+  const nivelEfectivo: NivelAcademico =
+    solicitud?.estudiante.nivel ??
+    estadoNav?.nivel ??
+    usuario?.nivel ??
+    'PREGRADO';
+
+  const segundoPrograma = solicitud?.informacion.tieneSegundoPrograma === true;
+
+  const requisitos = useMemo(
+    () =>
+      construirRequisitos(
+        nivelEfectivo,
+        segundoPrograma,
+        solicitud?.documentos ?? [],
+      ),
+    [nivelEfectivo, segundoPrograma, solicitud?.documentos],
+  );
+
+  const progreso = useMemo(() => progresoRequisitos(requisitos), [requisitos]);
+  const periodo = periodoDeSolicitud(solicitud);
+  const politica = solicitud?.politicaReenvios ?? null;
 
   const cargando =
     cargandoSesion || (Boolean(usuario) && cargandoEstado && !errorEstado);
@@ -135,29 +176,9 @@ export default function Home() {
     );
   }
 
-  const datosListos = solicitud !== undefined;
-  const nivelEfectivo: NivelAcademico =
-    nivel ?? usuario.nivel ?? 'PREGRADO';
-
-  const nombreNivel =
-    nivelEfectivo === 'PREGRADO' ? 'pregrado' : 'posgrado';
-
-  const listaDocs = DOCUMENTOS_POR_NIVEL[nivelEfectivo] || [];
+  const datosListos = solicitud !== undefined || Boolean(errorSolicitud);
   const hrefContinuar = '/estudiante/preinscripcion';
-
-  const tarjetaDocumentos = (
-    <Card titulo={`Documentos de ${nombreNivel} · ${listaDocs.length}`}>
-      {listaDocs.length > 0 ? (
-        <ul className={styles.listaRequisitos}>
-          {listaDocs.map((nombre, index) => (
-            <li key={`${nombre}-${index}`}>{nombre}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>No se encontraron documentos para el nivel {nivelEfectivo}.</p>
-      )}
-    </Card>
-  );
+  const nombreNivel = nivelEfectivo === 'PREGRADO' ? 'pregrado' : 'posgrado';
 
   const tarjetaAviso = (
     <Card titulo="Antes de enviar" className={styles.aviso}>
@@ -167,61 +188,78 @@ export default function Home() {
       </p>
 
       {politica ? (
-        <p className={styles.reenvios}>
-          <strong>Reenvíos de corrección hoy:</strong>{' '}
-          {politica.limite - politica.usados} de {politica.limite} disponibles
+        politica.limite > 0 ? (
+          <p className={styles.reenvios}>
+            <strong>Reenvíos de corrección hoy:</strong>{' '}
+            {politica.limite - politica.usados} de {politica.limite}{' '}
+            disponibles
+          </p>
+        ) : (
+          <p className={styles.reenvios}>
+            La solicitud no admite correcciones en este momento.
+          </p>
+        )
+      ) : solicitud === undefined && !errorSolicitud ? (
+        <p className={styles.textoSecundario}>
+          Cargando política de reenvíos...
         </p>
       ) : (
         <p className={styles.textoSecundario}>
-          Cargando política de reenvíos...
+          No fue posible consultar la política de reenvíos.
         </p>
       )}
     </Card>
   );
 
-  const filaDocumento = (doc: DocumentoSolicitud) => (
-    <li key={doc.tipo} className={styles.documento}>
-      <div className={styles.documentoInfo}>
-        <div className={styles.documentoNombre}>
-          <span>{doc.nombre}</span>
-          <StatusBadge
-            estado={doc.estado}
-            etiqueta={ETIQUETA_PARA_ESTUDIANTE[doc.estado]}
-          />
+  const filaRequisito = (requisito: RequisitoResumen) => {
+    const puedeSubir =
+      requisito.estado === 'falta_cargar' || requisito.resubmissionAllowed;
+    const etiquetaAccion =
+      requisito.estado === 'falta_cargar'
+        ? 'Subir documento'
+        : 'Subir nueva versión';
+
+    return (
+      <li key={requisito.clave} className={styles.documento}>
+        <div className={styles.documentoInfo}>
+          <div className={styles.documentoNombre}>
+            <span>{requisito.nombre}</span>
+            <StatusBadge
+              estado={requisito.estado}
+              etiqueta={ETIQUETA_PARA_ESTUDIANTE[requisito.estado]}
+            />
+          </div>
+
+          {requisito.observaciones.map((observacion, indice) => (
+            <p
+              key={`${requisito.clave}-observacion-${indice}`}
+              className={
+                requisito.estado === 'no_valido'
+                  ? styles.motivo
+                  : styles.documentoDetalle
+              }
+            >
+              {observacion}
+            </p>
+          ))}
         </div>
 
-        {doc.estado === 'no_valido' && doc.motivoRechazo ? (
-          <p className={styles.motivo}>{doc.motivoRechazo}</p>
-        ) : (
-          DETALLE_ESTADO[doc.estado] && (
-            <p className={styles.documentoDetalle}>
-              {DETALLE_ESTADO[doc.estado]}
-            </p>
-          )
+        {puedeSubir && (
+          <Button
+            href={hrefContinuar}
+            variante="secundario"
+            className={styles.documentoAccion}
+            aria-label={`${etiquetaAccion}: ${requisito.nombre}`}
+          >
+            {etiquetaAccion}
+          </Button>
         )}
-      </div>
-
-      {(doc.estado === 'falta_cargar' || doc.correccionAutorizada) && (
-        <Button
-          href="/estudiante/preinscripcion"
-          variante="secundario"
-          className={styles.documentoAccion}
-          aria-label={`${
-            doc.estado === 'falta_cargar'
-              ? 'Subir documento'
-              : 'Subir nueva versión'
-          }: ${doc.nombre}`}
-        >
-          {doc.estado === 'falta_cargar'
-            ? 'Subir documento'
-            : 'Subir nueva versión'}
-        </Button>
-      )}
-    </li>
-  );
+      </li>
+    );
+  };
 
   const tarjetaSolicitud = () => {
-    if (solicitud === undefined) {
+    if (solicitud === undefined && !errorSolicitud) {
       return (
         <Card titulo="Mi solicitud de grado" id="mi-solicitud">
           <p className={styles.textoSecundario}>Cargando solicitud...</p>
@@ -229,44 +267,74 @@ export default function Home() {
       );
     }
 
-    if (!solicitud) {
+    if (errorSolicitud || solicitud === null) {
       return (
         <Card titulo="Mi solicitud de grado" id="mi-solicitud">
-          <p className={styles.textoError}>
-            No fue posible cargar la solicitud. Intenta recargar la página.
+          <p role="alert" className={styles.textoError}>
+            {errorSolicitud ??
+              'No fue posible cargar la solicitud. Intenta recargar la página.'}
           </p>
+          <Button
+            variante="secundario"
+            onClick={() => {
+              setIntento((valor) => valor + 1);
+            }}
+          >
+            Reintentar
+          </Button>
         </Card>
       );
     }
 
-    const cargados = documentosCargados(solicitud);
-    const total = solicitud.documentos.length;
-
     return (
       <Card titulo="Mi solicitud de grado" id="mi-solicitud">
+        <dl className={styles.metaSolicitud}>
+          <div className={styles.metaItem}>
+            <dt>Tipo de solicitud</dt>
+            <dd>
+              {nivelEfectivo}
+              {segundoPrograma && ' · doble programa'}
+            </dd>
+          </div>
+          <div className={styles.metaItem}>
+            <dt>Periodo</dt>
+            <dd>{periodo?.nombre ?? 'Sin periodo asignado'}</dd>
+          </div>
+          <div className={styles.metaItem}>
+            <dt>Abre</dt>
+            <dd>{formatearFechaCorta(periodo?.fechaInicio)}</dd>
+          </div>
+          <div className={styles.metaItem}>
+            <dt>Cierra</dt>
+            <dd>{formatearFechaCorta(periodo?.fechaFin)}</dd>
+          </div>
+        </dl>
+
         <p className={styles.progresoTexto}>
-          {cargados} de {total} documentos cargados
+          {progreso.validos} de {progreso.total} requisitos válidos
         </p>
 
         <div
           className={styles.progreso}
           role="progressbar"
-          aria-label="Progreso de documentos cargados"
+          aria-label="Progreso de requisitos válidos"
           aria-valuemin={0}
-          aria-valuemax={total}
-          aria-valuenow={cargados}
-          aria-valuetext={`${cargados} de ${total} documentos cargados`}
+          aria-valuemax={progreso.total}
+          aria-valuenow={progreso.validos}
+          aria-valuetext={`${progreso.validos} de ${progreso.total} requisitos válidos`}
         >
           <div
             className={styles.progresoRelleno}
             style={{
-              transform: `scaleX(${total ? cargados / total : 0})`,
+              transform: `scaleX(${
+                progreso.total ? progreso.validos / progreso.total : 0
+              })`,
             }}
           />
         </div>
 
         <ul className={styles.documentos}>
-          {solicitud.documentos.map(filaDocumento)}
+          {requisitos.map(filaRequisito)}
         </ul>
       </Card>
     );
@@ -310,8 +378,8 @@ export default function Home() {
               </h2>
 
               <p className={styles.bienvenidaTexto}>
-                Sube los documentos que faltan y revisa si cumplen los
-                requisitos antes de la inscripción formal.
+                Revisa el resultado del análisis documental de tu solicitud de{' '}
+                {nombreNivel} y corrige los requisitos que lo necesiten.
               </p>
             </div>
           </div>
@@ -325,10 +393,7 @@ export default function Home() {
         </section>
 
         <div className={styles.rejillaConSolicitud}>
-          <div className={styles.columna}>
-            {tarjetaDocumentos}
-            {tarjetaSolicitud()}
-          </div>
+          <div className={styles.columna}>{tarjetaSolicitud()}</div>
 
           <div className={styles.columna}>
             {tarjetaAviso}

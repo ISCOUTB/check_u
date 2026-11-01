@@ -5,10 +5,20 @@ import {
 } from './estado-solicitud.js';
 import { documentosRequeridos } from './requisitos-documentales.js';
 
-/** Decisiones de la funcionaria: el sistema ya no recalcula estas solicitudes. */
+/** Decisiones de la funcionaria y la cancelación del estudiante: el sistema ya no las recalcula. */
 export const ESTADOS_FINALES: readonly string[] = Object.freeze([
   'ACEPTADA',
   'CERRADA',
+  'CANCELADA',
+]);
+
+/** Tarea 44: el estudiante cancela una solicitud enviada que la funcionaria aún no decide. */
+export const ESTADOS_CANCELABLES: readonly string[] = Object.freeze([
+  'EN_PROCESO',
+  'POR_REVISAR',
+  'NO_VALIDA',
+  'INCONSISTENTE',
+  'VALIDA',
 ]);
 
 /**

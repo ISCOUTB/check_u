@@ -1,3 +1,5 @@
+import { CancelacionesService } from './cancelaciones.service.js';
+import { CancelacionesController } from './cancelaciones.controller.js';
 import { NotificacionesModule } from '../notificaciones/notificaciones.module.js';
 import { ReenviosService } from './reenvios.service.js';
 import { ResolucionesService } from './resoluciones.service.js';
@@ -20,8 +22,9 @@ import { SolicitudesService } from './solicitudes.service.js';
     NotificacionesModule,
     BibliotecaModule,
   ],
-  controllers: [SolicitudesController],
+  controllers: [SolicitudesController, CancelacionesController],
   providers: [
+    CancelacionesService,
     ReenviosService,
     ResolucionesService,
     PlazosSolicitudService,

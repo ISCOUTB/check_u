@@ -44,12 +44,21 @@ Issue: #102. Diseño: `docs/superpowers/specs/2026-10-31-tarea42-validacion-inte
 
 ## Base de datos
 
-`db/migrations/008-estado-solicitud.sql` se puede repetir sin problema. Agrega el estado
-`ACEPTADA` y la resolución manual (`MANUAL` en validaciones, `DOCUMENTO_RESUELTO` en revisiones),
-con su aviso. Para una base existente:
+`db/migrations/009-estado-solicitud.sql` va después de `008-cancelacion-preinscripcion.sql`
+(Tarea 44) y se puede repetir sin problema. Hace lo siguiente:
+
+- agrega el estado `ACEPTADA` y la resolución manual (`MANUAL` en validaciones,
+  `DOCUMENTO_RESUELTO` en revisiones), con su aviso;
+- pasa a `ACEPTADA` las solicitudes que se aceptaron antes de esta tarea, que quedaron en `VALIDA`
+  con una revisión `APROBADA`;
+- ajusta la cancelación de la Tarea 44 al estado calculado: el estudiante puede cancelar cualquier
+  solicitud enviada que la funcionaria no haya decidido (`EN_PROCESO`, `POR_REVISAR`, `NO_VALIDA`,
+  `INCONSISTENTE` y `VALIDA`), porque después del envío ya no queda en `EN_PROCESO`.
+
+Para una base existente:
 
 ```bash
-psql -d checku -v ON_ERROR_STOP=1 -f db/migrations/008-estado-solicitud.sql
+psql -d checku -v ON_ERROR_STOP=1 -f db/migrations/009-estado-solicitud.sql
 ```
 
 ## Cómo probarlo en local

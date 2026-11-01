@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { crearDbBorrador } from './soporte/db-borrador.js';
 import { PlazosSolicitudService } from '../src/solicitudes/plazos-solicitud.service.js';
 import {
@@ -106,6 +107,44 @@ describe('Tarea 42: esquema', () => {
       titulo: 'Documento no válido',
     });
     expect(n.rows[0].msg).toContain('Revisado contra el original');
+  });
+
+  it('la migración 009 deja ACEPTADA lo que se aceptó antes de la Tarea 42', async () => {
+    const { solicitud } = await solicitudConDocumento('NO_VALIDO');
+    await base.db.query(
+      "UPDATE solicitud_grado SET estado='VALIDA' WHERE id_solicitud=$1",
+      [solicitud],
+    );
+    await base.db.query(
+      "INSERT INTO revisiones(id_solicitud,id_funcionario,resultado) VALUES($1,2,'APROBADA')",
+      [solicitud],
+    );
+    const calculada = (
+      await base.db.query<{ id: number }>(
+        `INSERT INTO solicitud_grado(id_estudiante,tipo_solicitud,estado,id_periodo)
+        VALUES(1,'POSGRADO','VALIDA',$1) RETURNING id_solicitud AS id`,
+        [PERIODO],
+      )
+    ).rows[0].id;
+    await base.db.exec(
+      await readFile(
+        new URL(
+          '../../db/migrations/009-estado-solicitud.sql',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    );
+    const estados = await base.db.query<{
+      id_solicitud: number;
+      estado: string;
+    }>(
+      'SELECT id_solicitud, estado FROM solicitud_grado ORDER BY id_solicitud',
+    );
+    expect(estados.rows).toEqual([
+      { id_solicitud: solicitud, estado: 'ACEPTADA' },
+      { id_solicitud: calculada, estado: 'VALIDA' },
+    ]);
   });
 
   it('la resolución exige exactamente un documento', async () => {
@@ -576,6 +615,64 @@ describe('Tarea 42: flujo de la solicitud', () => {
       await moverFin(7);
       await expect(plazos().ejecutar()).resolves.toMatchObject({ anuladas: 0 });
       expect(await estadoSolicitud(flujo, id)).toBe('NO_VALIDA');
+    });
+  });
+
+  describe('cancelación con el estado calculado (Tarea 44)', () => {
+    async function solicitud(estado: string) {
+      const r = await flujo.base.db.query<{ id: number }>(
+        `INSERT INTO solicitud_grado(id_estudiante,tipo_solicitud,estado,id_periodo)
+        VALUES(1,'PREGRADO',$1,$2) RETURNING id_solicitud AS id`,
+        [estado, PERIODO],
+      );
+      return r.rows[0].id;
+    }
+    const cancelar = (id: number) =>
+      flujo.estudiante
+        .post(`/api/estudiante/solicitudes/${id}/cancelacion`)
+        .send({});
+
+    it.each([
+      'EN_PROCESO',
+      'POR_REVISAR',
+      'NO_VALIDA',
+      'INCONSISTENTE',
+      'VALIDA',
+    ])(
+      'una solicitud enviada sin decidir (%s) se puede cancelar y queda auditada',
+      async (estado) => {
+        const id = await solicitud(estado);
+        const detalle = await flujo.estudiante
+          .get(`/api/estudiante/solicitudes/${id}/analisis`)
+          .expect(200);
+        expect(detalle.body.cancelacion.permitida).toBe(true);
+        await cancelar(id).expect(201);
+        expect(await estadoSolicitud(flujo, id)).toBe('CANCELADA');
+        const a = await flujo.base.db.query<{ estado_anterior: string }>(
+          'SELECT estado_anterior FROM cancelaciones_preinscripcion WHERE id_solicitud=$1',
+          [id],
+        );
+        expect(a.rows[0].estado_anterior).toBe(estado);
+      },
+    );
+
+    it.each(['ACEPTADA', 'CERRADA'])(
+      'una solicitud decidida (%s) no se cancela',
+      async (estado) => {
+        const id = await solicitud(estado);
+        await cancelar(id).expect(409);
+        expect(await estadoSolicitud(flujo, id)).toBe(estado);
+      },
+    );
+
+    it('el barrido no recalcula ni anula una cancelada', async () => {
+      const id = await solicitud('NO_VALIDA');
+      await cancelar(id).expect(201);
+      await flujo.base.db.query(
+        `UPDATE periodos_grado SET fecha_fin=(CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date+1`,
+      );
+      await flujo.app.get(PlazosSolicitudService).ejecutar();
+      expect(await estadoSolicitud(flujo, id)).toBe('CANCELADA');
     });
   });
 });
