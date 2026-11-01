@@ -32,7 +32,7 @@ export default function CancelarPreinscripcion({
     // El componente permanece montado durante la operación; el padre confirma el cambio de estado.
     const plazo = solicitud.cancelacion;
     // Tarea 42: «en proceso» es cualquier solicitud enviada que la funcionaria aún no decide.
-    const permitida = solicitud.cancelacion?.permitida ?? ['EN_PROCESO', 'POR_REVISAR', 'NO_VALIDA', 'INCONSISTENTE', 'VALIDA'].includes(solicitud.estadoSolicitud);
+    const permitida = ['EN_PROCESO', 'POR_REVISAR', 'NO_VALIDA', 'INCONSISTENTE', 'VALIDA'].includes(solicitud.estadoSolicitud);
     async function confirmar() {
         if (bloqueo.current || !permitida || deshabilitado) return;
         bloqueo.current = true;
