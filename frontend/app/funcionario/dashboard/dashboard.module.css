@@ -85,6 +85,14 @@
     background: var(--status-review-mark);
 }
 
+.contador[data-estado="aceptada"] .marca {
+    background: var(--status-accepted-mark);
+}
+
+.contador[data-estado="anulada"] .marca {
+    background: var(--status-neutral-mark);
+}
+
 .contadorValor {
     display: flex;
     align-items: baseline;

@@ -41,11 +41,16 @@ export class NotificacionesService {
   constructor(private readonly db: DatabaseService) {}
 
   async solicitudesFuncionaria() {
+    // Tarea 42b: sin borradores; la fecha que filtra el dashboard es la del primer envío, en Bogotá.
     const r = await this.db.query(`SELECT s.id_solicitud::text AS id,s.id_periodo AS "periodId",
       s.tipo_solicitud AS nivel,s.estado, s.fecha_creacion AS "fechaRegistro",
-      u.nombres||' '||u.apellidos AS estudiante
+      u.nombres||' '||u.apellidos AS estudiante,
+      (e.fecha_entrega AT TIME ZONE 'America/Bogota')::date::text AS "fechaEnvio",
+      to_char(e.fecha_entrega AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "envioEn"
       FROM solicitud_grado s JOIN usuarios u ON u.id_usuario=s.id_estudiante
-      WHERE s.estado<>'CANCELADA' ORDER BY s.fecha_creacion DESC,s.id_solicitud DESC`);
+      LEFT JOIN entregas e ON e.id_solicitud=s.id_solicitud AND e.tipo_entrega='INICIAL'
+      WHERE s.estado NOT IN ('BORRADOR','CANCELADA')
+      ORDER BY e.fecha_entrega DESC NULLS LAST,s.id_solicitud DESC`);
     return r.rows;
   }
 
