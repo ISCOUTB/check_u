@@ -173,8 +173,8 @@ describe('Tarea 35: asignación de periodo con PostgreSQL', () => {
     await periodo(ID, '2026-11-01', '2026-11-30', 'CERRADO');
     await agente.post(RUTA).send({}).expect(409);
   });
-  it('desempata periodos solapados por inicio, fin e identificador', async () => {
-    await periodo(OTRO);
+  it('desempata periodos solapados por inicio y fin sin repetir el rango', async () => {
+    await periodo(OTRO, '2026-11-01', '2026-12-01');
     await periodo(ID);
     const res = await agente.post(RUTA).send({ nivel: 'POSGRADO' }).expect(201);
     expect(res.body.periodos.periodoAsignado.id).toBe(ID);
