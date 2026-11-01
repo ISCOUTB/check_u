@@ -287,7 +287,15 @@ export default function Home() {
     }
 
     return (
-      <Card titulo="Mi solicitud de grado" id="mi-solicitud">
+      <Card
+        titulo="Mi solicitud de grado"
+        id="mi-solicitud"
+        acciones={
+          <Button href="/estudiante/solicitudes" variante="sutil">
+            Ver todas mis solicitudes
+          </Button>
+        }
+      >
         <dl className={styles.metaSolicitud}>
           <div className={styles.metaItem}>
             <dt>Tipo de solicitud</dt>
