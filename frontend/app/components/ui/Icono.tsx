@@ -22,6 +22,30 @@ const TRAZOS = {
         </>
     ),
     procesando: <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5" />,
+    en_proceso: (
+        <>
+            <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5" />
+            <path d="M12 8v4l2.5 1.5" />
+        </>
+    ),
+    cancelada: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M8 12h8" />
+        </>
+    ),
+    anulada: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="m8.5 8.5 7 7" />
+        </>
+    ),
+    borrador: (
+        <>
+            <path d="M12 20h8" />
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        </>
+    ),
     falta_cargar: (
         <>
             <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5" />

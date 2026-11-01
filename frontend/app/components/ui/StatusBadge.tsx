@@ -1,9 +1,20 @@
 import Icono from "./Icono";
 import styles from "./StatusBadge.module.css";
 
-export type EstadoVisible = "valido" | "no_valido" | "inconsistente" | "por_revisar" | "procesando" | "falta_cargar";
+export type EstadoVisible =
+    | "valido"
+    | "no_valido"
+    | "inconsistente"
+    | "por_revisar"
+    | "procesando"
+    | "falta_cargar"
+    // Estados propios de una solicitud de grado completa.
+    | "cancelada"
+    | "anulada"
+    | "en_proceso"
+    | "borrador";
 
-/** Etiquetas de mapeo.json (contratos) más las dos de carga que usa el inicio. */
+/** Etiquetas de mapeo.json (contratos), las de carga y los estados de la solicitud. */
 export const ETIQUETA_ESTADO: Record<EstadoVisible, string> = {
     valido: "Válido",
     no_valido: "No válido",
@@ -11,6 +22,10 @@ export const ETIQUETA_ESTADO: Record<EstadoVisible, string> = {
     por_revisar: "Por revisar",
     procesando: "Procesando",
     falta_cargar: "Falta cargar",
+    cancelada: "Cancelada",
+    anulada: "Anulada",
+    en_proceso: "En proceso",
+    borrador: "Borrador",
 };
 
 /**
