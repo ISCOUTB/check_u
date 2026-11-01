@@ -35,7 +35,7 @@ test.describe("inicio del estudiante", () => {
         await page.goto(INICIO);
         const barra = page.getByRole("progressbar");
         await expect(barra).toHaveAttribute("aria-valuemin", "0");
-        await expect(barra).toHaveAttribute("aria-valuetext", /de 5 documentos cargados/);
+        await expect(barra).toHaveAttribute("aria-valuetext", /de 5 requisitos válidos/);
     });
 
     test("el menú de usuario abre con Enter, cierra con Esc y devuelve el foco", async ({ page }) => {

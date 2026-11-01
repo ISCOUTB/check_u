@@ -62,4 +62,28 @@ describe('Barrido de plazos de la solicitud (Tarea 42a)', () => {
     terminar({ rows: [] });
     await primera;
   });
+
+  it('si una solicitud falla, la pasada sigue con las demás y lo registra', async () => {
+    const log = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => {});
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [{ id: 1 }, { id: 2 }] })
+      .mockResolvedValue({ rows: [] });
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('fila bloqueada'))
+      .mockResolvedValue('POR_REVISAR');
+    const job = new PlazosSolicitudService(
+      { query, transaction } as unknown as DatabaseService,
+      notificaciones,
+    );
+    await expect(job.ejecutar()).resolves.toEqual({
+      recalculadas: 1,
+      anuladas: 0,
+    });
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledTimes(1);
+  });
 });

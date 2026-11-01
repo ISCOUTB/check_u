@@ -27,7 +27,7 @@ const RESULTADOS: Record<string, string> = {
 };
 const ESTADOS: Record<string, string> = {
     BORRADOR: 'Borrador', EN_PROCESO: 'En proceso', POR_REVISAR: 'Por revisar',
-    VALIDA: 'Válida', ACEPTADA: 'Aceptada', CERRADA: 'Anulada', NO_VALIDA: 'No válida', INCONSISTENTE: 'Inconsistente',
+    VALIDA: 'Válida', ACEPTADA: 'Aceptada', CERRADA: 'Anulada', CANCELADA: 'Cancelada', NO_VALIDA: 'No válida', INCONSISTENTE: 'Inconsistente',
 };
 type Resolucion = { documento: DocumentoSolicitud; resultado: 'VALIDO' | 'NO_VALIDO' };
 function estadoDocumento(doc: DocumentoSolicitud) {
@@ -78,8 +78,8 @@ function DetalleSolicitud({id}: {id: string}) {
     }, [usuario, id, intento]);
 
     const corregibles = detalle?.documentos.filter(d => estadoDocumento(d) !== 'valido') ?? [];
-    // Tarea 42a: ACEPTADA y CERRADA son decisiones finales; solo se acepta una solicitud VALIDA.
-    const admiteDecision = !!detalle && !['BORRADOR', 'ACEPTADA', 'CERRADA'].includes(detalle.estadoSolicitud);
+    // Tarea 42a: ACEPTADA, CERRADA y CANCELADA son finales; solo se acepta una solicitud VALIDA.
+    const admiteDecision = !!detalle && !['BORRADOR', 'ACEPTADA', 'CERRADA', 'CANCELADA'].includes(detalle.estadoSolicitud);
     const admiteAceptar = admiteDecision && detalle?.estadoSolicitud === 'VALIDA';
     const admiteRecarga = admiteDecision && detalle?.estadoSolicitud !== 'VALIDA' && corregibles.length > 0;
     function abrirResolucion(documento: DocumentoSolicitud, resultado: Resolucion['resultado']) {

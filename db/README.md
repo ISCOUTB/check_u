@@ -17,7 +17,8 @@ db/
     005-reenvios-idempotentes.sql
     006-opciones-campos.sql
     007-notificaciones.sql
-    008-estado-solicitud.sql
+    008-cancelacion-preinscripcion.sql
+    009-estado-solicitud.sql
   tests/
     aceptacion.sql
     verificar.ps1
@@ -29,7 +30,7 @@ db/
 - `02-userbase.sql`: únicamente los dos usuarios indicados por el equipo.
 - `migrations/*.sql`: cambios idempotentes para bases existentes. La migración
   `006-opciones-campos.sql` crea `opciones_campo`, ajusta la restricción de
-  discapacidad y carga las 31 opciones iniciales. La `008-estado-solicitud.sql` (Tarea 42) agrega el
+  discapacidad y carga las 31 opciones iniciales. La `009-estado-solicitud.sql` (Tarea 42, después de la 008 de la Tarea 44) agrega el
   estado `ACEPTADA` y la resolución manual de documentos (`MANUAL`, `DOCUMENTO_RESUELTO`).
 - `tests/aceptacion.sql`: comprueba datos y rechazos esperados; revierte sus cambios.
 - `tests/verificar.ps1`: ejecuta esquema, seed y pruebas dos veces con `psql`.

@@ -31,7 +31,7 @@ export async function crearDbBorrador() {
   await db.exec(
     await readFile(
       new URL(
-        '../../../db/migrations/008-estado-solicitud.sql',
+        '../../../db/migrations/009-estado-solicitud.sql',
         import.meta.url,
       ),
       'utf8',

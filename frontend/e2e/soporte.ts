@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
+import { DEMO_PREGRADO } from "@/app/components/informacion_estudiante/datos_demo";
 
 // Ayudantes compartidos por las pruebas: sesión simulada y revisión de accesibilidad.
 
@@ -103,11 +104,107 @@ export const DETALLE_FUNCIONARIA = {
     politicaReenvios:{usados:0,limite:3,zona:'America/Bogota'}, revisiones:[],
 };
 
+/**
+ * Detalle real de "Mi solicitud de grado" para el inicio del estudiante.
+ * Cubre un requisito válido, uno por revisar, uno con corrección y dos sin cargar.
+ */
+export const DETALLE_ESTUDIANTE = {
+    id: "1",
+    estadoSolicitud: "EN_PROCESO",
+    estadoAnalisis: "registrado",
+    estudiante: {
+        codigo: "T00000001",
+        nombre: "Ana Prueba",
+        tipoDocumento: "CC",
+        numeroDocumento: "1000000001",
+        fechaNacimiento: "2004-03-12",
+        programa: "Ingeniería",
+        facultad: "",
+        nivel: "PREGRADO",
+        correo: "prueba@example.org",
+        telefono: "",
+        ciudad: "Cartagena",
+        fechaSolicitud: "2026-10-04",
+    },
+    informacion: { ...DEMO_PREGRADO, tieneSegundoPrograma: false },
+    documentos: [
+        {
+            id: "10",
+            nombre: "Documento de identidad",
+            tipo: "identification",
+            orden: 1,
+            version: 1,
+            fileName: "identidad.pdf",
+            descripcion: "identidad.pdf",
+            archivoDisponible: true,
+            resubmission_allowed: false,
+            resultados: [{ estado: "valido", mensaje: "Identidad verificada." }],
+            analisis: null,
+        },
+        {
+            id: "11",
+            nombre: "Evaluación de Grado (Banner)",
+            tipo: "academic_evaluation",
+            orden: 1,
+            version: 1,
+            fileName: "evaluacion.pdf",
+            descripcion: "evaluacion.pdf",
+            archivoDisponible: true,
+            resubmission_allowed: false,
+            resultados: [
+                {
+                    estado: "por_revisar",
+                    mensaje: "Pendiente de revisión manual.",
+                },
+            ],
+            analisis: null,
+        },
+        {
+            id: "12",
+            nombre: "Estampilla Pro-Cultura",
+            tipo: "estampilla_pro_cultura",
+            orden: 1,
+            version: 1,
+            fileName: "estampilla.pdf",
+            descripcion: "estampilla.pdf",
+            archivoDisponible: true,
+            resubmission_allowed: true,
+            resultados: [
+                {
+                    estado: "no_valido",
+                    mensaje:
+                        "El valor pagado no coincide. Adjunta el comprobante correcto.",
+                },
+            ],
+            analisis: null,
+        },
+    ],
+    periodos: {
+        fechaActual: "2026-10-15",
+        periodoAsignado: {
+            ...PERIODO_DEMO,
+            fechaCorte: "2026-10-24",
+        },
+        periodoDisponible: null,
+        proximosPeriodos: [],
+    },
+    politicaReenvios: { usados: 1, limite: 3, zona: "America/Bogota" },
+};
+
 /** 320 px equivale a un zoom del 400 % en 1280 (WCAG 1.4.10, reflujo). */
 export const ANCHOS = [320, 360, 768, 1280] as const;
 
 /** Simula el backend: la sesión (o su ausencia), el cierre de sesión y el chequeo de salud. */
 export async function sesionComo(page: Page, rol: Rol | null, nombre?: string): Promise<void> {
+    // La tarea 34 consulta este contrato para las guardas; cada prueba puede sustituirlo.
+    await page.route(`${API}/solicitudes/estado`,async ruta=>{
+        if(rol!=='estudiante')return ruta.fulfill({status:rol?403:401,json:{message:'Acceso restringido'}});
+        const escenario=await page.evaluate(()=>(window as unknown as {__CHECKU_ESCENARIO__?:string}).__CHECKU_ESCENARIO__).catch(()=>undefined);
+        const path=new URL(page.url()).pathname;
+        const estado=escenario==='sin_solicitud'||path==='/estudiante/bienvenida'?'SIN_SOLICITUD':path==='/estudiante/iniciar_preinscripcion'?'BORRADOR':'ENVIADA';
+        return ruta.fulfill({json:{ok:true,estado,destino:estado==='SIN_SOLICITUD'?'/estudiante/bienvenida':estado==='BORRADOR'?'/estudiante/iniciar_preinscripcion':'/estudiante/home',id_solicitud:estado==='SIN_SOLICITUD'?undefined:1,nivel:'PREGRADO'}});
+    });
+    await page.route(`${API}/estudiante/solicitudes`,ruta=>ruta.fulfill({status:rol==='estudiante'?200:rol?403:401,json:rol==='estudiante'?{solicitudes:[]}:{message:'Acceso restringido'}}));
     await page.route(`${API}/auth/me`, (ruta) =>
         rol
             ? ruta.fulfill({ status: 200, json: { user: { ...USUARIOS[rol], ...(nombre ? { name: nombre } : {}) } } })
@@ -378,6 +475,31 @@ export async function sesionComo(page: Page, rol: Rol | null, nombre?: string): 
                       solicitud: { id_solicitud: 1, tipo_solicitud: "PREGRADO", estado: "BORRADOR" },
                   },
               })
+            : rol === "funcionario"
+              ? ruta.fulfill({ status: 403, json: { message: "Acceso restringido a estudiantes" } })
+              : ruta.fulfill({ status: 401, json: { message: "Sesión no válida o expirada" } }),
+    );
+    // Estado de navegación del inicio: por defecto, la solicitud ya fue enviada.
+    await page.route(`${API}/solicitudes/estado`, (ruta) =>
+        rol === "estudiante"
+            ? ruta.fulfill({
+                  status: 200,
+                  json: {
+                      ok: true,
+                      estado: "ENVIADA",
+                      destino: "/estudiante/home",
+                      id_solicitud: 1,
+                      nivel: "PREGRADO",
+                  },
+              })
+            : rol === "funcionario"
+              ? ruta.fulfill({ status: 403, json: { message: "Acceso restringido a estudiantes" } })
+              : ruta.fulfill({ status: 401, json: { message: "Sesión no válida o expirada" } }),
+    );
+    // Resumen documental real del inicio; cada prueba puede reemplazarlo.
+    await page.route(`${API}/estudiante/solicitud/analisis`, (ruta) =>
+        rol === "estudiante"
+            ? ruta.fulfill({ status: 200, json: DETALLE_ESTUDIANTE })
             : rol === "funcionario"
               ? ruta.fulfill({ status: 403, json: { message: "Acceso restringido a estudiantes" } })
               : ruta.fulfill({ status: 401, json: { message: "Sesión no válida o expirada" } }),

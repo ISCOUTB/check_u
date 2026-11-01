@@ -29,7 +29,7 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO tablas FROM information_schema.tables
     WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
-    IF tablas <> 16 THEN RAISE EXCEPTION 'Se esperaban 16 tablas, hay %', tablas; END IF;
+    IF tablas <> 17 THEN RAISE EXCEPTION 'Se esperaban 17 tablas, hay %', tablas; END IF;
 
     SELECT id_usuario INTO STRICT estudiante FROM usuarios
     WHERE correo = 'lizapata@utb.edu.co' AND rol = 'ESTUDIANTE'
@@ -184,7 +184,7 @@ BEGIN
     WHERE id_usuario = estudiante;
     SELECT fecha_actualizacion INTO fecha_anterior FROM perfil_estudiante WHERE id_usuario=estudiante;
     IF fecha_anterior <> CURRENT_TIMESTAMP THEN RAISE EXCEPTION 'No funciona trigger de auditoria'; END IF;
-    RAISE NOTICE 'ACEPTACION CORRECTA: 16 tablas, solo Lisandro y Rosa, restricciones y auditoria verificadas';
+    RAISE NOTICE 'ACEPTACION CORRECTA: 17 tablas, solo Lisandro y Rosa, restricciones y auditoria verificadas';
 END;
 $$;
 ROLLBACK;

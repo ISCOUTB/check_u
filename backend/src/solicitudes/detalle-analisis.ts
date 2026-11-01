@@ -5,6 +5,7 @@ import {
   fechaCorteCorreccion,
 } from '../periodos/asignacion-periodo.js';
 import { observacionesDocumento } from './observaciones-documento.js';
+import { ESTADOS_CANCELABLES } from './recalcular-estado.js';
 import type { DatabaseService } from '../database/database.service.js';
 
 export async function detalleAnalisis(
@@ -22,11 +23,17 @@ export async function detalleAnalisis(
       u.nombres, u.apellidos, u.codigo_estudiante, u.correo, pe.*
       FROM solicitud_grado s JOIN usuarios u ON u.id_usuario = s.id_estudiante
       LEFT JOIN perfil_estudiante pe ON pe.id_usuario = u.id_usuario
-      WHERE s.id_estudiante = $1 AND ($2::integer IS NULL OR s.id_solicitud=$2) ORDER BY s.id_solicitud DESC LIMIT 1`,
+      WHERE s.id_estudiante = $1 AND ($2::integer IS NULL OR s.id_solicitud=$2) ORDER BY CASE WHEN $2::integer IS NULL AND s.estado NOT IN ('CANCELADA','CERRADA') THEN 0 ELSE 1 END,s.id_solicitud DESC LIMIT 1`,
       [idEstudiante, idSolicitud ?? null],
     );
-    const s = res.rows[0];
+    let s = res.rows[0];
     if (!s) throw new NotFoundException('No hay preinscripción registrada.');
+    const cancelacion = s.estado === 'CANCELADA' ? (await client.query(
+      'SELECT fecha_cancelacion,informacion_estudiante FROM cancelaciones_preinscripcion WHERE id_solicitud=$1',
+      [s.id_solicitud],
+    )).rows[0] : null;
+    // Conservar el perfil al cancelar aunque el estudiante lo cambie en otro periodo.
+    if (cancelacion) s = {...s,...cancelacion.informacion_estudiante};
     const programas = await client.query(
       'SELECT * FROM solicitud_programa WHERE id_solicitud = $1 ORDER BY orden',
       [s.id_solicitud],
@@ -57,13 +64,15 @@ export async function detalleAnalisis(
         s.estado,
       ) && (!fechaFin || dentroDelPlazoCorreccion(fechaFin));
     const documentos = await client.query(
-      `SELECT d.*, v.detalle, v.mensaje,
+      `SELECT d.*, v.detalle, v.mensaje, m.detalle AS detalle_motor,
       (SELECT MAX(r.expira_en) FROM rutas r WHERE r.id_documento = d.id_documento) AS expira_en,
       EXISTS (SELECT 1 FROM rutas r JOIN solicitud_grado sg ON sg.id_solicitud=d.id_solicitud
         JOIN periodos_grado p ON p.id=sg.id_periodo WHERE r.id_documento = d.id_documento AND r.activa
         AND ((p.fecha_fin+16)::timestamp AT TIME ZONE 'America/Bogota') > CURRENT_TIMESTAMP) AS archivo_disponible
       FROM documentos d LEFT JOIN LATERAL (SELECT detalle, mensaje FROM validaciones
         WHERE id_documento = d.id_documento ORDER BY id_validacion DESC LIMIT 1) v ON TRUE
+      LEFT JOIN LATERAL (SELECT detalle FROM validaciones WHERE id_documento = d.id_documento
+        AND tipo_validacion <> 'MANUAL' ORDER BY id_validacion DESC LIMIT 1) m ON TRUE
       WHERE d.id_solicitud = $1 AND d.id_entrega IS NOT NULL
       ORDER BY d.tipo_documento, d.orden, d.version DESC`,
       [s.id_solicitud],
@@ -96,7 +105,8 @@ export async function detalleAnalisis(
         d.estado,
         d.detalle as Record<string, unknown> | null,
       ),
-      analisis: d.detalle ?? null,
+      // Tarea 42a: la resolución manual no reemplaza el análisis automático que ve la funcionaria.
+      analisis: d.detalle_motor ?? d.detalle ?? null,
       expiraEn: d.expira_en,
       archivoDisponible: d.archivo_disponible,
       resubmission_allowed:
@@ -105,6 +115,7 @@ export async function detalleAnalisis(
     const periodos = await consultarContextoPeriodo(
       client,
       s.id_periodo ?? null,
+      idEstudiante,
     );
     const p = programas.rows[0] ?? {},
       p2 = programas.rows[1] ?? {},
@@ -154,6 +165,15 @@ export async function detalleAnalisis(
     return {
       id: String(s.id_solicitud),
       estadoSolicitud: s.estado,
+      cancelacion: {
+        permitida: ESTADOS_CANCELABLES.includes(s.estado),
+        canceladaEn: cancelacion?.fecha_cancelacion ?? null,
+        fechaActual: periodos.fechaActual,
+        nombrePeriodo: periodos.periodoAsignado?.nombre ?? null,
+        fechaCorte: periodos.periodoAsignado?.fechaCorte ?? null,
+        diasRestantes: periodos.periodoAsignado
+          ? Math.max(0, Math.round((Date.parse(periodos.periodoAsignado.fechaCorte+'T00:00:00Z')-Date.parse(periodos.fechaActual+'T00:00:00Z'))/86400000)) : null,
+      },
       estadoAnalisis:
         !actuales.length || actuales.some((d) => !d.detalle)
           ? 'pendiente'

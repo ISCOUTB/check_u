@@ -1,6 +1,7 @@
 import { NotificacionesService } from '../notificaciones/notificaciones.service.js';
 import {
   BibliotecaService,
+  consultarConLimite,
   type RespuestaPazYSalvo,
 } from '../biblioteca/biblioteca.service.js';
 import { etapaDocumento, type InformarAvance } from './progreso-envio.js';
@@ -158,9 +159,10 @@ export class AnalisisPreinscripcionService {
       let mensaje: string;
       if (doc.tipo_documento === 'paz_y_salvo_bib') {
         // El PDF se conserva, pero el estado lo da Biblioteca. Si no responde, lo revisa una funcionaria.
-        const respuesta: RespuestaPazYSalvo = await this.biblioteca
-          .consultarPazYSalvo(u.codigo_estudiante as string)
-          .catch(() => 'sin_respuesta' as const);
+        const respuesta: RespuestaPazYSalvo = await consultarConLimite(
+          this.biblioteca,
+          u.codigo_estudiante as string,
+        );
         ({ estado, mensaje } = PAZ_Y_SALVO[respuesta]);
         detalle = {
           fuente: 'biblioteca_demo',
