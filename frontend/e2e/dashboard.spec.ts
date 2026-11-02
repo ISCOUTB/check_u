@@ -7,11 +7,9 @@ async function abrirFiltros(page: Page): Promise<void> {
     await page.getByRole("button", { name: "Mostrar filtros" }).click();
 }
 
-// El periodo de prueba (PERIODO_DEMO) va del 01/10 al 31/10/2026 y el dashboard elige el periodo
-// vigente con la fecha de hoy: las pruebas fijan un día dentro del periodo para no depender del reloj.
-const HOY_PRUEBAS = new Date("2026-10-15T12:00:00-05:00");
 test.beforeEach(async ({ page }) => {
-    await page.clock.setFixedTime(HOY_PRUEBAS);
+    // El catálogo de prueba es de octubre: el periodo vigente no debe depender del día de ejecución.
+    await page.clock.setFixedTime(new Date("2026-10-15T15:00:00Z"));
 });
 
 test.describe("dashboard", () => {
