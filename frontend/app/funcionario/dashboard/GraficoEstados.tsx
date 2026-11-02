@@ -25,6 +25,8 @@ const TOKEN_MARCA: Record<EstadoSolicitud, string> = {
     no_valido: "--status-invalid-mark",
     inconsistente: "--status-inconsistent-mark",
     por_revisar: "--status-review-mark",
+    aceptada: "--status-accepted-mark",
+    anulada: "--status-neutral-mark",
 };
 
 export interface GraficoEstadosProps {

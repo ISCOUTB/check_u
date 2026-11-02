@@ -166,7 +166,9 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     await revisar(id, {accion:'comentario', comentario:'Historial completo de la primera solicitud'}).expect(201);
     const listado = await funcionaria.get('/api/funcionario/solicitudes').expect(200);
     expect(listado.headers['cache-control']).toBe('private, no-store');
-    expect(listado.body.map((r: {id: string}) => r.id)).toEqual([String(segundo),String(id)]);
+    // Tarea 42b: el dashboard no muestra borradores.
+    expect(listado.body.map((r: {id: string}) => r.id)).toEqual([String(id)]);
+    expect(segundo).toBeGreaterThan(id);
     const detalle = await funcionaria.get(`/api/funcionario/solicitudes/${id}`).expect(200);
     expect(detalle.body.id).toBe(String(id));
     expect(detalle.body.estadoSolicitud).toBe('EN_PROCESO');
@@ -270,12 +272,13 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     expect(JSON.stringify(r.body)).not.toContain('Privada');
   });
   it.each([
-    ['aceptada', 'Solicitud aceptada', 'info', 'VALIDA'],
+    ['aceptada', 'Solicitud aceptada', 'info', 'ACEPTADA'],
     ['anulada', 'Solicitud anulada', 'error', 'CERRADA'],
   ])(
     'la acción %s registra revisión, aviso y estado juntos',
     async (accion, titulo, tipo, estado) => {
-      const id = await solicitud();
+      // Tarea 42a: solo se acepta una solicitud válida.
+      const id = await solicitud(accion === 'aceptada' ? 'VALIDA' : 'EN_PROCESO');
       await revisar(id, { accion }).expect(201);
       const n = (
         await estudiante.get('/api/estudiante/notificaciones').expect(200)
@@ -399,7 +402,7 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
       'Te queda poco tiempo para presentar toda la documentación (13 días).',
     ]);
   });
-  it.each(['VALIDA', 'CERRADA'])(
+  it.each(['VALIDA', 'ACEPTADA', 'CERRADA'])(
     'no recuerda documentos a una solicitud %s',
     async (estado) => {
       await solicitud(estado);
@@ -473,7 +476,7 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
         ),
       ).toBe(true);
       expect(n.find((n) => n.generado_por === 'system').msg).toContain(
-        'pendiente de integración',
+        'Biblioteca confirmó que estás a paz y salvo.',
       );
     },
   );

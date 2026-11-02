@@ -1,19 +1,18 @@
 import { BadRequestException } from '@nestjs/common';
 import type { ArchivoSubido } from './analisis-documental.service.js';
+import { documentosRequeridos as requeridosPorTipo } from '../solicitudes/requisitos-documentales.js';
 
-const DOCUMENTOS_PREGRADO = [
-  'cedula',
-  'evaluacion_grado',
-  'estampilla',
-  'saber_pro',
-] as const;
-
-const DOCUMENTOS_POSGRADO = ['cedula', 'paz_y_salvo', 'estampilla'] as const;
+/** Nombres de campo del formulario viejo para cada tipo documental de la configuración. */
+const CAMPO_FORMULARIO: Readonly<Record<string, string>> = {
+  identification: 'cedula',
+  academic_evaluation: 'evaluacion_grado',
+  paz_y_salvo_bib: 'paz_y_salvo',
+  estampilla_pro_cultura: 'estampilla',
+  saber_pro: 'saber_pro',
+};
 
 export function documentosRequeridos(nivel: string): readonly string[] {
-  if (nivel === 'PREGRADO') return DOCUMENTOS_PREGRADO;
-  if (nivel === 'POSGRADO') return DOCUMENTOS_POSGRADO;
-  throw new BadRequestException('Nivel académico no soportado');
+  return requeridosPorTipo(nivel, false).map((d) => CAMPO_FORMULARIO[d.tipo]);
 }
 
 export function validarDatos(datosTexto: string): Record<string, unknown> {

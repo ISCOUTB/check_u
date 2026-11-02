@@ -15,6 +15,12 @@ import {
 } from './analisis-preinscripcion.service.js';
 import { ArchivosTemporalesService } from './archivos-temporales.service.js';
 import type { InformarAvance } from './progreso-envio.js';
+import { claveDocumento, MAXIMO_DOCUMENTOS } from './requisitos-documentales.js';
+import { recalcularEstado } from './recalcular-estado.js';
+import {
+  dentroDelPlazoCorreccion,
+  fechaCorteCorreccion,
+} from '../periodos/asignacion-periodo.js';
 
 export type ArchivoCorreccion = Omit<PdfPreinscripcion, 'tipo'> & {
   id: number;
@@ -70,7 +76,7 @@ export class ReenviosService {
     if (
       !/^[\w-]{8,128}$/.test(clave ?? '') ||
       !archivos.length ||
-      archivos.length > 6 ||
+      archivos.length > MAXIMO_DOCUMENTOS ||
       archivos.some((a) => !Number.isSafeInteger(a.id) || a.id <= 0) ||
       new Set(archivos.map((a) => a.id)).size !== archivos.length
     )
@@ -93,8 +99,9 @@ export class ReenviosService {
     try {
       return await this.db.transaction(async (client) => {
         const r = await client.query(
-          `SELECT id_solicitud, tipo_solicitud, estado FROM solicitud_grado
-          WHERE id_solicitud = $1 AND id_estudiante = $2 FOR UPDATE`,
+          `SELECT s.id_solicitud, s.tipo_solicitud, s.estado, p.fecha_fin::text AS fecha_fin
+          FROM solicitud_grado s LEFT JOIN periodos_grado p ON p.id = s.id_periodo
+          WHERE s.id_solicitud = $1 AND s.id_estudiante = $2 FOR UPDATE OF s`,
           [idSolicitud, idEstudiante],
         );
         const s = r.rows[0];
@@ -124,6 +131,11 @@ export class ReenviosService {
           throw new ConflictException(
             'La solicitud no admite correcciones en su estado actual.',
           );
+        // Tarea 42a: se corrige hasta fecha_fin − 7 (inclusive), en fecha de Bogotá.
+        if (s.fecha_fin && !dentroDelPlazoCorreccion(s.fecha_fin as string))
+          throw new ConflictException(
+            `El plazo para corregir documentos terminó el ${fechaCorteCorreccion(s.fecha_fin as string)}.`,
+          );
         const conteo = await client.query<{ usados: number }>(
           `SELECT COUNT(*)::int AS usados FROM entregas WHERE id_solicitud = $1 AND tipo_entrega = 'CORRECCION'
           AND fecha_entrega_bogota = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date`,
@@ -152,7 +164,7 @@ export class ReenviosService {
             documento: d,
             archivo: {
               ...a,
-              tipo: d.tipo_documento + (d.orden === 2 ? '-2' : ''),
+              tipo: claveDocumento({ tipo: d.tipo_documento, orden: d.orden }),
             },
           };
         });
@@ -194,14 +206,13 @@ export class ReenviosService {
           creados,
           informar,
         );
-        await client.query(
-          "UPDATE solicitud_grado SET estado='EN_PROCESO' WHERE id_solicitud=$1",
-          [idSolicitud],
-        );
+        // Tarea 42a: el estado se recalcula una sola vez, al terminar el reenvío.
+        const estado = await recalcularEstado(client, idSolicitud);
         return {
           ok: true,
           id_solicitud: idSolicitud,
           id_entrega: idEntrega,
+          estado,
           mensaje:
             'Corrección registrada. Consulta los resultados actualizados.',
         };

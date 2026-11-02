@@ -224,31 +224,37 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
       ),
       'utf8',
     );
-    await base.db.exec(sql);
-    await base.db.exec(sql);
+    // Tarea 42: 009 va siempre después de 008 y ajusta la regla de cancelación al estado calculado.
+    const sql009 = await readFile(
+      new URL('../../db/migrations/009-estado-solicitud.sql', import.meta.url),
+      'utf8',
+    );
+    for (let i = 0; i < 2; i++) {
+      await base.db.exec(sql);
+      await base.db.exec(sql009);
+    }
     expect(
       (await base.db.query('SELECT * FROM cancelaciones_preinscripcion')).rows,
     ).toEqual(antes);
     expect((await detalle()).body.estadoSolicitud).toBe('CANCELADA');
   });
-  it.each([
-    'BORRADOR',
-    'POR_REVISAR',
-    'VALIDA',
-    'NO_VALIDA',
-    'INCONSISTENTE',
-    'CERRADA',
-  ])('rechaza cancelar desde %s sin modificar información', async (estado) => {
-    await crear(estado);
-    await cancelar().expect(409);
-    expect(
-      (await base.db.query('SELECT estado FROM solicitud_grado')).rows[0]
-        .estado,
-    ).toBe(estado);
-    expect(
-      (await base.db.query('SELECT * FROM cancelaciones_preinscripcion')).rows,
-    ).toHaveLength(0);
-  });
+  // Tarea 42: con el estado calculado, «en proceso» es cualquier estado enviado sin decisión; se
+  // rechazan el borrador y las decisiones de la funcionaria.
+  it.each(['BORRADOR', 'ACEPTADA', 'CERRADA'])(
+    'rechaza cancelar desde %s sin modificar información',
+    async (estado) => {
+      await crear(estado);
+      await cancelar().expect(409);
+      expect(
+        (await base.db.query('SELECT estado FROM solicitud_grado')).rows[0]
+          .estado,
+      ).toBe(estado);
+      expect(
+        (await base.db.query('SELECT * FROM cancelaciones_preinscripcion'))
+          .rows,
+      ).toHaveLength(0);
+    },
+  );
   it('exige sesión y rol estudiante en cancelación, listado y detalle', async () => {
     await crear();
     for (const ruta of [

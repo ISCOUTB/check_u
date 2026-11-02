@@ -32,9 +32,10 @@ async function consultar(ruta: string, opciones: RequestInit = {}, signal?: Abor
 }
 const ESTADOS: Record<string, [EstadoSolicitud, string]> = {
     BORRADOR: ['por_revisar', 'Borrador'], EN_PROCESO: ['por_revisar', 'En proceso'],
-    POR_REVISAR: ['por_revisar', 'Por revisar'], VALIDA: ['valido', 'Aceptada'],
+    POR_REVISAR: ['por_revisar', 'Por revisar'], VALIDA: ['valido', 'Válida'],
     NO_VALIDA: ['no_valido', 'No válida'], INCONSISTENTE: ['inconsistente', 'Inconsistente'],
-    CERRADA: ['no_valido', 'Anulada'],
+    // Tarea 42b: las decisiones de la funcionaria tienen su propio grupo en el dashboard.
+    ACEPTADA: ['aceptada', 'Aceptada'], CERRADA: ['anulada', 'Anulada'],
 };
 export async function obtenerSolicitudes(signal?: AbortSignal): Promise<ResumenFuncionaria[]> {
     const data = await consultar('/funcionario/solicitudes', {}, signal);
@@ -42,15 +43,24 @@ export async function obtenerSolicitudes(signal?: AbortSignal): Promise<ResumenF
     return data.map(s => {
         if (!s || typeof s.id !== 'string' || !ESTADOS[s.estado] || !['PREGRADO', 'POSGRADO'].includes(s.nivel)) throw new Error('Solicitud inválida.');
         const [estado, etiqueta] = ESTADOS[s.estado];
+        const envioEn = typeof s.envioEn === 'string' ? s.envioEn : null;
         return { numero: s.id, fechaRegistro: s.fechaRegistro, estudiante: s.estudiante, nivel: s.nivel,
             estado, etiqueta, periodId: s.periodId,
-            fecha: new Date(s.fechaRegistro).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) };
+            fechaEnvio: typeof s.fechaEnvio === 'string' ? s.fechaEnvio : null, envioEn,
+            fecha: new Date(envioEn ?? s.fechaRegistro).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) };
     });
 }
 export async function obtenerDetalle(id: string, signal?: AbortSignal): Promise<DetalleFuncionaria> {
     const data = await consultar(`/funcionario/solicitudes/${encodeURIComponent(id)}`, {}, signal);
     if (!data?.estudiante || !data.informacion || !Array.isArray(data.documentos) || !Array.isArray(data.revisiones)) throw new Error('Detalle de solicitud inválido.');
     return data;
+}
+/** Tarea 42a: la funcionaria resuelve un documento «Por revisar». */
+export async function resolverDocumento(id: string, resultado: 'VALIDO' | 'NO_VALIDO', comentario: string) {
+    return consultar(`/funcionario/documentos/${encodeURIComponent(id)}/resolucion`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resultado, ...(comentario ? { comentario } : {}) }),
+    });
 }
 export async function registrarRevision(id: string, accion: AccionRevision, comentario: string, documentos: number[]) {
     return consultar(`/funcionario/solicitudes/${encodeURIComponent(id)}/revisiones`, {

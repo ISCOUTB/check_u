@@ -51,7 +51,7 @@ test.describe("resumen documental de la solicitud", () => {
         expect(progresoRequisitos(requisitos)).toEqual({ validos: 0, total: 5 });
     });
 
-    test("doble programa agrega la segunda estampilla al final", () => {
+    test("doble programa agrega la segunda evaluación de Banner y la segunda estampilla al final", () => {
         const requisitos = construirRequisitos("PREGRADO", true, [
             documento("estampilla_pro_cultura", 2, ["valido"], {
                 nombre: "Estampilla Pro-Cultura · segundo programa",
@@ -64,13 +64,14 @@ test.describe("resumen documental de la solicitud", () => {
             "paz_y_salvo_bib",
             "estampilla_pro_cultura",
             "saber_pro",
+            "academic_evaluation-2",
             "estampilla_pro_cultura-2",
         ]);
         expect(requisitos.at(-1)).toMatchObject({
             nombre: "Estampilla Pro-Cultura · segundo programa",
             estado: "valido",
         });
-        expect(progresoRequisitos(requisitos)).toEqual({ validos: 1, total: 6 });
+        expect(progresoRequisitos(requisitos)).toEqual({ validos: 1, total: 7 });
     });
 
     test("posgrado exige 3 requisitos y no duplica la estampilla", () => {
@@ -213,7 +214,7 @@ test.describe("Mi solicitud de grado en el inicio", () => {
         await expect(
             tarjeta.getByText("Estampilla Pro-Cultura · segundo programa"),
         ).toBeVisible();
-        await expect(tarjeta).toContainText("1 de 6 requisitos válidos");
+        await expect(tarjeta).toContainText("1 de 7 requisitos válidos");
     });
 
     test("posgrado muestra solo sus 3 requisitos", async ({ page }) => {

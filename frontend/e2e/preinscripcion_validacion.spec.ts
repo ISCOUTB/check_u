@@ -355,14 +355,15 @@ test("progreso cuenta los documentos cargados y las secciones que se completan",
     expect(resultado.listo).toBe(false);
 });
 
-test("progreso sin segundo programa no cuenta la segunda estampilla", () => {
+test("progreso sin segundo programa no cuenta la segunda evaluación ni la segunda estampilla", () => {
     const borrador = completo("PREGRADO");
 
     borrador.segundoPrograma = true;
-    expect(progreso(borrador).documentos).toEqual({ cargados: 5, requeridos: 6 });
+    expect(progreso(borrador).documentos).toEqual({ cargados: 5, requeridos: 7 });
 
+    cargar(borrador, "academic_evaluation-2");
     cargar(borrador, "estampilla_pro_cultura-2");
-    expect(progreso(borrador).documentos).toEqual({ cargados: 6, requeridos: 6 });
+    expect(progreso(borrador).documentos).toEqual({ cargados: 7, requeridos: 7 });
 
     borrador.segundoPrograma = false;
     const resultado = progreso(borrador);
@@ -380,7 +381,7 @@ test("un borrador completo está listo", () => {
     }
 });
 
-test("un borrador completo con segundo programa solo está listo con sus campos y su segunda estampilla", () => {
+test("un borrador completo con segundo programa solo está listo con sus campos y los dos documentos del segundo programa", () => {
     const borrador = completo("PREGRADO");
     borrador.segundoPrograma = true;
     expect(progreso(borrador).listo).toBe(false);
@@ -389,6 +390,9 @@ test("un borrador completo con segundo programa solo está listo con sus campos 
     expect(progreso(borrador).listo).toBe(false);
 
     cargar(borrador, "estampilla_pro_cultura-2");
+    expect(progreso(borrador).listo).toBe(false);
+
+    cargar(borrador, "academic_evaluation-2");
     expect(progreso(borrador).listo).toBe(true);
 });
 

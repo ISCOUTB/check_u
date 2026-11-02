@@ -43,6 +43,9 @@
     --status-neutral-text: #475569;
     --status-neutral-bg: #f1f5f9;
     --status-neutral-mark: #64748b;
+    --status-accepted-text: #6d28d9;
+    --status-accepted-bg: #f5f0ff;
+    --status-accepted-mark: #8b5cf6;
 
     --font-sans: var(--font-geist-sans), system-ui, sans-serif;
 
@@ -96,6 +99,8 @@
         --status-review-bg: #142445;
         --status-neutral-text: #cbd5e1;
         --status-neutral-bg: #18243f;
+        --status-accepted-text: #c4b5fd;
+        --status-accepted-bg: #241a45;
 
         --shadow-card: none;
         --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.45);
@@ -130,6 +135,8 @@
     --status-review-bg: #142445;
     --status-neutral-text: #cbd5e1;
     --status-neutral-bg: #18243f;
+    --status-accepted-text: #c4b5fd;
+    --status-accepted-bg: #241a45;
 
     --shadow-card: none;
     --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.45);

@@ -148,7 +148,10 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
     const requeridos =
       tipos ??
       (nivel === 'PREGRADO'
-        ? [...TIPOS, ...(doble ? ['estampilla_pro_cultura-2'] : [])]
+        ? [
+            ...TIPOS,
+            ...(doble ? ['academic_evaluation-2', 'estampilla_pro_cultura-2'] : []),
+          ]
         : ['identification', 'paz_y_salvo_bib', 'estampilla_pro_cultura']);
     let req = agente
       .post('/api/solicitudes/enviar')
@@ -164,12 +167,12 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
   it.each([
     ['PREGRADO', false, 5, 4],
     ['POSGRADO', false, 3, 2],
-    ['PREGRADO', true, 6, 5],
+    ['PREGRADO', true, 7, 6],
   ] as const)(
     'persiste %s doble=%s y consulta después de nueva sesión',
     async (nivel, doble, cantidad, llamadas) => {
       const envio = await enviar(nivel, doble).expect(201);
-      expect(envio.body.estado).toBe('EN_PROCESO');
+      expect(envio.body.estado).toBe('VALIDA'); // Tarea 42a: estado calculado
       expect(motor).toHaveBeenCalledTimes(llamadas);
       const docs = await base.db.query(
         'SELECT * FROM documentos ORDER BY id_documento',
@@ -177,7 +180,7 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
       expect(docs.rows).toHaveLength(cantidad);
       expect(
         docs.rows.find((d) => d.tipo_documento === 'paz_y_salvo_bib')?.estado,
-      ).toBe('POR_REVISAR');
+      ).toBe('VALIDO'); // Tarea 42: lo decide Biblioteca (demo: T00000001 está a paz y salvo)
       expect(
         (await base.db.query('SELECT * FROM validaciones')).rows,
       ).toHaveLength(cantidad);
@@ -303,8 +306,11 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
     });
     await enviar().expect(201);
     expect(
-      (await base.db.query("SELECT * FROM documentos WHERE estado = 'VALIDO'"))
-        .rows,
+      (
+        await base.db.query(
+          "SELECT * FROM documentos WHERE estado = 'VALIDO' AND tipo_documento <> 'paz_y_salvo_bib'",
+        )
+      ).rows,
     ).toHaveLength(0);
   });
   it('limpia al reiniciar: respeta periodo extendido, borra vencidos y conserva todo el historial', async () => {

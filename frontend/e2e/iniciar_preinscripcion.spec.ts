@@ -525,11 +525,11 @@ test.describe("iniciar preinscripción", () => {
         await responder(page, "¿Solicitas grado en un segundo programa?", "Sí");
         const segunda = page.locator("#documento-estampilla_pro_cultura-2");
         await expect(segunda).toBeVisible();
-        await expect(contador(page)).toHaveText("0 de 6 documentos cargados");
+        await expect(contador(page)).toHaveText("0 de 7 documentos cargados");
 
         await segunda.setInputFiles({ name: "estampilla2.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 prueba") });
-        await expect(contador(page)).toHaveText("1 de 6 documentos cargados");
-        await expect(resumen(page, "Te faltan 2 secciones y 5 documentos")).toBeVisible();
+        await expect(contador(page)).toHaveText("1 de 7 documentos cargados");
+        await expect(resumen(page, "Te faltan 2 secciones y 6 documentos")).toBeVisible();
     });
 
     test("el mismo archivo rechazado dos veces se vuelve a anunciar", async ({ page }) => {
@@ -581,17 +581,21 @@ test.describe("iniciar preinscripción", () => {
         await expect(entrada).toBeFocused();
     });
 
-    test("segundo programa en pregrado pide la segunda estampilla", async ({ page }) => {
+    test("segundo programa en pregrado pide la segunda evaluación de Banner y la segunda estampilla", async ({ page }) => {
         await abrir(page, PREGRADO);
+        const evaluacion = page.locator("#documento-academic_evaluation-2");
         const segunda = page.locator("#documento-estampilla_pro_cultura-2");
+        await expect(evaluacion).toHaveCount(0);
         await expect(segunda).toHaveCount(0);
 
         await responder(page, "¿Solicitas grado en un segundo programa?", "Sí");
+        await expect(evaluacion).toHaveAccessibleName(/^Evaluación de Grado \(Banner\) \(segundo programa\) \(obligatorio\)/);
         await expect(segunda).toHaveAccessibleName(/^Estampilla Pro-Cultura \(segundo programa\) \(obligatorio\)/);
-        await expect(contador(page)).toHaveText("0 de 6 documentos cargados");
-        await expect(resumen(page, "Te faltan 2 secciones y 6 documentos")).toBeVisible();
+        await expect(contador(page)).toHaveText("0 de 7 documentos cargados");
+        await expect(resumen(page, "Te faltan 2 secciones y 7 documentos")).toBeVisible();
 
         await responder(page, "¿Solicitas grado en un segundo programa?", "No");
+        await expect(evaluacion).toHaveCount(0);
         await expect(segunda).toHaveCount(0);
         await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
     });
