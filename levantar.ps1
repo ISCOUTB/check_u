@@ -1,3 +1,4 @@
+
 # ============================================================
 # CHECKU - ENTORNO LOCAL
 # Backend:  http://localhost:3000
@@ -8,24 +9,32 @@
 #
 # IMPORTANTE:
 # Utiliza exclusivamente docker-compose.local.yml.
-# No inicia el docker-compose.yml del servidor.
-# La base de datos se respalda y reconstruye en cada ejecucion.
-# El motor OCR se crea si no existe y se inicia si esta detenido.
-# Antes de continuar, verifica que el OCR responda en /salud.
-# Uso: .\levantar.ps1             (entorno completo)
-#      .\levantar.ps1 --only-db   (solo reconstruir la base de datos)
+# Conserva las dependencias instaladas y los datos de PostgreSQL.
+# No reconstruye imagenes Docker en cada ejecucion.
+#
+# Uso:
+# .\levantar.ps1                 (entorno completo)
+# .\levantar.ps1 --only-db       (solo iniciar PostgreSQL)
+# .\levantar.ps1 --reset-db      (respaldar y reconstruir la BD)
 # ============================================================
 
 $ErrorActionPreference = 'Stop'
 
-# El script acepta únicamente el indicador --only-db.
-$argumentosNoReconocidos = @($args | Where-Object { $_ -ne '--only-db' })
+$argumentosPermitidos = @('--only-db', '--reset-db')
+$argumentosNoReconocidos = @(
+    $args | Where-Object { $_ -notin $argumentosPermitidos }
+)
 
 if ($argumentosNoReconocidos.Count -gt 0) {
-    throw "Parametro(s) no reconocido(s): $($argumentosNoReconocidos -join ', '). Uso: .\levantar.ps1 [--only-db]"
+    throw "Parametro no reconocido: $($argumentosNoReconocidos -join ', ')"
+}
+
+if (($args -contains '--only-db') -and ($args -contains '--reset-db')) {
+    throw 'No puedes combinar --only-db y --reset-db.'
 }
 
 $soloBaseDatos = $args -contains '--only-db'
+$reiniciarBaseDatos = $args -contains '--reset-db'
 
 $raiz = $PSScriptRoot
 
@@ -42,7 +51,7 @@ $carpetaRespaldos = Join-Path $raiz 'backups'
 $urlSaludOCR = 'http://localhost:5001/salud'
 
 # ------------------------------------------------------------
-# Detectar el archivo Compose local.
+# Detectar Compose local.
 # ------------------------------------------------------------
 
 $compose = $null
@@ -60,7 +69,7 @@ foreach ($nombre in @(
 }
 
 # ------------------------------------------------------------
-# Ejecutar comandos Docker y verificar su resultado.
+# Ejecutar comandos Docker.
 # ------------------------------------------------------------
 
 function Invoke-Docker {
@@ -72,12 +81,12 @@ function Invoke-Docker {
     & docker @Argumentos
 
     if ($LASTEXITCODE -ne 0) {
-        throw "Fallo el comando Docker: docker $($Argumentos -join ' ')"
+        throw "Fallo Docker: docker $($Argumentos -join ' ')"
     }
 }
 
 # ------------------------------------------------------------
-# Comprobar la salud del motor OCR mediante HTTP.
+# Verificar salud OCR.
 # ------------------------------------------------------------
 
 function Test-MotorOCR {
@@ -86,7 +95,7 @@ function Test-MotorOCR {
         [int]$EsperaSegundos = 2
     )
 
-    Write-Host "`nVerificando salud del motor OCR..." -ForegroundColor Yellow
+    Write-Host "`nVerificando motor OCR..." -ForegroundColor Yellow
 
     for ($i = 1; $i -le $Intentos; $i++) {
         try {
@@ -117,20 +126,11 @@ function Test-MotorOCR {
                 $tiposFaltantes.Count -eq 0
             ) {
                 Write-Host 'Motor OCR saludable.' -ForegroundColor Green
-                Write-Host "Servicio: $($respuesta.servicio)"
-                Write-Host "Tipos soportados: $($tiposRespuesta -join ', ')"
-
                 return $true
             }
-
-            Write-Host `
-                "La respuesta del OCR no cumple lo esperado (intento $i/$Intentos)." `
-                -ForegroundColor Yellow
         }
         catch {
-            Write-Host `
-                "Esperando respuesta del OCR ($i/$Intentos)..." `
-                -ForegroundColor DarkYellow
+            Write-Host "Esperando OCR ($i/$Intentos)..." -ForegroundColor DarkYellow
         }
 
         if ($i -lt $Intentos) {
@@ -141,16 +141,79 @@ function Test-MotorOCR {
     return $false
 }
 
+# ------------------------------------------------------------
+# Instalar dependencias solo cuando falten.
+# ------------------------------------------------------------
+
+function Install-Dependencies {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Carpeta,
+        [Parameter(Mandatory = $true)]
+        [string]$Nombre
+    )
+
+    $package = Join-Path $Carpeta 'package.json'
+    $lock = Join-Path $Carpeta 'package-lock.json'
+    $modules = Join-Path $Carpeta 'node_modules'
+
+    if (-not (Test-Path $package)) {
+        throw "No existe $package"
+    }
+
+    if (Test-Path $modules) {
+        Write-Host "$Nombre: dependencias existentes. Se reutilizaran." -ForegroundColor Green
+        return
+    }
+
+    Write-Host "Instalando dependencias de $Nombre..." -ForegroundColor Yellow
+
+    Push-Location $Carpeta
+
+    try {
+        if (Test-Path $lock) {
+            & npm ci
+        }
+        else {
+            & npm install
+        }
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "No se pudieron instalar las dependencias de $Nombre."
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+# ------------------------------------------------------------
+# Iniciar servicios Docker sin reconstruir imagenes.
+# ------------------------------------------------------------
+
+function Start-ComposeService {
+    param(
+        [string]$Servicio
+    )
+
+    Invoke-Docker -Argumentos @(
+        'compose', '-f', $compose, 'up', '-d', $Servicio
+    )
+}
+
 try {
     if ($soloBaseDatos) {
-        Write-Host "`n===== CHECKU: RECONSTRUIR SOLO BASE DE DATOS =====" -ForegroundColor Cyan
+        Write-Host "`n===== CHECKU: SOLO BASE DE DATOS =====" -ForegroundColor Cyan
+    }
+    elseif ($reiniciarBaseDatos) {
+        Write-Host "`n===== CHECKU: REINICIO DE BASE DE DATOS =====" -ForegroundColor Cyan
     }
     else {
-        Write-Host "`n===== CHECKU: RECONSTRUIR ENTORNO LOCAL =====" -ForegroundColor Cyan
+        Write-Host "`n===== CHECKU: LEVANTAR ENTORNO LOCAL =====" -ForegroundColor Cyan
     }
 
     # --------------------------------------------------------
-    # 0. Validar archivos y disponibilidad de Docker.
+    # 0. Validaciones.
     # --------------------------------------------------------
 
     if (-not $compose) {
@@ -167,38 +230,35 @@ try {
 
     if (-not $soloBaseDatos) {
         if (-not (Test-Path (Join-Path $raiz 'backend\package.json'))) {
-            throw 'No se encontro backend\package.json'
+            throw 'No existe backend\package.json'
         }
 
         if (-not (Test-Path (Join-Path $raiz 'frontend\package.json'))) {
-            throw 'No se encontro frontend\package.json'
+            throw 'No existe frontend\package.json'
         }
     }
 
     Invoke-Docker -Argumentos @('info')
 
+    # --------------------------------------------------------
+    # 1. OCR.
+    # --------------------------------------------------------
+
     if (-not $soloBaseDatos) {
-        # --------------------------------------------------------
-        # 1. Crear/iniciar el OCR y comprobarlo.
-        # --------------------------------------------------------
+        Write-Host "`n[1/6] Iniciando OCR..." -ForegroundColor Yellow
 
-        Write-Host "`n[1/7] Preparando motor OCR..." -ForegroundColor Yellow
+        # No utiliza --build: reutiliza la imagen existente.
+        Start-ComposeService -Servicio 'ocr'
 
-        # Compose crea el contenedor si no existe y lo inicia si esta detenido.
-        # --build construye la imagen si hace falta.
-        Invoke-Docker -Argumentos @(
-            'compose', '-f', $compose, 'up', '-d', '--build', 'ocr'
-        )
-
-        # Esperar a que Compose reporte el servicio OCR como ejecutandose.
-        # Se usa "compose ps" para evitar ejecutar "docker inspect" sobre
-        # un contenedor inexistente, lo que puede detener PowerShell.
         $ocrIniciado = $false
 
         for ($i = 0; $i -lt 30; $i++) {
             $idOCR = & docker compose -f $compose ps --status running -q ocr 2>$null
 
-            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace(($idOCR -join '').Trim())) {
+            if (
+                $LASTEXITCODE -eq 0 -and
+                -not [string]::IsNullOrWhiteSpace(($idOCR -join '').Trim())
+            ) {
                 $ocrIniciado = $true
                 break
             }
@@ -207,36 +267,24 @@ try {
         }
 
         if (-not $ocrIniciado) {
-            Write-Host "`nContenedores del proyecto:" -ForegroundColor Yellow
             & docker compose -f $compose ps -a
-            throw "El servicio OCR no inicio. Revisa los logs con: docker compose -f `"$compose`" logs --tail 100 ocr"
+            throw 'El contenedor OCR no inicio. Revisa sus logs.'
         }
 
-        Write-Host "Contenedor OCR ejecutandose: $contenedorOCR" -ForegroundColor Green
-
-        # El contenedor puede estar activo aunque Flask no este listo.
         if (-not (Test-MotorOCR)) {
-            Write-Host "`nUltimos logs del OCR:" -ForegroundColor Yellow
             & docker compose -f $compose logs --tail 100 ocr
-            throw 'El motor OCR no respondio correctamente en /salud. No se continuara con la inicializacion.'
+            throw 'El motor OCR no respondio correctamente.'
         }
-
-    }
-    else {
-        Write-Host "`n[OCR] Se omite la preparacion y verificacion del motor OCR (--only-db)." -ForegroundColor DarkYellow
     }
 
     # --------------------------------------------------------
-    # 2. Levantar PostgreSQL.
+    # 2. PostgreSQL.
     # --------------------------------------------------------
 
-    Write-Host "`n[2/7] Levantando PostgreSQL..." -ForegroundColor Yellow
+    Write-Host "`n[2/6] Iniciando PostgreSQL..." -ForegroundColor Yellow
 
-    Invoke-Docker -Argumentos @(
-        'compose', '-f', $compose, 'up', '-d', 'db'
-    )
+    Start-ComposeService -Servicio 'db'
 
-    # Esperar a que PostgreSQL este saludable.
     $saludable = $false
 
     for ($i = 0; $i -lt 30; $i++) {
@@ -254,14 +302,13 @@ try {
         throw "PostgreSQL no alcanzo el estado healthy. Revisa: docker logs $contenedor"
     }
 
+    Write-Host 'PostgreSQL saludable.' -ForegroundColor Green
+
     # --------------------------------------------------------
-    # 3. Preparar respaldo de la base existente.
+    # 3. Verificar existencia de la base.
     # --------------------------------------------------------
 
-    Write-Host "`n[3/7] Preparando respaldo..." -ForegroundColor Yellow
-
-    New-Item -ItemType Directory -Path $carpetaRespaldos -Force |
-        Out-Null
+    Write-Host "`n[3/6] Verificando base de datos..." -ForegroundColor Yellow
 
     $consulta = "SELECT 1 FROM pg_database WHERE datname = '$baseDatos';"
 
@@ -269,100 +316,111 @@ try {
         -U $usuario -d postgres -tAc $consulta
 
     if ($LASTEXITCODE -ne 0) {
-        throw 'No se pudo comprobar si existe la base de datos.'
+        throw 'No se pudo comprobar la base de datos.'
     }
 
-    if ("$existe".Trim() -eq '1') {
-        $fecha = Get-Date -Format 'yyyyMMdd_HHmmss'
-        $respaldo = Join-Path $carpetaRespaldos "checku_$fecha.sql"
+    $baseExiste = "$existe".Trim() -eq '1'
+
+    if ($baseExiste -and -not $reiniciarBaseDatos) {
+        Write-Host "La base $baseDatos ya existe. Se conservaran sus datos." -ForegroundColor Green
+    }
+
+    # --------------------------------------------------------
+    # 4. Reconstruccion EXPLICITA de la base.
+    # --------------------------------------------------------
+
+    if ($reiniciarBaseDatos -or -not $baseExiste) {
+
+        if ($reiniciarBaseDatos -and $baseExiste) {
+            Write-Host "`n[4/6] Respaldando base de datos..." -ForegroundColor Yellow
+
+            New-Item -ItemType Directory -Path $carpetaRespaldos -Force |
+                Out-Null
+
+            $fecha = Get-Date -Format 'yyyyMMdd_HHmmss'
+            $respaldo = Join-Path $carpetaRespaldos "checku_$fecha.sql"
+
+            Invoke-Docker -Argumentos @(
+                'exec', $contenedor,
+                'pg_dump', '-U', $usuario,
+                '-d', $baseDatos,
+                '--inserts', '--column-inserts',
+                '-f', '/tmp/checku_backup.sql'
+            )
+
+            Invoke-Docker -Argumentos @(
+                'cp',
+                "${contenedor}:/tmp/checku_backup.sql",
+                $respaldo
+            )
+
+            if (
+                -not (Test-Path $respaldo) -or
+                (Get-Item $respaldo).Length -eq 0
+            ) {
+                throw 'El respaldo no existe o esta vacio. No se eliminara la base.'
+            }
+
+            Write-Host "Respaldo guardado: $respaldo" -ForegroundColor Green
+        }
+
+        if ($reiniciarBaseDatos -and $baseExiste) {
+            Write-Host 'Eliminando base anterior...' -ForegroundColor Yellow
+
+            Invoke-Docker -Argumentos @(
+                'exec', $contenedor,
+                'psql', '-v', 'ON_ERROR_STOP=1',
+                '-U', $usuario, '-d', 'postgres',
+                '-c', "DROP DATABASE IF EXISTS $baseDatos WITH (FORCE);"
+            )
+        }
+
+        Write-Host 'Creando base de datos...' -ForegroundColor Yellow
 
         Invoke-Docker -Argumentos @(
             'exec', $contenedor,
-            'pg_dump', '-U', $usuario,
-            '-d', $baseDatos,
-            '--inserts', '--column-inserts',
-            '-f', '/tmp/checku_backup.sql'
+            'psql', '-v', 'ON_ERROR_STOP=1',
+            '-U', $usuario, '-d', 'postgres',
+            '-c', "CREATE DATABASE $baseDatos OWNER $usuario;"
+        )
+
+        Write-Host 'Importando esquema...' -ForegroundColor Yellow
+
+        Invoke-Docker -Argumentos @(
+            'cp', $schema, "${contenedor}:/tmp/01-schema.sql"
         )
 
         Invoke-Docker -Argumentos @(
-            'cp',
-            "${contenedor}:/tmp/checku_backup.sql",
-            $respaldo
+            'exec', $contenedor,
+            'psql', '-v', 'ON_ERROR_STOP=1',
+            '-U', $usuario, '-d', $baseDatos,
+            '-f', '/tmp/01-schema.sql'
         )
 
-        if (-not (Test-Path $respaldo)) {
-            throw 'No se encontro el archivo de respaldo. No se borrara la base.'
-        }
+        Write-Host 'Importando usuarios base...' -ForegroundColor Yellow
 
-        if ((Get-Item $respaldo).Length -eq 0) {
-            throw 'El respaldo esta vacio. No se borrara la base.'
-        }
+        Invoke-Docker -Argumentos @(
+            'cp', $userbase, "${contenedor}:/tmp/02-userbase.sql"
+        )
 
-        Write-Host "Respaldo guardado en: $respaldo" -ForegroundColor Green
+        Invoke-Docker -Argumentos @(
+            'exec', $contenedor,
+            'psql', '-v', 'ON_ERROR_STOP=1',
+            '-U', $usuario, '-d', $baseDatos,
+            '-f', '/tmp/02-userbase.sql'
+        )
+
+        Write-Host 'Base de datos inicializada.' -ForegroundColor Green
     }
     else {
-        Write-Host 'No existe una base anterior; se omitio el respaldo.'
+        Write-Host 'No se modifico la base de datos.' -ForegroundColor Green
     }
 
     # --------------------------------------------------------
-    # 4. Eliminar y recrear la base.
+    # 5. Verificar PostgreSQL.
     # --------------------------------------------------------
 
-    Write-Host "`n[4/7] Recreando la base de datos..." -ForegroundColor Yellow
-
-    $dropSql = "DROP DATABASE IF EXISTS $baseDatos WITH (FORCE);"
-
-    Invoke-Docker -Argumentos @(
-        'exec', $contenedor,
-        'psql', '-v', 'ON_ERROR_STOP=1',
-        '-U', $usuario, '-d', 'postgres',
-        '-c', $dropSql
-    )
-
-    $createSql = "CREATE DATABASE $baseDatos OWNER $usuario;"
-
-    Invoke-Docker -Argumentos @(
-        'exec', $contenedor,
-        'psql', '-v', 'ON_ERROR_STOP=1',
-        '-U', $usuario, '-d', 'postgres',
-        '-c', $createSql
-    )
-
-    # --------------------------------------------------------
-    # 5. Importar esquema y usuarios base.
-    # --------------------------------------------------------
-
-    Write-Host "`n[5/7] Importando esquema y usuarios..." -ForegroundColor Yellow
-
-    Invoke-Docker -Argumentos @(
-        'cp', $schema, "${contenedor}:/tmp/01-schema.sql"
-    )
-
-    Invoke-Docker -Argumentos @(
-        'exec', $contenedor,
-        'psql', '-v', 'ON_ERROR_STOP=1',
-        '-U', $usuario, '-d', $baseDatos,
-        '-f', '/tmp/01-schema.sql'
-    )
-
-    Write-Host 'Importando 02-userbase.sql...' -ForegroundColor Yellow
-
-    Invoke-Docker -Argumentos @(
-        'cp', $userbase, "${contenedor}:/tmp/02-userbase.sql"
-    )
-
-    Invoke-Docker -Argumentos @(
-        'exec', $contenedor,
-        'psql', '-v', 'ON_ERROR_STOP=1',
-        '-U', $usuario, '-d', $baseDatos,
-        '-f', '/tmp/02-userbase.sql'
-    )
-
-    # --------------------------------------------------------
-    # 6. Verificar la base de datos.
-    # --------------------------------------------------------
-
-    Write-Host "`n[6/7] Verificando la base..." -ForegroundColor Yellow
+    Write-Host "`n[5/6] Verificando conexion..." -ForegroundColor Yellow
 
     Invoke-Docker -Argumentos @(
         'exec', $contenedor,
@@ -372,77 +430,54 @@ try {
     )
 
     if ($soloBaseDatos) {
-        Write-Host "`n===== BASE DE DATOS RECONSTRUIDA =====" -ForegroundColor Green
-        Write-Host "Base de datos: $baseDatos"
-        Write-Host "SQL fuente: $schema"
-        Write-Host "Usuarios base: $userbase"
-        Write-Host "Respaldos: $carpetaRespaldos"
-        Write-Host 'No se iniciaron ni modificaron los servicios OCR, backend o frontend.'
+        Write-Host "`n===== BASE DE DATOS LISTA =====" -ForegroundColor Green
+        Write-Host "Base: $baseDatos"
+        Write-Host 'No se iniciaron OCR, backend ni frontend.'
+        exit 0
     }
-    else {
-        # --------------------------------------------------------
-        # 7. Iniciar backend y frontend.
-        # --------------------------------------------------------
 
-        Write-Host "`n[7/7] Iniciando aplicaciones..." -ForegroundColor Yellow
+    # --------------------------------------------------------
+    # 6. Dependencias e inicio de aplicaciones.
+    # --------------------------------------------------------
 
-        $backend = Join-Path $raiz 'backend'
-        $frontend = Join-Path $raiz 'frontend'
+    Write-Host "`n[6/6] Preparando aplicaciones..." -ForegroundColor Yellow
 
-        if (-not (Test-Path (Join-Path $backend 'node_modules'))) {
-            Write-Host 'Instalando dependencias del backend...' -ForegroundColor Yellow
-            Push-Location $backend
-            try {
-                & npm install
-                if ($LASTEXITCODE -ne 0) {
-                    throw 'No se pudieron instalar las dependencias del backend.'
-                }
-            }
-            finally {
-                Pop-Location
-            }
-        }
+    $backend = Join-Path $raiz 'backend'
+    $frontend = Join-Path $raiz 'frontend'
 
-        if (-not (Test-Path (Join-Path $frontend 'node_modules'))) {
-            Write-Host 'Instalando dependencias del frontend...' -ForegroundColor Yellow
-            Push-Location $frontend
-            try {
-                & npm install
-                if ($LASTEXITCODE -ne 0) {
-                    throw 'No se pudieron instalar las dependencias del frontend.'
-                }
-            }
-            finally {
-                Pop-Location
-            }
-        }
+    Install-Dependencies -Carpeta $backend -Nombre 'Backend'
+    Install-Dependencies -Carpeta $frontend -Nombre 'Frontend'
 
-        Start-Process powershell.exe -ArgumentList @(
-            '-NoExit', '-Command',
-            "Set-Location '$backend'; npm run start:dev"
-        )
+    Write-Host "`nIniciando backend..." -ForegroundColor Yellow
 
-        Start-Process powershell.exe -ArgumentList @(
-            '-NoExit', '-Command',
-            "Set-Location '$frontend'; npm run dev -- -p 3001"
-        )
+    Start-Process powershell.exe -ArgumentList @(
+        '-NoExit', '-Command',
+        "Set-Location '$backend'; npm run start:dev"
+    )
 
-        # --------------------------------------------------------
-        # Final.
-        # --------------------------------------------------------
+    Write-Host 'Iniciando frontend...' -ForegroundColor Yellow
 
-        Write-Host "`n===== CHECKU LISTO =====" -ForegroundColor Green
-        Write-Host 'Backend:  http://localhost:3000/api/health'
-        Write-Host 'Frontend: http://localhost:3001'
-        Write-Host 'OCR:      http://localhost:5001'
-        Write-Host 'Salud OCR: http://localhost:5001/salud'
-        Write-Host "SQL fuente: $schema"
-        Write-Host "Usuarios base: $userbase"
-        Write-Host "Respaldo: $carpetaRespaldos"
-    }
+    Start-Process powershell.exe -ArgumentList @(
+        '-NoExit', '-Command',
+        "Set-Location '$frontend'; npm run dev -- -p 3001"
+    )
+
+    # --------------------------------------------------------
+    # Final.
+    # --------------------------------------------------------
+
+    Write-Host "`n===== CHECKU LISTO =====" -ForegroundColor Green
+    Write-Host 'Backend:   http://localhost:3000/api/health'
+    Write-Host 'Frontend:  http://localhost:3001'
+    Write-Host 'OCR:       http://localhost:5001'
+    Write-Host 'Salud OCR: http://localhost:5001/salud'
+    Write-Host "Database:  $baseDatos"
+    Write-Host 'Datos PostgreSQL conservados.'
+    Write-Host 'Dependencias existentes reutilizadas.'
+
 }
 catch {
     Write-Host "`nERROR: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host 'El proceso se detuvo. Revisa el error antes de continuar.' -ForegroundColor Yellow
+    Write-Host 'El proceso se detuvo.' -ForegroundColor Yellow
     exit 1
 }
