@@ -11,6 +11,7 @@ export type EstadoVisible =
     // Estados propios de una solicitud de grado completa.
     | "cancelada"
     | "anulada"
+    | "aceptada"
     | "en_proceso"
     | "borrador";
 
@@ -24,6 +25,7 @@ export const ETIQUETA_ESTADO: Record<EstadoVisible, string> = {
     falta_cargar: "Falta cargar",
     cancelada: "Cancelada",
     anulada: "Anulada",
+    aceptada: "Aceptada",
     en_proceso: "En proceso",
     borrador: "Borrador",
 };

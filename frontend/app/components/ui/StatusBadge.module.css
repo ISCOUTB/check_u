@@ -52,3 +52,8 @@
     background: var(--status-invalid-bg);
     color: var(--status-invalid-text);
 }
+
+.estado[data-estado="aceptada"] {
+    background: var(--status-accepted-bg);
+    color: var(--status-accepted-text);
+}
