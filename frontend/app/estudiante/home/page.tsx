@@ -9,20 +9,24 @@ import Card from '@/app/components/ui/Card';
 import Icono from '@/app/components/ui/Icono';
 import PageHeader from '@/app/components/ui/PageHeader';
 import StatusBadge from '@/app/components/ui/StatusBadge';
-import BotonSolicitudes from './BotonSolicitudes';
 
 import { useEstadoNavegacion } from '@/app/lib/useEstadoNavegacion';
 import { useSesion } from '@/app/lib/useSesion';
 
+import { obtenerSolicitudes } from '../solicitudes/api';
+import type { SolicitudListado } from '../solicitudes/listado';
+import { presentarEstado } from '../solicitudes/listado';
+import type { NivelAcademico } from '../documentos-requeridos';
+
 import styles from './home.module.css';
 import NotificacionesPanel from './NotificacionesPanel';
+import BotonSolicitudes from './BotonSolicitudes';
 
 import {
   ErrorConsultaSolicitud,
   obtenerSolicitudDetalle,
   type SolicitudDetalle,
 } from './api';
-import type { NivelAcademico } from '../documentos-requeridos';
 import {
   construirRequisitos,
   formatearFechaCorta,
@@ -62,42 +66,83 @@ export default function Home() {
     solicitud: SolicitudDetalle | null;
     error: string | null;
   } | null>(null);
+
+  const [resumenListado, setResumenListado] = useState<{
+    total: number;
+    reciente: SolicitudListado | null;
+    error: string | null;
+  } | null>(null);
+
   const [intento, setIntento] = useState(0);
 
-  // Redirigir según el estado real de la solicitud.
+  // Redirigir según el estado real de la solicitud (solo BORRADOR sigue saliendo de home).
   useEffect(() => {
     if (!estadoNav?.destino) return;
-
     if (estadoNav.destino !== pathname) {
       router.replace(estadoNav.destino);
     }
   }, [estadoNav, pathname, router]);
 
-  const claveDetalle =
-    usuario && estadoNav?.estado === 'ENVIADA'
-      ? `${estadoNav.estado}:${intento}`
-      : null;
-
-  // Cargar el detalle real cuando la solicitud ya fue enviada.
+  // Cargar listado de solicitudes del estudiante.
   useEffect(() => {
-    if (!claveDetalle) return;
+    if (!usuario) return;
+    if (estadoNav?.estado === 'BORRADOR') return;
 
-    const controlador = new AbortController();
+    const ac = new AbortController();
     let vigente = true;
 
-    obtenerSolicitudDetalle(controlador.signal)
+    obtenerSolicitudes(ac.signal)
+      .then((lista) => {
+        if (!vigente) return;
+        setResumenListado({
+          total: lista.length,
+          reciente: lista[0] ?? null,
+          error: null,
+        });
+      })
+      .catch((error: unknown) => {
+        if (!vigente || esCancelacion(error)) return;
+        setResumenListado({
+          total: 0,
+          reciente: null,
+          error:
+            error instanceof Error
+              ? error.message
+              : 'No fue posible consultar tus solicitudes.',
+        });
+      });
+
+    return () => {
+      vigente = false;
+      ac.abort();
+    };
+  }, [usuario, estadoNav?.estado, intento]);
+
+  const idReciente = resumenListado?.reciente?.id ?? null;
+
+  // Cargar detalle de la solicitud más reciente (si existe).
+  useEffect(() => {
+    if (!idReciente) {
+      setDetalle(null);
+      return;
+    }
+
+    const ac = new AbortController();
+    let vigente = true;
+    const clave = `reciente:${idReciente}:${intento}`;
+
+    obtenerSolicitudDetalle(ac.signal, idReciente)
       .then((solicitud) => {
-        if (vigente)
-          setDetalle({ clave: claveDetalle, solicitud, error: null });
+        if (vigente) setDetalle({ clave, solicitud, error: null });
       })
       .catch((error: unknown) => {
         if (!vigente || esCancelacion(error)) return;
         if (error instanceof ErrorConsultaSolicitud && error.status === 404) {
-          setDetalle({ clave: claveDetalle, solicitud: null, error: null });
+          setDetalle({ clave, solicitud: null, error: null });
           return;
         }
         setDetalle({
-          clave: claveDetalle,
+          clave,
           solicitud: null,
           error:
             'No fue posible cargar el resumen de tu solicitud. Intenta recargar la página.',
@@ -106,11 +151,17 @@ export default function Home() {
 
     return () => {
       vigente = false;
-      controlador.abort();
+      ac.abort();
     };
-  }, [claveDetalle]);
+  }, [idReciente, intento]);
 
-  const detalleVigente = detalle?.clave === claveDetalle ? detalle : null;
+  const detalleVigente =
+    detalle &&
+    idReciente &&
+    detalle.clave === `reciente:${idReciente}:${intento}`
+      ? detalle
+      : null;
+
   const solicitud = detalleVigente?.solicitud;
   const errorSolicitud = detalleVigente?.error ?? null;
 
@@ -178,7 +229,12 @@ export default function Home() {
     );
   }
 
-  const datosListos = solicitud !== undefined || Boolean(errorSolicitud);
+  const datosListos =
+    resumenListado !== null &&
+    (resumenListado.reciente === null ||
+      solicitud !== undefined ||
+      Boolean(errorSolicitud));
+
   const hrefContinuar = '/estudiante/preinscripcion';
   const nombreNivel = nivelEfectivo === 'PREGRADO' ? 'pregrado' : 'posgrado';
 
@@ -260,6 +316,41 @@ export default function Home() {
   };
 
   const tarjetaSolicitud = () => {
+    if (resumenListado === null) {
+      return (
+        <Card titulo="Mi solicitud de grado" id="mi-solicitud">
+          <p className={styles.textoSecundario}>Cargando solicitud...</p>
+        </Card>
+      );
+    }
+
+    if (resumenListado.error) {
+      return (
+        <Card titulo="Mi solicitud de grado" id="mi-solicitud">
+          <p role="alert" className={styles.textoError}>
+            {resumenListado.error}
+          </p>
+          <Button
+            variante="secundario"
+            onClick={() => setIntento((valor) => valor + 1)}
+          >
+            Reintentar
+          </Button>
+        </Card>
+      );
+    }
+
+    if (resumenListado.reciente === null) {
+      return (
+        <Card titulo="Mi solicitud de grado" id="mi-solicitud">
+          <p className={styles.textoSecundario}>
+            No tienes solicitudes registradas todavía.
+          </p>
+          <Button href="/estudiante/bienvenida">Nueva preinscripción</Button>
+        </Card>
+      );
+    }
+
     if (solicitud === undefined && !errorSolicitud) {
       return (
         <Card titulo="Mi solicitud de grado" id="mi-solicitud">
@@ -277,15 +368,15 @@ export default function Home() {
           </p>
           <Button
             variante="secundario"
-            onClick={() => {
-              setIntento((valor) => valor + 1);
-            }}
+            onClick={() => setIntento((valor) => valor + 1)}
           >
             Reintentar
           </Button>
         </Card>
       );
     }
+
+    const estadoListado = presentarEstado(resumenListado.reciente.estado);
 
     return (
       <Card
@@ -297,6 +388,16 @@ export default function Home() {
           </Button>
         }
       >
+        {!resumenListado.reciente.activa && (
+          <p className={styles.textoSecundario}>
+            Estado:{' '}
+            <StatusBadge
+              estado={estadoListado.tono}
+              etiqueta={estadoListado.etiqueta}
+            />
+          </p>
+        )}
+
         <dl className={styles.metaSolicitud}>
           <div className={styles.metaItem}>
             <dt>Tipo de solicitud</dt>
@@ -378,20 +479,32 @@ export default function Home() {
 
             <div>
               <h2 id="titulo-bienvenida" className={styles.bienvenidaTitulo}>
-                Tu solicitud de grado está en curso
+                {resumenListado?.reciente
+                  ? resumenListado.reciente.activa
+                    ? 'Tu solicitud de grado está en curso'
+                    : `Tu solicitud más reciente está ${presentarEstado(resumenListado.reciente.estado).etiqueta.toLowerCase()}`
+                  : 'Aún no tienes solicitudes de grado'}
               </h2>
 
               <p className={styles.bienvenidaTexto}>
-                Revisa el resultado del análisis documental de tu solicitud de{' '}
-                {nombreNivel} y corrige los requisitos que lo necesiten.
+                {resumenListado?.reciente
+                  ? `Revisa el estado de tu solicitud de ${nombreNivel}. Puedes consultar el historial completo o iniciar una nueva preinscripción.`
+                  : 'Cuando inicies una preinscripción aparecerá aquí con su estado y su periodo asignado.'}
               </p>
             </div>
           </div>
 
-          <Button href={hrefContinuar} className={styles.bienvenidaAccion}>
-            Continuar mi preinscripción
-          </Button>
-          <BotonSolicitudes />
+          <div className={styles.accionesBienvenida}>
+            {resumenListado?.reciente?.activa && (
+              <Button href={hrefContinuar} className={styles.bienvenidaAccion}>
+                Continuar mi preinscripción
+              </Button>
+            )}
+            <BotonSolicitudes />
+            <Button href="/estudiante/bienvenida" variante="secundario">
+              Nueva preinscripción
+            </Button>
+          </div>
         </section>
 
         <div className={styles.rejillaConSolicitud}>
