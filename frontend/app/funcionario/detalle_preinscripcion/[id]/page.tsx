@@ -5,11 +5,13 @@ import { useParams } from 'next/navigation';
 import DocumentAnalysis, { type DocumentAnalysisData } from '@/app/components/document_analysis/DocumentAnalysis';
 import Navbar from '@/app/components/navbar/Navbar';
 import Button from '@/app/components/ui/Button';
-import Card from '@/app/components/ui/Card';
 import Dialog from '@/app/components/ui/Dialog';
+import Icono from '@/app/components/ui/Icono';
 import PageHeader from '@/app/components/ui/PageHeader';
 import StatusBadge from '@/app/components/ui/StatusBadge';
+import Tabs from '@/app/components/ui/Tabs';
 import { InformacionEstudiante } from '@/app/components/informacion_estudiante';
+import PeriodoInscripcion from '@/app/estudiante/iniciar_preinscripcion/PeriodoInscripcion';
 import { useSesion } from '@/app/lib/useSesion';
 import { etiquetaPropiedad, valorVisible } from '@/app/estudiante/preinscripcion/etiquetas';
 import type { DocumentoSolicitud } from '@/app/estudiante/preinscripcion/types';
@@ -30,6 +32,10 @@ const ESTADOS: Record<string, string> = {
     VALIDA: 'Válida', ACEPTADA: 'Aceptada', CERRADA: 'Anulada', CANCELADA: 'Cancelada', NO_VALIDA: 'No válida', INCONSISTENTE: 'Inconsistente',
 };
 type Resolucion = { documento: DocumentoSolicitud; resultado: 'VALIDO' | 'NO_VALIDO' };
+type Pestana = 'resumen' | 'informacion' | 'documentos' | 'acciones' | 'historial';
+type TonoEstado = 'corregir' | 'revisar' | 'lista' | 'neutral';
+type IconoEstado = 'valido' | 'inconsistente' | 'por_revisar' | 'cancelada' | 'anulada' | 'aceptada';
+
 function estadoDocumento(doc: DocumentoSolicitud) {
     return doc.resultados.find(r => r.estado === 'no_valido' || r.estado === 'inconsistente')?.estado ?? doc.resultados[0]?.estado ?? 'por_revisar';
 }
@@ -44,6 +50,30 @@ function analisisPersistido(doc: DocumentoSolicitud): DocumentAnalysisData {
         validations: doc.resultados.map(r => ({ description: r.mensaje, result: r.estado === 'por_revisar' ? null : r.estado === 'valido' })),
     };
 }
+function iniciales(nombre: string) {
+    return nombre.split(' ').slice(0, 2).map(parte => parte[0] ?? '').join('').toUpperCase();
+}
+function estadoGeneral(detalle: DetalleFuncionaria): { tono: TonoEstado; icono: IconoEstado; titulo: string; frase: string } {
+    const { estadoSolicitud, estadoAnalisis, documentos } = detalle;
+    if (estadoSolicitud === 'CANCELADA')
+        return { tono: 'neutral', icono: 'cancelada', titulo: 'Solicitud cancelada', frase: 'La preinscripción está cancelada. La información queda disponible como consulta histórica.' };
+    if (estadoSolicitud === 'ACEPTADA')
+        return { tono: 'lista', icono: 'aceptada', titulo: 'Solicitud aceptada', frase: 'La solicitud de grado fue aceptada y el proceso puede continuar.' };
+    if (estadoSolicitud === 'CERRADA')
+        return { tono: 'neutral', icono: 'anulada', titulo: 'Solicitud anulada', frase: 'La solicitud fue anulada. Revisa el historial para consultar las decisiones registradas.' };
+    if (estadoAnalisis === 'pendiente' || documentos.length === 0)
+        return { tono: 'revisar', icono: 'por_revisar', titulo: 'Análisis documental pendiente', frase: 'Todavía no hay resultados completos registrados para esta preinscripción.' };
+
+    const conProblemaGrave = documentos.some(d => d.resultados.some(r => r.estado === 'no_valido' || r.estado === 'inconsistente'));
+    const conRevision = documentos.some(d => d.resultados.some(r => r.estado === 'por_revisar'));
+    const cantidad = documentos.filter(d => d.resultados.some(r => r.estado !== 'valido')).length;
+    if (conProblemaGrave)
+        return { tono: 'corregir', icono: 'inconsistente', titulo: 'Se requiere corregir documentos', frase: `${cantidad} documento${cantidad === 1 ? '' : 's'} requieren atención antes de continuar con el proceso.` };
+    if (conRevision)
+        return { tono: 'revisar', icono: 'por_revisar', titulo: 'Preinscripción por revisar', frase: `${cantidad} documento${cantidad === 1 ? '' : 's'} requieren atención antes de continuar con el proceso.` };
+    return { tono: 'lista', icono: 'valido', titulo: 'Preinscripción lista para continuar', frase: 'Todos los documentos fueron validados correctamente.' };
+}
+
 export default function DetallePreinscripcionPage() {
     const { id } = useParams<{ id: string }>();
     return <DetalleSolicitud key={id} id={id} />;
@@ -53,6 +83,7 @@ function DetalleSolicitud({id}: {id: string}) {
     const [detalle, setDetalle] = useState<DetalleFuncionaria | null>(null);
     const [error, setError] = useState('');
     const [intento, setIntento] = useState(0);
+    const [pestana, setPestana] = useState<Pestana>('resumen');
     const [analisis, setAnalisis] = useState<DocumentAnalysisData | null>(null);
     const [accion, setAccion] = useState<AccionRevision>('comentario');
     const [comentario, setComentario] = useState('');
@@ -72,7 +103,7 @@ function DetalleSolicitud({id}: {id: string}) {
         if (!usuario) return;
         const controlador = new AbortController();
         obtenerDetalle(id, controlador.signal).then(data => {
-            if (!controlador.signal.aborted) { setDetalle(data); setError(''); setRequiereConsulta(false); }
+            if (!controlador.signal.aborted) { setDetalle(data); setError(''); setErrorEnvio(''); setRequiereConsulta(false); }
         }).catch(e => { if (!controlador.signal.aborted) setError(e instanceof Error ? e.message : 'No fue posible consultar la solicitud.'); });
         return () => controlador.abort();
     }, [usuario, id, intento]);
@@ -82,8 +113,22 @@ function DetalleSolicitud({id}: {id: string}) {
     const admiteDecision = !!detalle && !['BORRADOR', 'ACEPTADA', 'CERRADA', 'CANCELADA'].includes(detalle.estadoSolicitud);
     const admiteAceptar = admiteDecision && detalle?.estadoSolicitud === 'VALIDA';
     const admiteRecarga = admiteDecision && detalle?.estadoSolicitud !== 'VALIDA' && corregibles.length > 0;
+    const documentosConProblema = detalle?.documentos.filter(d => d.resultados.some(r => r.estado !== 'valido')) ?? [];
+    const documentosValidos = detalle?.documentos.filter(d => d.resultados.every(r => r.estado === 'valido')) ?? [];
+    const resumenEstado = detalle ? estadoGeneral(detalle) : null;
+
+    function recargar() {
+        setError('');
+        setIntento(i => i + 1);
+    }
     function abrirResolucion(documento: DocumentoSolicitud, resultado: Resolucion['resultado']) {
         setMotivo(''); setErrorResolucion(''); setMensaje(''); setResolucion({ documento, resultado });
+    }
+    function revisarDocumento(documento: DocumentoSolicitud) {
+        setPestana('documentos');
+        requestAnimationFrame(() => {
+            if (documento.id) document.getElementById(`documento-${documento.id}`)?.focus();
+        });
     }
     async function confirmarResolucion() {
         if (!resolucion?.documento.id || ocupado.current) return;
@@ -125,76 +170,244 @@ function DetalleSolicitud({id}: {id: string}) {
             if (!vigente.current) return;
             // Una respuesta perdida puede haber confirmado la transacción: consultar antes de repetir.
             setConfirmando(false); setRequiereConsulta(true);
-            setErrorEnvio(guardado ? 'La acción se guardó, pero no fue posible actualizar la vista. Actualiza la solicitud.' : (e instanceof Error ? e.message : 'No se pudo confirmar la acción.'));
+            setErrorEnvio(guardado ? 'La acción se guardó, pero no fue posible actualizar la vista. Recarga la solicitud.' : (e instanceof Error ? e.message : 'No se pudo confirmar la acción.'));
         } finally {
             ocupado.current = false;
             if (vigente.current) setEnviando(false);
         }
     }
     if (cargando || !usuario) return <main id="contenido" tabIndex={-1} className={styles.cargando} aria-busy="true"><p>Verificando sesión...</p></main>;
+
+    const resumen = detalle && resumenEstado && (
+        <div className={styles.seccion}>
+            <div className={styles.seccionEncabezado}>
+                <h2>Resumen documental</h2>
+                <p>Resultado general del análisis automático de los documentos suministrados.</p>
+            </div>
+
+            <dl className={styles.metricas}>
+                <div className={styles.metrica}>
+                    <dt>Documentos analizados</dt>
+                    <dd className={styles.metricaValor}>{detalle.documentos.length}</dd>
+                    <dd>Documentos requeridos</dd>
+                </div>
+                <div className={styles.metrica} data-tono="valido">
+                    <dt>Válidos</dt>
+                    <dd className={styles.metricaValor}>{documentosValidos.length}</dd>
+                    <dd>Sin novedades</dd>
+                </div>
+                <div className={styles.metrica} data-tono="atencion">
+                    <dt>Requieren atención</dt>
+                    <dd className={styles.metricaValor}>{documentosConProblema.length}</dd>
+                    <dd>Con alertas</dd>
+                </div>
+                <div className={styles.metrica}>
+                    <dt>Estado de la solicitud</dt>
+                    <dd className={styles.metricaValor}>{ESTADOS[detalle.estadoSolicitud] ?? 'No disponible'}</dd>
+                    <dd>Estado actual</dd>
+                </div>
+            </dl>
+
+            {documentosConProblema.length > 0 ? (
+                <section className={styles.alertasBox} aria-labelledby="hdr-alertas">
+                    <div className={styles.alertasHeader}>
+                        <h3 id="hdr-alertas">Alertas</h3>
+                        <span className={styles.alertasCount}>{documentosConProblema.length}</span>
+                    </div>
+                    <p className={styles.alertasSub}>Documentos que requieren revisión o corrección.</p>
+                    <ul className={styles.alertasList}>
+                        {documentosConProblema.map(doc => (
+                            <li key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`} className={styles.alertaItem}>
+                                <div className={styles.alertaMain}>
+                                    <strong>{doc.nombre}</strong>
+                                    <div className={styles.alertaChips}>
+                                        {doc.resultados.map((r, i) => <StatusBadge key={i} estado={r.estado} />)}
+                                    </div>
+                                    <p className={styles.alertaMsg}>{doc.resultados.map(r => r.mensaje).join(' ')}</p>
+                                </div>
+                                <Button variante="secundario" onClick={() => revisarDocumento(doc)}>Ver detalle</Button>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            ) : (
+                <p className={styles.textoOk}>
+                    {detalle.estadoAnalisis === 'pendiente'
+                        ? 'Todavía no hay resultados del análisis registrados.'
+                        : 'Todos los documentos fueron validados correctamente.'}
+                </p>
+            )}
+
+            <section className={styles.estadoDocs} aria-labelledby="hdr-estado-docs">
+                <h3 id="hdr-estado-docs">Estado de los documentos</h3>
+                <p className={styles.textoSecundario}>Vista rápida del resultado de cada documento.</p>
+                <ul className={styles.resumenDocumentos}>
+                    {detalle.documentos.map(doc => (
+                        <li key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`} className={styles.resumenDocumento}>
+                            <span className={styles.iconoDocumento}><Icono nombre="documento" /></span>
+                            <div className={styles.resumenTexto}>
+                                <strong>{doc.nombre}</strong>
+                                <span>{doc.fileName ?? doc.descripcion}</span>
+                            </div>
+                            <StatusBadge estado={estadoDocumento(doc)} />
+                        </li>
+                    ))}
+                </ul>
+            </section>
+        </div>
+    );
+
+    const informacion = detalle && (
+        <div className={styles.seccion}>
+            <div className={styles.seccionEncabezado}>
+                <h2>Información del estudiante</h2>
+                <p>Información suministrada durante el proceso de preinscripción.</p>
+            </div>
+            <InformacionEstudiante nivel={detalle.estudiante.nivel} datos={detalle.informacion} variante="funcionario" />
+        </div>
+    );
+
+    const listaDocumentos = detalle && (
+        <div className={styles.seccion}>
+            <div className={styles.seccionEncabezado}>
+                <h2>Documentos analizados</h2>
+                <p>Detalle de los resultados obtenidos durante la validación documental.</p>
+            </div>
+
+            {detalle.documentos.length === 0 ? <p>La solicitud aún no tiene documentos enviados.</p> : (
+                <ul className={styles.documentos}>
+                    {detalle.documentos.map((doc, indice) => (
+                        <li key={doc.id ?? `${doc.tipo}-${doc.orden ?? indice}`}>
+                            <article className={styles.documento} aria-labelledby={doc.id ? `documento-${doc.id}` : undefined}>
+                                <div className={styles.documentoCabecera}>
+                                    <span className={styles.numero} aria-hidden="true">{String(indice + 1).padStart(2, '0')}</span>
+                                    <div className={styles.documentoTitulo}>
+                                        <h3 id={doc.id ? `documento-${doc.id}` : undefined} tabIndex={-1}>{doc.nombre}</h3>
+                                        <p>{doc.fileName ?? doc.descripcion} · Versión {doc.version ?? 1}</p>
+                                    </div>
+                                    <StatusBadge estado={estadoDocumento(doc)} />
+                                </div>
+                                <div className={styles.resultado}>
+                                    <p className={styles.resultadoEtiqueta}>Resultado del análisis</p>
+                                    {doc.resultados.length
+                                        ? doc.resultados.map((r, i) => <p key={i}>{r.mensaje}</p>)
+                                        : <p>Sin resultados registrados.</p>}
+                                </div>
+                                <div className={styles.acciones}>
+                                    <Button variante="secundario" onClick={() => setAnalisis(analisisPersistido(doc))} aria-label={`Ver análisis automático: ${doc.nombre}`}>Ver análisis automático</Button>
+                                    {admiteDecision && doc.estado === 'POR_REVISAR' && <>
+                                        <Button variante="secundario" disabled={enviando} onClick={() => abrirResolucion(doc, 'VALIDO')} aria-label={`Marcar válido: ${doc.nombre}`}>Marcar válido</Button>
+                                        <Button variante="secundario" disabled={enviando} onClick={() => abrirResolucion(doc, 'NO_VALIDO')} aria-label={`Marcar no válido: ${doc.nombre}`}>Marcar no válido</Button>
+                                    </>}
+                                </div>
+                            </article>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+
+    const acciones = (
+        <div className={styles.seccion}>
+            <div className={styles.seccionEncabezado}>
+                <h2>Acciones de revisión</h2>
+                <p>Comunicación con el estudiante y decisiones sobre la solicitud.</p>
+            </div>
+            <form onSubmit={preparar} className={styles.formRevision}>
+                <label>Acción<select value={accion} onChange={e => { setAccion(e.target.value as AccionRevision); setErrorEnvio(''); }} disabled={enviando}>
+                    <option value="comentario">Enviar comentario</option>
+                    <option value="recarga" disabled={!admiteRecarga}>Solicitar corrección</option>
+                    <option value="aceptada" disabled={!admiteAceptar}>Aceptar solicitud</option>
+                    <option value="anulada" disabled={!admiteDecision}>Anular solicitud</option>
+                </select></label>
+                {!admiteDecision && <p>El estado actual solo permite agregar comentarios.</p>}
+                {admiteDecision && !admiteAceptar && <p>Solo se puede aceptar una solicitud válida.</p>}
+                {accion === 'recarga' && <fieldset><legend>Documentos que debe volver a subir</legend>
+                    {corregibles.map(doc => <label key={doc.id} className={styles.opcionDocumento}><input type="checkbox" checked={seleccionados.includes(Number(doc.id))} disabled={enviando}
+                        onChange={e => setSeleccionados(prev => e.target.checked ? [...prev, Number(doc.id)] : prev.filter(d => d !== Number(doc.id)))} />{doc.nombre}</label>)}
+                </fieldset>}
+                <label>Comentario{accion === 'comentario' ? ' (obligatorio)' : ' (opcional)'}<textarea value={comentario} maxLength={5000} required={accion === 'comentario'} rows={4} disabled={enviando} onChange={e => setComentario(e.target.value)} /></label>
+                <p>Al enviar un comentario, la notificación mostrará sus primeros 15 caracteres. El historial conserva el texto completo.</p>
+                <div className={styles.acciones}>
+                    <Button type="submit" disabled={enviando || requiereConsulta || !!error || (accion !== 'comentario' && !admiteDecision) || (accion === 'aceptada' && !admiteAceptar)}>{ACCIONES[accion]}</Button>
+                </div>
+            </form>
+        </div>
+    );
+
+    const historial = detalle && (
+        <div className={styles.seccion}>
+            <div className={styles.seccionEncabezado}>
+                <h2>Historial de revisiones</h2>
+                <p>Decisiones y comentarios registrados sobre esta preinscripción.</p>
+            </div>
+            {!detalle.revisiones.length && <p>No hay revisiones registradas.</p>}
+            <ul className={styles.historial}>{detalle.revisiones.map(r => <li key={r.id}>
+                <strong>{RESULTADOS[r.resultado] ?? 'Revisión'}</strong>
+                <p>{r.funcionario} · {new Date(r.fecha).toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</p>
+                {r.comentario && <p>{r.comentario}</p>}
+                {!!r.documentos?.length && <p>Documentos: {r.documentos.map(idDoc => detalle.documentos.find(d => Number(d.id) === idDoc)?.nombre ?? `Documento ${idDoc}`).join(', ')}</p>}
+            </li>)}</ul>
+        </div>
+    );
+
     return <>
         <Navbar tipoUsuario="funcionario" nombreUsuario={usuario.name} />
         <main id="contenido" tabIndex={-1} className={styles.pagina}>
-            <PageHeader ruta={[{ texto: 'Preinscripciones', href: '/funcionario/dashboard' }, { texto: `Solicitud ${id}` }]}
-                titulo="Detalle de preinscripción" descripcion="Revisión de la solicitud y comunicación con el estudiante." />
-            {error && <div role="alert"><p>{error}</p><Button onClick={() => setIntento(i => i + 1)}>Reintentar consulta</Button></div>}
+            <div className={styles.cabeceraPagina}>
+                <PageHeader ruta={[{ texto: 'Preinscripciones', href: '/funcionario/dashboard' }, { texto: `Solicitud ${id}` }]}
+                    titulo="Detalle de preinscripción" descripcion="Revisión de la solicitud y comunicación con el estudiante." />
+                <div className={styles.recargar}>
+                    <Button variante="secundario" className={styles.botonRecargar} onClick={recargar} disabled={enviando}
+                        aria-label="Recargar solicitud" title="Recargar solicitud"><Icono nombre="recargar" tamano={20} /></Button>
+                    <span className={styles.tooltip} aria-hidden="true">Recargar solicitud</span>
+                </div>
+            </div>
+            {error && <div role="alert" className={styles.errorConsulta}><p>{error}</p><Button onClick={recargar}>Reintentar consulta</Button></div>}
             {!detalle && !error && <p role="status">Cargando solicitud...</p>}
-            {detalle && <div className={styles.seccion}>
-                <Card titulo={detalle.estudiante.nombre}>
-                    <p>Código estudiantil: {detalle.estudiante.codigo}</p>
-                    <p>Nivel: {detalle.estudiante.nivel} · Solicitud {detalle.id}</p>
-                    <p>Estado: <strong>{ESTADOS[detalle.estadoSolicitud] ?? 'No disponible'}</strong></p>
-                </Card>
-                <Card titulo="Información del estudiante"><InformacionEstudiante nivel={detalle.estudiante.nivel} datos={detalle.informacion} variante="funcionario" /></Card>
-                <Card titulo="Documentos analizados">
-                    {detalle.documentos.length === 0 && <p>La solicitud aún no tiene documentos enviados.</p>}
-                    <ul className={styles.documentos}>{detalle.documentos.map(doc => <li key={doc.id}>
-                        <article className={styles.documento}>
-                            <div className={styles.filaTitulo}><h3>{doc.nombre}</h3><StatusBadge estado={estadoDocumento(doc)} /></div>
-                            <p>{doc.fileName} · Versión {doc.version}</p>
-                            {doc.resultados.map((r, i) => <p key={i}>{r.mensaje}</p>)}
-                            <Button variante="secundario" onClick={() => setAnalisis(analisisPersistido(doc))} aria-label={`Ver análisis automático: ${doc.nombre}`}>Ver análisis automático</Button>
-                            {admiteDecision && doc.estado === 'POR_REVISAR' && <div className={styles.acciones}>
-                                <Button variante="secundario" disabled={enviando} onClick={() => abrirResolucion(doc, 'VALIDO')} aria-label={`Marcar válido: ${doc.nombre}`}>Marcar válido</Button>
-                                <Button variante="secundario" disabled={enviando} onClick={() => abrirResolucion(doc, 'NO_VALIDO')} aria-label={`Marcar no válido: ${doc.nombre}`}>Marcar no válido</Button>
-                            </div>}
-                        </article>
-                    </li>)}</ul>
-                </Card>
-                <Card titulo="Acciones de revisión">
-                    <form onSubmit={preparar} className={styles.formRevision}>
-                        <label>Acción<select value={accion} onChange={e => { setAccion(e.target.value as AccionRevision); setErrorEnvio(''); }} disabled={enviando}>
-                            <option value="comentario">Enviar comentario</option>
-                            <option value="recarga" disabled={!admiteRecarga}>Solicitar corrección</option>
-                            <option value="aceptada" disabled={!admiteAceptar}>Aceptar solicitud</option>
-                            <option value="anulada" disabled={!admiteDecision}>Anular solicitud</option>
-                        </select></label>
-                        {!admiteDecision && <p>El estado actual solo permite agregar comentarios.</p>}
-                        {admiteDecision && !admiteAceptar && <p>Solo se puede aceptar una solicitud válida.</p>}
-                        {accion === 'recarga' && <fieldset><legend>Documentos que debe volver a subir</legend>
-                            {corregibles.map(doc => <label key={doc.id} className={styles.opcionDocumento}><input type="checkbox" checked={seleccionados.includes(Number(doc.id))} disabled={enviando}
-                                onChange={e => setSeleccionados(prev => e.target.checked ? [...prev, Number(doc.id)] : prev.filter(d => d !== Number(doc.id)))} />{doc.nombre}</label>)}
-                        </fieldset>}
-                        <label>Comentario{accion === 'comentario' ? ' (obligatorio)' : ' (opcional)'}<textarea value={comentario} maxLength={5000} required={accion === 'comentario'} rows={4} disabled={enviando} onChange={e => setComentario(e.target.value)} /></label>
-                        <p>Al enviar un comentario, la notificación mostrará sus primeros 15 caracteres. El historial conserva el texto completo.</p>
-                        <div className={styles.acciones}>
-                            <Button type="submit" disabled={enviando || requiereConsulta || !!error || (accion !== 'comentario' && !admiteDecision) || (accion === 'aceptada' && !admiteAceptar)}>{ACCIONES[accion]}</Button>
-                            <Button variante="secundario" disabled={enviando} onClick={() => setIntento(i => i + 1)}>Actualizar solicitud</Button>
+            {detalle && resumenEstado && <>
+                <section className={styles.estudiante} aria-labelledby="nombre-estudiante">
+                    <span className={styles.avatar} aria-hidden="true">{iniciales(detalle.estudiante.nombre)}</span>
+                    <div className={styles.estudianteDatos}>
+                        <div className={styles.filaTitulo}>
+                            <h2 id="nombre-estudiante">{detalle.estudiante.nombre}</h2>
+                            <span className={styles.nivel}>{detalle.estudiante.nivel}</span>
                         </div>
-                        {errorEnvio && <p role="alert">{errorEnvio}</p>}
-                        {mensaje && <p role="status">{mensaje}</p>}
-                    </form>
-                </Card>
-                <Card titulo="Historial de revisiones">
-                    {!detalle.revisiones.length && <p>No hay revisiones registradas.</p>}
-                    <ul className={styles.historial}>{detalle.revisiones.map(r => <li key={r.id}>
-                        <strong>{RESULTADOS[r.resultado] ?? 'Revisión'}</strong>
-                        <p>{r.funcionario} · {new Date(r.fecha).toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</p>
-                        {r.comentario && <p>{r.comentario}</p>}
-                        {!!r.documentos?.length && <p>Documentos: {r.documentos.map(idDoc => detalle.documentos.find(d => Number(d.id) === idDoc)?.nombre ?? `Documento ${idDoc}`).join(', ')}</p>}
-                    </li>)}</ul>
-                </Card>
-            </div>}
+                        <p className={styles.programa}>{detalle.estudiante.programa}</p>
+                        <dl className={styles.meta}>
+                            <div><dt>Código</dt><dd>{detalle.estudiante.codigo}</dd></div>
+                            <div><dt>{detalle.estudiante.tipoDocumento}</dt><dd>{detalle.estudiante.numeroDocumento}</dd></div>
+                            <div><dt>Correo</dt><dd>{detalle.estudiante.correo}</dd></div>
+                            <div><dt>Teléfono</dt><dd>{detalle.estudiante.telefono}</dd></div>
+                        </dl>
+                        <p className={styles.estadoSolicitud}>Estado: <strong>{ESTADOS[detalle.estadoSolicitud] ?? 'No disponible'}</strong></p>
+                    </div>
+                </section>
+
+                {detalle.periodos && <PeriodoInscripcion datos={detalle.periodos} />}
+
+                <section className={styles.estadoGeneral} data-tono={resumenEstado.tono} aria-labelledby="estado-general">
+                    <span className={styles.estadoIcono}><Icono nombre={resumenEstado.icono} tamano={22} /></span>
+                    <div>
+                        <p className={styles.estadoEtiqueta}>Estado general</p>
+                        <h2 id="estado-general">{resumenEstado.titulo}</h2>
+                        <p>{resumenEstado.frase}</p>
+                    </div>
+                </section>
+
+                {errorEnvio && <p role="alert" className={styles.mensajeGlobal}>{errorEnvio}</p>}
+                {mensaje && <p role="status" className={styles.mensajeGlobal}>{mensaje}</p>}
+
+                <Tabs etiqueta="Secciones de la preinscripción" activa={pestana} alCambiar={idPestana => setPestana(idPestana as Pestana)}
+                    pestanas={[
+                        { id: 'resumen', titulo: 'Resumen documental', contenido: resumen },
+                        { id: 'informacion', titulo: 'Información del estudiante', contenido: informacion },
+                        { id: 'documentos', titulo: 'Documentos', contenido: listaDocumentos },
+                        { id: 'acciones', titulo: 'Acciones de revisión', contenido: acciones },
+                        { id: 'historial', titulo: 'Historial de revisiones', contenido: historial },
+                    ]} />
+            </>}
         </main>
         <Dialog abierto={confirmando} alCerrar={() => { if (!enviando) setConfirmando(false); }} titulo={`Confirmar: ${ACCIONES[accion]}`} descripcion="La acción quedará registrada en la solicitud y generará una notificación para el estudiante.">
             <p>{accion === 'recarga' ? corregibles.filter(d => seleccionados.includes(Number(d.id))).map(d => d.nombre).join(', ') : ACCIONES[accion]}</p>

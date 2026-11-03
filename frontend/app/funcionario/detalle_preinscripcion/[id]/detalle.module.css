@@ -14,6 +14,85 @@
     font-size: 14px;
 }
 
+/* Cabecera de la página y recarga de la solicitud */
+
+.cabeceraPagina {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+}
+
+.cabeceraPagina > :first-child {
+    flex: 1;
+    min-width: 0;
+}
+
+.recargar {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.recargar .botonRecargar {
+    width: 44px;
+    padding: 0;
+}
+
+.tooltip {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 2;
+    padding: 6px 10px;
+    background: var(--color-title);
+    border-radius: 6px;
+    color: var(--color-bg);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--duracion-rapida) ease, visibility var(--duracion-rapida) ease;
+}
+
+.recargar:hover .tooltip,
+.recargar:focus-within .tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+.errorConsulta {
+    display: grid;
+    justify-items: start;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+    padding: var(--space-4) var(--space-5);
+    background: var(--status-invalid-bg);
+    border: 1px solid var(--status-invalid-mark);
+    border-radius: var(--radius-card);
+    color: var(--status-invalid-text);
+}
+
+.estadoSolicitud {
+    margin-top: var(--space-3);
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+.estadoSolicitud strong {
+    color: var(--color-title);
+}
+
+.mensajeGlobal {
+    margin-bottom: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface-muted);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    color: var(--color-text);
+}
+
 .filaTitulo {
     display: flex;
     flex-wrap: wrap;
@@ -139,6 +218,12 @@
     background: var(--status-valid-bg);
     border-color: var(--status-valid-mark);
     color: var(--status-valid-text);
+}
+
+.estadoGeneral[data-tono="neutral"] {
+    background: var(--color-surface-muted);
+    border-color: var(--color-border);
+    color: var(--color-text-secondary);
 }
 
 .estadoIcono {
@@ -488,7 +573,16 @@
     }
 }
 
-.formRevision { display: grid; gap: var(--space-4); min-width: 0; }
+.formRevision {
+    display: grid;
+    gap: var(--space-4);
+    min-width: 0;
+    padding: var(--space-5);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+}
 .formRevision label { display: grid; gap: var(--space-2); }
 .formRevision select, .formRevision textarea {
     width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--color-border);
