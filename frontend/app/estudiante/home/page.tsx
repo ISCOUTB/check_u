@@ -9,6 +9,7 @@ import Card from '@/app/components/ui/Card';
 import Icono from '@/app/components/ui/Icono';
 import PageHeader from '@/app/components/ui/PageHeader';
 import StatusBadge from '@/app/components/ui/StatusBadge';
+import BotonSolicitudes from './BotonSolicitudes';
 
 import { useEstadoNavegacion } from '@/app/lib/useEstadoNavegacion';
 import { useSesion } from '@/app/lib/useSesion';
@@ -86,7 +87,8 @@ export default function Home() {
 
     obtenerSolicitudDetalle(controlador.signal)
       .then((solicitud) => {
-        if (vigente) setDetalle({ clave: claveDetalle, solicitud, error: null });
+        if (vigente)
+          setDetalle({ clave: claveDetalle, solicitud, error: null });
       })
       .catch((error: unknown) => {
         if (!vigente || esCancelacion(error)) return;
@@ -191,8 +193,7 @@ export default function Home() {
         politica.limite > 0 ? (
           <p className={styles.reenvios}>
             <strong>Reenvíos de corrección hoy:</strong>{' '}
-            {politica.limite - politica.usados} de {politica.limite}{' '}
-            disponibles
+            {politica.limite - politica.usados} de {politica.limite} disponibles
           </p>
         ) : (
           <p className={styles.reenvios}>
@@ -341,9 +342,7 @@ export default function Home() {
           />
         </div>
 
-        <ul className={styles.documentos}>
-          {requisitos.map(filaRequisito)}
-        </ul>
+        <ul className={styles.documentos}>{requisitos.map(filaRequisito)}</ul>
       </Card>
     );
   };
@@ -378,10 +377,7 @@ export default function Home() {
             </span>
 
             <div>
-              <h2
-                id="titulo-bienvenida"
-                className={styles.bienvenidaTitulo}
-              >
+              <h2 id="titulo-bienvenida" className={styles.bienvenidaTitulo}>
                 Tu solicitud de grado está en curso
               </h2>
 
@@ -392,12 +388,10 @@ export default function Home() {
             </div>
           </div>
 
-          <Button
-            href={hrefContinuar}
-            className={styles.bienvenidaAccion}
-          >
+          <Button href={hrefContinuar} className={styles.bienvenidaAccion}>
             Continuar mi preinscripción
           </Button>
+          <BotonSolicitudes />
         </section>
 
         <div className={styles.rejillaConSolicitud}>
