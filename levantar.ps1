@@ -162,7 +162,7 @@ function Install-Dependencies {
     }
 
     if (Test-Path $modules) {
-        Write-Host "$Nombre: dependencias existentes. Se reutilizaran." -ForegroundColor Green
+        Write-Host "${Nombre}: dependencias existentes. Se reutilizaran." -ForegroundColor Green
         return
     }
 
