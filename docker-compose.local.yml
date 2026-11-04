@@ -27,6 +27,13 @@ services:
     ports:
       - "127.0.0.1:5001:5001"
     init: true
+    # Tarea 50: simulación de ALMA para el Paz y Salvo. El JSON vive fuera del repositorio; define
+    # ALMA_SIMULACION_DIR con la carpeta que lo contiene. Sin el archivo, Paz y Salvo queda Por revisar.
+    environment:
+      ALMA_MODO: ${ALMA_MODO:-simulado}
+      ALMA_SIMULACION_ARCHIVO: /datos/alma/alma_simulacion.json
+    volumes:
+      - ${ALMA_SIMULACION_DIR:-./datos_locales/alma}:/datos/alma:ro
 
 volumes:
   checku_db_data:
