@@ -59,3 +59,12 @@
     font-size: 15px;
     line-height: 1.6;
 }
+
+.acciones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: var(--space-4);
+}

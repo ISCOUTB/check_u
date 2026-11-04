@@ -70,6 +70,9 @@ export default function Bienvenida() {
 
   useEffect(() => {
     if (!estadoNav?.destino) return;
+    // Sin solicitud activa: puede estar en bienvenida a propósito
+    // (botón "Nueva preinscripción"). No redirigir a home.
+    if (estadoNav.estado === 'SIN_SOLICITUD') return;
     if (estadoNav.destino !== pathname) {
       router.replace(estadoNav.destino);
     }
@@ -100,7 +103,11 @@ export default function Bienvenida() {
     );
   }
 
-  if (estadoNav && estadoNav.destino !== pathname) {
+  if (
+    estadoNav &&
+    estadoNav.estado !== 'SIN_SOLICITUD' &&
+    estadoNav.destino !== pathname
+  ) {
     return (
       <main
         id="contenido"

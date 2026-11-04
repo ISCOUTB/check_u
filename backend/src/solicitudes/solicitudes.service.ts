@@ -108,7 +108,7 @@ export class SolicitudesService {
       return {
         ok: true,
         estado: 'SIN_SOLICITUD',
-        destino: '/estudiante/bienvenida',
+        destino: '/estudiante/home',
       };
     }
 
@@ -583,7 +583,11 @@ export class SolicitudesService {
         id_solicitud: id,
         estado: 'BORRADOR',
         mensaje: 'Borrador guardado exitosamente',
-        periodos: await consultarContextoPeriodo(client, solicitud.id_periodo!, idEstudiante),
+        periodos: await consultarContextoPeriodo(
+          client,
+          solicitud.id_periodo!,
+          idEstudiante,
+        ),
         guardadoEn: new Date(
           actualizado.rows[0].fecha_actualizacion,
         ).toISOString(),
@@ -785,9 +789,7 @@ export class SolicitudesService {
     );
     const faltantes = documentosRequeridos(tipoSolicitud, hayPrograma2)
       .filter((d) => !existentes.has(claveDocumento(d)))
-      .map((d) =>
-        d.orden === 2 ? `${d.tipo} (segundo programa)` : d.tipo,
-      );
+      .map((d) => (d.orden === 2 ? `${d.tipo} (segundo programa)` : d.tipo));
 
     if (faltantes.length > 0) {
       throw new BadRequestException(

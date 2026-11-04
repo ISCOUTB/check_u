@@ -159,6 +159,10 @@ function Install-Dependencies {
   $lock = Join-Path $Carpeta 'package-lock.json'
   $modules = Join-Path $Carpeta 'node_modules'
 
+  if (Test-Path $modules) {
+        Write-Host "${Nombre}: dependencias existentes. Se reutilizaran." -ForegroundColor Green
+        return
+    }
   if (-not (Test-Path $package)) {
     throw "No existe $package"
   }
