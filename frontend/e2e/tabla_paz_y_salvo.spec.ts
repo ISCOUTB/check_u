@@ -230,3 +230,17 @@ test("la funcionaria puede marcar un Paz y Salvo Inconsistente", async ({ page }
     await expect.poll(() => cuerpos.length).toBe(1);
     expect(cuerpos[0]).toMatchObject({ resultado: "VALIDO" });
 });
+
+// Visto en las capturas del PR #129: en escritorio la tabla quedaba al lado del botón y cortaba «Estado».
+test("en escritorio la tabla del inicio se ve completa, sin desplazamiento horizontal", async ({ page }) => {
+    await prepararEstudiante(page, COMBINADO);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/estudiante/home");
+    const region = page.locator("#mi-solicitud").getByRole("region", { name: "Detalle de la consulta a Biblioteca" });
+    await expect(region).toBeVisible();
+    const desborde = await region.evaluate((el) => el.scrollWidth - el.clientWidth);
+    expect(desborde).toBeLessThanOrEqual(0);
+    const estado = region.getByRole("columnheader", { name: "Estado" });
+    await estado.scrollIntoViewIfNeeded();
+    await expect(estado).toBeInViewport({ ratio: 1 });
+});

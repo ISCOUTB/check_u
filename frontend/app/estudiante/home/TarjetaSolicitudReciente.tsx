@@ -148,7 +148,14 @@ export default function TarjetaSolicitudReciente({
         : 'Subir nueva versión';
 
     return (
-      <li key={requisito.clave} className={styles.documento}>
+      <li
+        key={requisito.clave}
+        className={
+          requisito.biblioteca
+            ? `${styles.documento} ${styles.documentoConTabla}`
+            : styles.documento
+        }
+      >
         <div className={styles.documentoInfo}>
           <div className={styles.documentoNombre}>
             <span>{requisito.nombre}</span>
