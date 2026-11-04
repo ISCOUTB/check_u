@@ -7,13 +7,14 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { AppModule } from '../src/app.module.js';
 import { DatabaseService } from '../src/database/database.service.js';
+import { BibliotecaService } from '../src/biblioteca/biblioteca.service.js';
+import { resultadoBiblioteca } from './soporte/flujo-tarea42.js';
 import { crearDbBorrador } from './soporte/db-borrador.js';
 const fetchReal = globalThis.fetch;
 const PDF = Buffer.from('%PDF-1.4\nPrueba sintética\n%%EOF');
 const TIPOS = [
   'identification',
   'academic_evaluation',
-  'paz_y_salvo_bib',
   'estampilla_pro_cultura',
   'saber_pro',
 ];
@@ -77,13 +78,10 @@ describe('Tarea 38: progreso, PDF privado, correcciones versionadas y autorizaci
     await base.db.exec(
       `INSERT INTO periodos_grado (nombre,fecha_inicio,fecha_fin,fecha_graduacion) VALUES ('Prueba',CURRENT_DATE-1,CURRENT_DATE+30,CURRENT_DATE+60)`,
     );
-    // La migración es repetible también en una base que ya dispone del nuevo esquema.
+    // El esquema (que ya incluye la antigua migración 005) es repetible sobre una base existente.
     await base.db.exec(
       await readFile(
-        new URL(
-          '../../db/migrations/005-reenvios-idempotentes.sql',
-          import.meta.url,
-        ),
+        new URL('../../db/init/01-schema.sql', import.meta.url),
         'utf8',
       ),
     );
@@ -103,6 +101,9 @@ describe('Tarea 38: progreso, PDF privado, correcciones versionadas y autorizaci
     const m = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DatabaseService)
       .useValue(base.servicio)
+      // Tarea 50: Paz y Salvo se consulta en ALMA a través del motor; aquí, siempre a paz y salvo.
+      .overrideProvider(BibliotecaService)
+      .useValue({ consultar: async () => resultadoBiblioteca('paz_y_salvo') })
       .compile();
     app = m.createNestApplication();
     app.setGlobalPrefix('api');
@@ -170,10 +171,10 @@ describe('Tarea 38: progreso, PDF privado, correcciones versionadas y autorizaci
       'Enviando documentos al motor de análisis documental.',
       'Verificando documento de identidad.',
       'Verificando evaluación de grado expedida por Banner.',
-      'Verificando paz y salvo con Biblioteca.',
       'Verificando resultados Saber Pro.',
       'Verificando comprobante de estampilla.',
       'Generando análisis documental.',
+      'Consultando Paz y Salvo en Biblioteca.',
       'Resultados listos. Redirigiendo…',
     ]);
     expect(etapas.slice(0, -1).every((e) => e.porcentaje < 100)).toBe(true);
@@ -323,7 +324,7 @@ describe('Tarea 38: progreso, PDF privado, correcciones versionadas y autorizaci
     expect(
       (await base.db.query('SELECT * FROM historial_validaciones')).rows,
     ).toHaveLength(6);
-    expect(await readdir(carpeta)).toHaveLength(6);
+    expect(await readdir(carpeta)).toHaveLength(5); // Paz y Salvo no tiene archivo
     await agente
       .get(`/api/estudiante/documentos/${d.id_documento}/original`)
       .expect(200);
@@ -409,7 +410,7 @@ describe('Tarea 38: progreso, PDF privado, correcciones versionadas y autorizaci
     expect((await base.db.query('SELECT * FROM entregas')).rows).toHaveLength(
       1,
     );
-    expect(await readdir(carpeta)).toHaveLength(5);
+    expect(await readdir(carpeta)).toHaveLength(4); // Paz y Salvo no tiene archivo
   });
   it('un envío de varios documentos consume un solo reenvío y conserva el orden de cada estampilla', async () => {
     await inicial().expect(201);

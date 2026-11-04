@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import {
-  BibliotecaDemoService,
+  BibliotecaMotorService,
   BibliotecaService,
 } from './biblioteca.service.js';
 
 @Module({
-  providers: [{ provide: BibliotecaService, useClass: BibliotecaDemoService }],
+  // Tarea 50: el motor consulta ALMA (simulado o real según ALMA_MODO). Cambiar de fuente no toca
+  // a quienes consumen BibliotecaService.
+  providers: [{ provide: BibliotecaService, useClass: BibliotecaMotorService }],
   exports: [BibliotecaService],
 })
 export class BibliotecaModule {}

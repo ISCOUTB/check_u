@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto';
 import { DatabaseService } from '../database/database.service.js';
 import {
   AnalisisPreinscripcionService,
+  MENSAJE_PAZ_Y_SALVO_NO_SE_SUBE,
   validarArchivos,
   type PdfPreinscripcion,
 } from './analisis-preinscripcion.service.js';
@@ -160,6 +161,9 @@ export class ReenviosService {
             throw new ForbiddenException(
               'No se permite reemplazar un documento válido.',
             );
+          // Tarea 50: Paz y Salvo se vuelve a consultar, no se sube.
+          if (d.tipo_documento === 'paz_y_salvo_bib')
+            throw new BadRequestException(MENSAJE_PAZ_Y_SALVO_NO_SE_SUBE);
           return {
             documento: d,
             archivo: {

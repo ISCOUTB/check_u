@@ -18,6 +18,17 @@ const MENSAJES: Record<(typeof RESULTADOS)[number], string> = {
 };
 
 /**
+ * Tarea 50: un Paz y Salvo Inconsistente (los datos de ALMA no coinciden con CheckU) también se
+ * resuelve a mano; volver a consultar daría lo mismo y el barrido anularía la solicitud.
+ */
+export function admiteResolucionManual(tipo: string, estado: string) {
+  return (
+    estado === 'POR_REVISAR' ||
+    (estado === 'INCONSISTENTE' && tipo === 'paz_y_salvo_bib')
+  );
+}
+
+/**
  * Tarea 42a: la funcionaria resuelve un documento «Por revisar» (p. ej. Paz y Salvo sin respuesta
  * de Biblioteca). Queda en validaciones e historial, en revisiones (que genera el aviso) y la
  * solicitud se recalcula, todo en la misma transacción.
@@ -67,8 +78,9 @@ export class ResolucionesService {
       const actual = await client.query<{
         id_documento: number;
         estado: string;
+        tipo_documento: string;
       }>(
-        `SELECT DISTINCT ON (d.tipo_documento, d.orden) d.id_documento, d.estado
+        `SELECT DISTINCT ON (d.tipo_documento, d.orden) d.id_documento, d.estado, d.tipo_documento
         FROM documentos d JOIN documentos e ON e.id_solicitud=d.id_solicitud
           AND e.tipo_documento=d.tipo_documento AND e.orden=d.orden
         WHERE e.id_documento=$1 AND d.id_entrega IS NOT NULL
@@ -78,7 +90,7 @@ export class ResolucionesService {
       const vigente = actual.rows[0];
       if (
         vigente?.id_documento !== idDocumento ||
-        vigente.estado !== 'POR_REVISAR'
+        !admiteResolucionManual(vigente.tipo_documento, vigente.estado)
       )
         throw new ConflictException(
           'El documento ya no está por revisar o no es la versión actual.',
@@ -108,8 +120,13 @@ export class ResolucionesService {
       );
       await client.query(
         `INSERT INTO historial_validaciones (id_validacion, estado_anterior, estado_nuevo, observacion)
-        VALUES ($1, 'PENDIENTE', $2, $3)`,
-        [v.rows[0].id_validacion, estado, comentario || MENSAJES[estado]],
+        VALUES ($1, $2, $3, $4)`,
+        [
+          v.rows[0].id_validacion,
+          vigente.estado === 'INCONSISTENTE' ? 'INCONSISTENTE' : 'PENDIENTE',
+          estado,
+          comentario || MENSAJES[estado],
+        ],
       );
       await client.query(
         `INSERT INTO revisiones(id_solicitud,id_funcionario,resultado,comentario,documentos_ids)

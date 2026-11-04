@@ -9,6 +9,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { AppModule } from '../src/app.module.js';
 import { DatabaseService } from '../src/database/database.service.js';
+import { BibliotecaService } from '../src/biblioteca/biblioteca.service.js';
+import { resultadoBiblioteca } from './soporte/flujo-tarea42.js';
 import { NotificacionesService } from '../src/notificaciones/notificaciones.service.js';
 import { crearDbBorrador } from './soporte/db-borrador.js';
 
@@ -16,7 +18,6 @@ const fetchReal = globalThis.fetch;
 const TIPOS = [
   'identification',
   'academic_evaluation',
-  'paz_y_salvo_bib',
   'estampilla_pro_cultura',
   'saber_pro',
 ];
@@ -58,6 +59,9 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     const m = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DatabaseService)
       .useValue(base.servicio)
+      // Tarea 50: Paz y Salvo se consulta en ALMA a través del motor; aquí, siempre a paz y salvo.
+      .overrideProvider(BibliotecaService)
+      .useValue({ consultar: async () => resultadoBiblioteca('paz_y_salvo') })
       .compile();
     app = m.createNestApplication();
     app.setGlobalPrefix('api');
@@ -198,7 +202,8 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
 
   it('la migración es repetible y los valores están restringidos', async () => {
     const sql = await readFile(
-      new URL('../../db/migrations/007-notificaciones.sql', import.meta.url),
+      // La antigua migración 007 quedó incluida en 01-schema.sql (#124).
+      new URL('../../db/init/01-schema.sql', import.meta.url),
       'utf8',
     );
     await base.db.exec(sql);
@@ -476,7 +481,7 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
         ),
       ).toBe(true);
       expect(n.find((n) => n.generado_por === 'system').msg).toContain(
-        'Biblioteca confirmó que estás a paz y salvo.',
+        'El estudiante cumple los criterios consultados de paz y salvo.',
       );
     },
   );

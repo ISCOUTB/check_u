@@ -7,7 +7,10 @@ import {
 import type { PoolClient } from 'pg';
 import { DatabaseService } from '../database/database.service.js';
 import { detalleAnalisis } from '../solicitudes/detalle-analisis.js';
-import { observacionesDocumento } from '../solicitudes/observaciones-documento.js';
+import {
+  FUENTES_BIBLIOTECA,
+  observacionesDocumento,
+} from '../solicitudes/observaciones-documento.js';
 import {
   dentroDelPlazoCorreccion,
   fechaCorteCorreccion,
@@ -114,7 +117,7 @@ export class NotificacionesService {
       msg: `${d.nombre} · Versión ${d.version}: ${motivos}`,
       generadoPor:
         d.detalle?.estado_procesamiento === 'pendiente_integracion' ||
-        d.detalle?.fuente === 'biblioteca_demo'
+        FUENTES_BIBLIOTECA.includes(String(d.detalle?.fuente))
           ? 'system'
           : 'motor',
       clave: `validacion:${idValidacion}`,

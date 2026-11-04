@@ -28,12 +28,17 @@ export async function detalleAnalisis(
     );
     let s = res.rows[0];
     if (!s) throw new NotFoundException('No hay preinscripción registrada.');
-    const cancelacion = s.estado === 'CANCELADA' ? (await client.query(
-      'SELECT fecha_cancelacion,informacion_estudiante FROM cancelaciones_preinscripcion WHERE id_solicitud=$1',
-      [s.id_solicitud],
-    )).rows[0] : null;
+    const cancelacion =
+      s.estado === 'CANCELADA'
+        ? (
+            await client.query(
+              'SELECT fecha_cancelacion,informacion_estudiante FROM cancelaciones_preinscripcion WHERE id_solicitud=$1',
+              [s.id_solicitud],
+            )
+          ).rows[0]
+        : null;
     // Conservar el perfil al cancelar aunque el estudiante lo cambie en otro periodo.
-    if (cancelacion) s = {...s,...cancelacion.informacion_estudiante};
+    if (cancelacion) s = { ...s, ...cancelacion.informacion_estudiante };
     const programas = await client.query(
       'SELECT * FROM solicitud_programa WHERE id_solicitud = $1 ORDER BY orden',
       [s.id_solicitud],
@@ -62,7 +67,8 @@ export async function detalleAnalisis(
     const admite =
       ['EN_PROCESO', 'POR_REVISAR', 'NO_VALIDA', 'INCONSISTENTE'].includes(
         s.estado,
-      ) && (!fechaFin || dentroDelPlazoCorreccion(fechaFin));
+      ) &&
+      (!fechaFin || dentroDelPlazoCorreccion(fechaFin));
     const documentos = await client.query(
       `SELECT d.*, v.detalle, v.mensaje, m.detalle AS detalle_motor,
       (SELECT MAX(r.expira_en) FROM rutas r WHERE r.id_documento = d.id_documento) AS expira_en,
@@ -96,6 +102,13 @@ export async function detalleAnalisis(
       orden: d.orden,
       version: d.version,
       estado: d.estado,
+      // Tarea 50: Paz y Salvo es una consulta a ALMA, sin archivo; su resultado alimenta la tabla.
+      origen: d.origen,
+      bibliotecaResultado:
+        d.origen === 'CONSULTA'
+          ? ((d.detalle_motor as { resultado?: unknown } | null)?.resultado ??
+            null)
+          : null,
       nombre:
         (etiquetas[d.tipo_documento] ?? d.tipo_documento) +
         (d.orden === 2 ? ' · segundo programa' : ''),
@@ -172,7 +185,17 @@ export async function detalleAnalisis(
         nombrePeriodo: periodos.periodoAsignado?.nombre ?? null,
         fechaCorte: periodos.periodoAsignado?.fechaCorte ?? null,
         diasRestantes: periodos.periodoAsignado
-          ? Math.max(0, Math.round((Date.parse(periodos.periodoAsignado.fechaCorte+'T00:00:00Z')-Date.parse(periodos.fechaActual+'T00:00:00Z'))/86400000)) : null,
+          ? Math.max(
+              0,
+              Math.round(
+                (Date.parse(
+                  periodos.periodoAsignado.fechaCorte + 'T00:00:00Z',
+                ) -
+                  Date.parse(periodos.fechaActual + 'T00:00:00Z')) /
+                  86400000,
+              ),
+            )
+          : null,
       },
       estadoAnalisis:
         !actuales.length || actuales.some((d) => !d.detalle)
