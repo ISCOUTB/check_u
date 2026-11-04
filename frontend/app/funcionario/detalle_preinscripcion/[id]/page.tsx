@@ -241,15 +241,19 @@ function DetalleSolicitud({id}: {id: string}) {
             <section className={styles.estadoDocs} aria-labelledby="hdr-estado-docs">
                 <h3 id="hdr-estado-docs">Estado de los documentos</h3>
                 <p className={styles.textoSecundario}>Vista rápida del resultado de cada documento.</p>
-                <ul className={styles.resumenDocumentos}>
+                <ul className={styles.estadoList}>
                     {detalle.documentos.map(doc => (
-                        <li key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`} className={styles.resumenDocumento}>
-                            <span className={styles.iconoDocumento}><Icono nombre="documento" /></span>
-                            <div className={styles.resumenTexto}>
-                                <strong>{doc.nombre}</strong>
-                                <span>{doc.fileName ?? doc.descripcion}</span>
+                        <li key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`} className={styles.estadoRow}>
+                            <div className={styles.estadoLeft}>
+                                <span className={styles.pdfBadge}>PDF</span>
+                                <div>
+                                    <strong>{doc.nombre}</strong>
+                                    <p>{doc.descripcion}</p>
+                                </div>
                             </div>
-                            <StatusBadge estado={estadoDocumento(doc)} />
+                            <div className={styles.alertaChips}>
+                                {doc.resultados.map((r, i) => <StatusBadge key={i} estado={r.estado} />)}
+                            </div>
                         </li>
                     ))}
                 </ul>
