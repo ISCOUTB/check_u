@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import styles from "./PageHeader.module.css";
 
 export interface PageHeaderProps {
@@ -8,9 +9,11 @@ export interface PageHeaderProps {
     descripcion?: string;
     /** Ruta de navegación; el último elemento es la página actual. */
     ruta?: { texto: string; href?: string }[];
+    /** Acciones que acompañan al saludo, alineadas a la derecha. */
+    acciones?: ReactNode;
 }
 
-export default function PageHeader({ etiqueta, titulo, descripcion, ruta }: PageHeaderProps) {
+export default function PageHeader({ etiqueta, titulo, descripcion, ruta, acciones }: PageHeaderProps) {
     return (
         <div className={styles.encabezado}>
             {ruta && ruta.length > 0 && (
@@ -34,6 +37,7 @@ export default function PageHeader({ etiqueta, titulo, descripcion, ruta }: Page
             {etiqueta && <p className={styles.etiqueta}>{etiqueta}</p>}
             <h1 className={styles.titulo}>{titulo}</h1>
             {descripcion && <p className={styles.descripcion}>{descripcion}</p>}
+            {acciones && <div className={styles.acciones}>{acciones}</div>}
         </div>
     );
 }
