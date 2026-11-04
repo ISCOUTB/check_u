@@ -106,7 +106,7 @@ async function llenarObligatoriosPosgrado(page: Page): Promise<void> {
     await page.getByLabel("Código estudiantil (obligatorio)").fill("T00012345");
     await responder(page, "Modalidad (obligatorio)", "Presencial");
     await page.getByLabel("Programa (obligatorio)").selectOption({ label: "Programa de ejemplo" });
-    for (const id of ["identification", "paz_y_salvo_bib", "estampilla_pro_cultura"])
+    for (const id of ["identification", "estampilla_pro_cultura"])
         await page.locator(`#documento-${id}`).setInputFiles(pdf(`${id}.pdf`));
 }
 
@@ -155,9 +155,9 @@ test.describe("iniciar preinscripción", () => {
         await expect(page.getByRole("heading", { name: "Estudios y experiencia" })).toHaveCount(0);
 
         await expect(indice(page).getByRole("link")).toHaveCount(5);
-        await expect(resumen(page, "Te faltan 2 secciones y 5 documentos")).toBeVisible();
+        await expect(resumen(page, "Te faltan 2 secciones y 4 documentos")).toBeVisible();
         await expect(indice(page).getByRole("link", { name: /Documentos/ })).toContainText(
-            "0 de 5 documentos cargados",
+            "0 de 4 documentos cargados",
         );
     });
 
@@ -170,7 +170,7 @@ test.describe("iniciar preinscripción", () => {
         await expect(page.locator("#campo-empresa-2")).toBeVisible();
         // Posgrado no pide opción de grado.
         await expect(page.locator("#campo-opcion-grado-1")).toHaveCount(0);
-        await expect(resumen(page, "Te faltan 2 secciones y 3 documentos")).toBeVisible();
+        await expect(resumen(page, "Te faltan 2 secciones y 2 documentos")).toBeVisible();
     });
 
     test("segundo programa: al marcar Sí aparecen programa 2, modalidad 2 y opción de grado 2", async ({ page }) => {
@@ -294,7 +294,7 @@ test.describe("iniciar preinscripción", () => {
         await page.getByLabel("Número de documento (obligatorio)").fill("1234567890");
 
         await expect(enlace).toContainText("Completa");
-        await expect(resumen(page, "Te faltan 1 sección y 5 documentos")).toBeVisible();
+        await expect(resumen(page, "Te faltan 1 sección y 4 documentos")).toBeVisible();
     });
 
     test("las secciones sin obligatorios dicen Opcional, sin la marca de completa", async ({ page }) => {
@@ -371,7 +371,7 @@ test.describe("iniciar preinscripción", () => {
     test("en celular el índice es un botón que despliega las secciones", async ({ page }) => {
         await page.setViewportSize({ width: 360, height: 800 });
         await abrir(page, PREGRADO);
-        const boton = indice(page).getByRole("button", { name: /Te faltan 2 secciones y 5 documentos/ });
+        const boton = indice(page).getByRole("button", { name: /Te faltan 2 secciones y 4 documentos/ });
         await expect(boton).toHaveAttribute("aria-expanded", "false");
         await expect(indice(page).getByRole("link")).toHaveCount(0);
 
@@ -503,9 +503,9 @@ test.describe("iniciar preinscripción", () => {
         await entrada.setInputFiles({ name: "foto.pdf", mimeType: "image/png", buffer: Buffer.from("png") });
         await expect(zona(page, "identification")).toContainText("Solo se aceptan archivos PDF.");
 
-        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+        await expect(contador(page)).toHaveText("0 de 4 documentos cargados");
         await expect(indice(page).getByRole("link", { name: /Documentos/ })).toContainText(
-            "0 de 5 documentos cargados",
+            "0 de 4 documentos cargados",
         );
     });
 
@@ -517,7 +517,7 @@ test.describe("iniciar preinscripción", () => {
         await entrada.setInputFiles({ name: "foto.pdf", mimeType: "application/pdf", buffer: png });
         await expect(zona(page, "identification")).toContainText("Solo se aceptan archivos PDF.");
         await expect(entrada).toHaveAttribute("aria-invalid", "true");
-        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+        await expect(contador(page)).toHaveText("0 de 4 documentos cargados");
     });
 
     test("segundo programa en pregrado permite cargar la segunda estampilla y actualiza el contador", async ({ page }) => {
@@ -525,11 +525,11 @@ test.describe("iniciar preinscripción", () => {
         await responder(page, "¿Solicitas grado en un segundo programa?", "Sí");
         const segunda = page.locator("#documento-estampilla_pro_cultura-2");
         await expect(segunda).toBeVisible();
-        await expect(contador(page)).toHaveText("0 de 7 documentos cargados");
+        await expect(contador(page)).toHaveText("0 de 6 documentos cargados");
 
         await segunda.setInputFiles({ name: "estampilla2.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 prueba") });
-        await expect(contador(page)).toHaveText("1 de 7 documentos cargados");
-        await expect(resumen(page, "Te faltan 2 secciones y 6 documentos")).toBeVisible();
+        await expect(contador(page)).toHaveText("1 de 6 documentos cargados");
+        await expect(resumen(page, "Te faltan 2 secciones y 5 documentos")).toBeVisible();
     });
 
     test("el mismo archivo rechazado dos veces se vuelve a anunciar", async ({ page }) => {
@@ -554,7 +554,7 @@ test.describe("iniciar preinscripción", () => {
         await entrada.setInputFiles({ name: "vacio.pdf", mimeType: "application/pdf", buffer: Buffer.alloc(0) });
         await expect(zona(page, "saber_pro")).toContainText("El archivo está vacío.");
         await expect(entrada).toHaveAttribute("aria-invalid", "true");
-        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+        await expect(contador(page)).toHaveText("0 de 4 documentos cargados");
     });
 
     test("cargar y quitar actualiza el contador", async ({ page }) => {
@@ -563,20 +563,20 @@ test.describe("iniciar preinscripción", () => {
         await expect(entrada).toHaveAttribute("type", "file");
         await expect(entrada).toHaveAttribute("accept", "application/pdf,.pdf");
         await expect(entrada).toHaveAccessibleName(/^Cédula de ciudadanía \(obligatorio\)/);
-        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+        await expect(contador(page)).toHaveText("0 de 4 documentos cargados");
 
         await entrada.setInputFiles(pdf("cedula.pdf"));
         const cedula = zona(page, "identification");
         await expect(cedula).toContainText("cedula.pdf");
-        await expect(contador(page)).toHaveText("1 de 5 documentos cargados");
+        await expect(contador(page)).toHaveText("1 de 4 documentos cargados");
         await expect(indice(page).getByRole("link", { name: /Documentos/ })).toContainText(
-            "1 de 5 documentos cargados",
+            "1 de 4 documentos cargados",
         );
-        await expect(resumen(page, "Te faltan 2 secciones y 4 documentos")).toBeVisible();
+        await expect(resumen(page, "Te faltan 2 secciones y 3 documentos")).toBeVisible();
 
         await cedula.getByRole("button", { name: /^Quitar/ }).click();
         await expect(cedula).not.toContainText("cedula.pdf");
-        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+        await expect(contador(page)).toHaveText("0 de 4 documentos cargados");
         // El foco no se pierde: vuelve a la carga del mismo documento.
         await expect(entrada).toBeFocused();
     });
@@ -591,13 +591,13 @@ test.describe("iniciar preinscripción", () => {
         await responder(page, "¿Solicitas grado en un segundo programa?", "Sí");
         await expect(evaluacion).toHaveAccessibleName(/^Evaluación de Grado \(Banner\) \(segundo programa\) \(obligatorio\)/);
         await expect(segunda).toHaveAccessibleName(/^Estampilla Pro-Cultura \(segundo programa\) \(obligatorio\)/);
-        await expect(contador(page)).toHaveText("0 de 7 documentos cargados");
-        await expect(resumen(page, "Te faltan 2 secciones y 7 documentos")).toBeVisible();
+        await expect(contador(page)).toHaveText("0 de 6 documentos cargados");
+        await expect(resumen(page, "Te faltan 2 secciones y 6 documentos")).toBeVisible();
 
         await responder(page, "¿Solicitas grado en un segundo programa?", "No");
         await expect(evaluacion).toHaveCount(0);
         await expect(segunda).toHaveCount(0);
-        await expect(contador(page)).toHaveText("0 de 5 documentos cargados");
+        await expect(contador(page)).toHaveText("0 de 4 documentos cargados");
     });
 
     // ── Guardar y enviar ────────────────────────────────────────────────────────
@@ -610,8 +610,8 @@ test.describe("iniciar preinscripción", () => {
         await expect(resumenEnvio).toBeVisible();
         await expect(resumenEnvio).toBeFocused();
         await expect(dialogoEnvio(page)).toHaveCount(0);
-        // Un enlace por faltante: 7 campos y 5 documentos.
-        await expect(resumenEnvio.getByRole("link")).toHaveCount(12);
+        // Un enlace por faltante: 7 campos y 4 documentos (Paz y Salvo se consulta con Biblioteca).
+        await expect(resumenEnvio.getByRole("link")).toHaveCount(11);
 
         // Cada campo marca su error.
         const nombres = page.locator("#campo-nombres");
@@ -658,7 +658,7 @@ test.describe("iniciar preinscripción", () => {
 
         await expect(page.locator("#campo-nombres")).toHaveValue("Ana");
         await expect(zona(page, "identification")).toContainText("documento-de-ejemplo.pdf");
-        await expect(contador(page)).toHaveText("1 de 5 documentos cargados");
+        await expect(contador(page)).toHaveText("1 de 4 documentos cargados");
         const estado = page.getByRole("status").filter({ hasText: "Borrador guardado" });
         await expect(estado).toHaveText(/Borrador guardado el 20\/10\/2026, 10:30\sa\.\sm\.$/);
         await expect(page.getByText("Puedes guardar y retomar tu borrador más adelante.")).toBeVisible();
@@ -704,7 +704,7 @@ test.describe("iniciar preinscripción", () => {
         const dialogo = dialogoEnvio(page);
         await expect(dialogo).toBeVisible();
         await expect(dialogo).toContainText("Ana Prueba");
-        await expect(dialogo).toContainText("3 de 3 documentos cargados");
+        await expect(dialogo).toContainText("2 de 2 documentos cargados");
 
         // "Volver a editar" cierra sin enviar y devuelve el foco al botón.
         await dialogo.getByRole("button", { name: "Volver a editar" }).click();

@@ -70,6 +70,8 @@ test.describe("página de bienvenida para estudiante sin preinscripciones", () =
 
         // Paz y Salvo NO debe mostrar la nota interna [próximo a retirar]
         await expect(page.getByText(/próximo a retirar/i)).toHaveCount(0);
+        // Tarea 50: se consulta con Biblioteca; el estudiante no lo sube.
+        await expect(page.getByText("(Se consulta automáticamente con Biblioteca; no se sube.)")).toHaveCount(2);
     });
 
     test("caso PREGRADO: muestra únicamente el bloque 1", async ({ page }) => {

@@ -13,7 +13,9 @@ import { InformacionEstudiante } from '@/app/components/informacion_estudiante';
 import { useSesion } from '@/app/lib/useSesion';
 import { etiquetaPropiedad, valorVisible } from '@/app/estudiante/preinscripcion/etiquetas';
 import type { DocumentoSolicitud } from '@/app/estudiante/preinscripcion/types';
-import { obtenerDetalle, registrarRevision, resolverDocumento, type AccionRevision, type DetalleFuncionaria } from '../../solicitudes-api';
+import { obtenerDetalle, reconsultarPazYSalvoFuncionaria, registrarRevision, resolverDocumento, type AccionRevision, type DetalleFuncionaria } from '../../solicitudes-api';
+import TablaPazYSalvo from '@/app/components/biblioteca/TablaPazYSalvo';
+import { mensajesFueraDeTabla } from '@/app/components/biblioteca/tipos';
 import styles from './detalle.module.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api';
@@ -29,6 +31,10 @@ const ESTADOS: Record<string, string> = {
     BORRADOR: 'Borrador', EN_PROCESO: 'En proceso', POR_REVISAR: 'Por revisar',
     VALIDA: 'Válida', ACEPTADA: 'Aceptada', CERRADA: 'Anulada', CANCELADA: 'Cancelada', NO_VALIDA: 'No válida', INCONSISTENTE: 'Inconsistente',
 };
+/** Documentos que la funcionaria resuelve a mano; Tarea 50: también un Paz y Salvo Inconsistente con ALMA. */
+function admiteResolucionManual(doc: DocumentoSolicitud) {
+    return doc.estado === 'POR_REVISAR' || (doc.estado === 'INCONSISTENTE' && doc.tipo === 'paz_y_salvo_bib');
+}
 type Resolucion = { documento: DocumentoSolicitud; resultado: 'VALIDO' | 'NO_VALIDO' };
 function estadoDocumento(doc: DocumentoSolicitud) {
     return doc.resultados.find(r => r.estado === 'no_valido' || r.estado === 'inconsistente')?.estado ?? doc.resultados[0]?.estado ?? 'por_revisar';
@@ -42,6 +48,7 @@ function analisisPersistido(doc: DocumentoSolicitud): DocumentAnalysisData {
             label: etiquetaPropiedad(campo, i), value: valorVisible(dato.value), source: 'Análisis documental registrado',
         })),
         validations: doc.resultados.map(r => ({ description: r.mensaje, result: r.estado === 'por_revisar' ? null : r.estado === 'valido' })),
+        biblioteca: doc.bibliotecaResultado ?? null,
     };
 }
 export default function DetallePreinscripcionPage() {
@@ -82,6 +89,23 @@ function DetalleSolicitud({id}: {id: string}) {
     const admiteDecision = !!detalle && !['BORRADOR', 'ACEPTADA', 'CERRADA', 'CANCELADA'].includes(detalle.estadoSolicitud);
     const admiteAceptar = admiteDecision && detalle?.estadoSolicitud === 'VALIDA';
     const admiteRecarga = admiteDecision && detalle?.estadoSolicitud !== 'VALIDA' && corregibles.length > 0;
+    /** Tarea 50: vuelve a consultar el Paz y Salvo en Biblioteca y recarga el detalle. */
+    async function consultarBiblioteca() {
+        if (ocupado.current) return;
+        ocupado.current = true; setEnviando(true); setMensaje(''); setErrorEnvio('');
+        try {
+            await reconsultarPazYSalvoFuncionaria(id);
+            if (!vigente.current) return;
+            setMensaje('Consulta de Biblioteca actualizada.');
+            const nuevo = await obtenerDetalle(id);
+            if (vigente.current) { setDetalle(nuevo); setError(''); }
+        } catch (e) {
+            if (vigente.current) setErrorEnvio(e instanceof Error ? e.message : 'No fue posible consultar Biblioteca.');
+        } finally {
+            ocupado.current = false;
+            if (vigente.current) setEnviando(false);
+        }
+    }
     function abrirResolucion(documento: DocumentoSolicitud, resultado: Resolucion['resultado']) {
         setMotivo(''); setErrorResolucion(''); setMensaje(''); setResolucion({ documento, resultado });
     }
@@ -151,10 +175,12 @@ function DetalleSolicitud({id}: {id: string}) {
                     <ul className={styles.documentos}>{detalle.documentos.map(doc => <li key={doc.id}>
                         <article className={styles.documento}>
                             <div className={styles.filaTitulo}><h3>{doc.nombre}</h3><StatusBadge estado={estadoDocumento(doc)} /></div>
-                            <p>{doc.fileName} · Versión {doc.version}</p>
-                            {doc.resultados.map((r, i) => <p key={i}>{r.mensaje}</p>)}
+                            <p>{doc.origen === 'CONSULTA' ? 'Consulta en Biblioteca' : doc.fileName} · Versión {doc.version}</p>
+                            {doc.bibliotecaResultado && <TablaPazYSalvo resultado={doc.bibliotecaResultado} />}
+                            {mensajesFueraDeTabla(doc.resultados.map(r => r.mensaje), doc.bibliotecaResultado).map((m, i) => <p key={i}>{m}</p>)}
                             <Button variante="secundario" onClick={() => setAnalisis(analisisPersistido(doc))} aria-label={`Ver análisis automático: ${doc.nombre}`}>Ver análisis automático</Button>
-                            {admiteDecision && doc.estado === 'POR_REVISAR' && <div className={styles.acciones}>
+                            {admiteDecision && doc.tipo === 'paz_y_salvo_bib' && <Button variante="secundario" disabled={enviando} onClick={consultarBiblioteca} aria-label={`Consultar de nuevo: ${doc.nombre}`}>Consultar de nuevo</Button>}
+                            {admiteDecision && admiteResolucionManual(doc) && <div className={styles.acciones}>
                                 <Button variante="secundario" disabled={enviando} onClick={() => abrirResolucion(doc, 'VALIDO')} aria-label={`Marcar válido: ${doc.nombre}`}>Marcar válido</Button>
                                 <Button variante="secundario" disabled={enviando} onClick={() => abrirResolucion(doc, 'NO_VALIDO')} aria-label={`Marcar no válido: ${doc.nombre}`}>Marcar no válido</Button>
                             </div>}

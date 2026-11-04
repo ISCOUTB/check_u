@@ -6,6 +6,8 @@ import Button from "@/app/components/ui/Button";
 import Dialog from "@/app/components/ui/Dialog";
 import Icono from "@/app/components/ui/Icono";
 import StatusBadge, { type EstadoVisible } from "@/app/components/ui/StatusBadge";
+import TablaPazYSalvo from "@/app/components/biblioteca/TablaPazYSalvo";
+import type { ResultadoBiblioteca } from "@/app/components/biblioteca/tipos";
 import styles from "./DocumentAnalysis.module.css";
 
 export interface ExtractedField {
@@ -28,6 +30,8 @@ export interface DocumentAnalysisData {
     validations: ValidationResult[];
     privateDocumentUrl?: string;
     documentUrl?: string;
+    /** Tarea 50: Paz y Salvo consultado en Biblioteca (no tiene archivo ni extracción). */
+    biblioteca?: ResultadoBiblioteca | null;
 }
 
 interface DocumentAnalysisProps {
@@ -68,7 +72,8 @@ export default function DocumentAnalysis({ open, onClose, data }: DocumentAnalys
                         Vista del documento
                     </h3>
                     {actual.privateDocumentUrl && open && !!data && <VistaPdf key={actual.privateDocumentUrl} url={actual.privateDocumentUrl} activo={open && !!data} />}
-                    {!actual.privateDocumentUrl && !actual.documentUrl && <p>El archivo original ya no está disponible. Los resultados del análisis se conservan.</p>}
+                    {actual.biblioteca && <p>El Paz y Salvo no se sube: CheckU lo consulta directamente en Biblioteca.</p>}
+                    {!actual.biblioteca && !actual.privateDocumentUrl && !actual.documentUrl && <p>El archivo original ya no está disponible. Los resultados del análisis se conservan.</p>}
                     {actual.documentUrl && (
                         <Button
                             variante="secundario"
@@ -80,6 +85,14 @@ export default function DocumentAnalysis({ open, onClose, data }: DocumentAnalys
                 </section>
 
                 <div className={styles.panelAnalisis}>
+                    {actual.biblioteca ? (
+                        <section aria-labelledby="analisis-biblioteca">
+                            <h3 id="analisis-biblioteca" className={styles.tituloSeccion}>
+                                Consulta a Biblioteca
+                            </h3>
+                            <TablaPazYSalvo resultado={actual.biblioteca} />
+                        </section>
+                    ) : (<>
                     <section aria-labelledby="analisis-extraccion">
                         <h3 id="analisis-extraccion" className={styles.tituloSeccion}>
                             Información identificada
@@ -122,6 +135,7 @@ export default function DocumentAnalysis({ open, onClose, data }: DocumentAnalys
                             ))}
                         </ul>
                     </section>
+                    </>)}
 
                     <div className={styles.resultado}>
                         <p>Resultado del análisis</p>

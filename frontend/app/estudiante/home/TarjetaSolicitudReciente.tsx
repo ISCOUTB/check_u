@@ -1,11 +1,15 @@
 'use client';
 
+import { useState } from 'react';
+import TablaPazYSalvo from '@/app/components/biblioteca/TablaPazYSalvo';
+import { mensajesFueraDeTabla } from '@/app/components/biblioteca/tipos';
 import Button from '@/app/components/ui/Button';
 import Card from '@/app/components/ui/Card';
 import StatusBadge from '@/app/components/ui/StatusBadge';
 import type { SolicitudListado } from '../solicitudes/listado';
 import { presentarEstado } from '../solicitudes/listado';
 import type { SolicitudDetalle } from './api';
+import { useConsultaPazYSalvo } from '../preinscripcion/useConsultaPazYSalvo';
 import {
   construirRequisitos,
   formatearFechaCorta,
@@ -42,6 +46,11 @@ export default function TarjetaSolicitudReciente({
   hrefContinuar,
   onReintentar,
 }: TarjetaSolicitudRecienteProps) {
+  // Tarea 50: «Consultar de nuevo» el Paz y Salvo en Biblioteca (cuenta como un reenvío).
+  const [consultando, setConsultando] = useState(false);
+  const [errorConsulta, setErrorConsulta] = useState<string | null>(null);
+  const consultarBiblioteca = useConsultaPazYSalvo();
+
   if (resumenListado === null) {
     return (
       <Card titulo="Mi solicitud de grado" id="mi-solicitud">
@@ -114,9 +123,25 @@ export default function TarjetaSolicitudReciente({
   const periodo = periodoDeSolicitud(solicitud);
   const estadoListado = presentarEstado(resumenListado.reciente.estado);
 
+  const consultarDeNuevo = async () => {
+    if (!solicitud) return;
+    setConsultando(true);
+    setErrorConsulta(null);
+    try {
+      if (await consultarBiblioteca(solicitud.id)) onReintentar();
+    } catch (error) {
+      setErrorConsulta(
+        error instanceof Error ? error.message : 'No fue posible consultar Biblioteca.',
+      );
+    } finally {
+      setConsultando(false);
+    }
+  };
+
   const filaRequisito = (requisito: RequisitoResumen) => {
     const puedeSubir =
-      requisito.estado === 'falta_cargar' || requisito.resubmissionAllowed;
+      !requisito.consulta &&
+      (requisito.estado === 'falta_cargar' || requisito.resubmissionAllowed);
     const etiquetaAccion =
       requisito.estado === 'falta_cargar'
         ? 'Subir documento'
@@ -132,7 +157,8 @@ export default function TarjetaSolicitudReciente({
               etiqueta={ETIQUETA_PARA_ESTUDIANTE[requisito.estado]}
             />
           </div>
-          {requisito.observaciones.map((observacion, indice) => (
+          {requisito.biblioteca && <TablaPazYSalvo resultado={requisito.biblioteca} />}
+          {mensajesFueraDeTabla(requisito.observaciones, requisito.biblioteca).map((observacion, indice) => (
             <p
               key={`${requisito.clave}-observacion-${indice}`}
               className={
@@ -145,6 +171,22 @@ export default function TarjetaSolicitudReciente({
             </p>
           ))}
         </div>
+        {requisito.consulta && requisito.resubmissionAllowed && (
+          <Button
+            variante="secundario"
+            className={styles.documentoAccion}
+            disabled={consultando}
+            onClick={consultarDeNuevo}
+            aria-label={`Consultar de nuevo: ${requisito.nombre}`}
+          >
+            Consultar de nuevo
+          </Button>
+        )}
+        {requisito.consulta && errorConsulta && (
+          <p role="alert" className={styles.textoError}>
+            {errorConsulta}
+          </p>
+        )}
         {puedeSubir && (
           <Button
             href={hrefContinuar}
