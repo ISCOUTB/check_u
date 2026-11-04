@@ -49,7 +49,13 @@ opción de grado se informa aparte (`informativo: true`), porque mientras su fue
 
 ## El JSON de simulación (fuera del repositorio)
 
-- **No se sube:** `.gitignore` bloquea `alma_simulacion*.json` y `**/datos_locales/`.
+- **Ejemplo versionado:** `modules/validadores/fuentes/alma/alma_simulacion.example.json`. Trae el
+  estudiante de prueba de `02-userbase.sql` (`T00000001`) en el escenario «paz y salvo» y los demás
+  escenarios en `escenarios`, sin números de documento. Las variables están en `backend/.env.example`.
+- **Copia local:** se copia como `alma_simulacion.json` fuera del repositorio y se llena
+  `user_identifier[CC].value` con el número de documento que se puso en el formulario de CheckU.
+- **No se sube:** `.gitignore` bloquea `alma_simulacion*.json` y `**/datos_locales/`; solo el ejemplo
+  tiene una excepción.
 - **Datos:** solo datos inventados.
 - **Forma:** es la de la API Users de Ex Libris, por código de estudiante:
 
@@ -75,28 +81,27 @@ opción de grado se informa aparte (`informativo: true`), porque mientras su fue
 |---|---|---|
 | Préstamo (`loan_status`) | `ACTIVE` | `COMPLETE` |
 | Multa (`status`) | `ACTIVE` (o `balance > 0`) | `CLOSED` / `PAID` |
-| Solicitud (`request_status`) | `NOT_STARTED`, `IN_PROCESS`, `ON_HOLD_SHELF` | `COMPLETED`, `CANCELED`, `HISTORY` |
+| Solicitud (`request_status`) | `NOT_STARTED`, `IN_PROCESS`, `ON_HOLD_SHELF`, `ACTIVE`, `PENDING` | `COMPLETED`, `CANCELED`, `CANCELLED`, `HISTORY` |
 
 **Contraste de identidad:** el documento se compara con algún `user_identifier.value`, solo con
-letras y dígitos. El nombre se compara contra `first_name` + `last_name`, sin tildes ni mayúsculas.
+letras y dígitos. El nombre se compara contra `first_name` + `middle_name` + `last_name`, sin tildes ni mayúsculas.
 
-**Escenarios del archivo local de Héctor**
-(`checku_datos_locales\alma\alma_simulacion.json`):
+**Escenarios del ejemplo:**
 
-| Código | Escenario |
+| Bloque | Resultado |
 |---|---|
-| `T00000001` | Paz y salvo |
-| `T00000101` | Con préstamos |
-| `T00000102` | Con solicitudes |
-| `T00000103` | Con multas |
-| `T00000104` | Combinado |
-| `T00000105` | Inconsistente |
+| `usuarios.T00000001` | Paz y salvo (Válido) |
+| `escenarios.prestamos` | Con préstamos (No válido) |
+| `escenarios.solicitudes` | Con solicitudes (No válido) |
+| `escenarios.multas` | Con multas (No válido) |
+| `escenarios.combinado` | Préstamos, multa y solicitud (No válido) |
+| `escenarios.inconsistente` | El documento no coincide con CheckU (Inconsistente) |
 
-Un código que no esté en el archivo da «no encontrado».
+Un código que no esté en `usuarios` da «no encontrado» (Por revisar).
 
-Para ver otro escenario con el usuario de prueba (`T00000001`), se copia el bloque de ese escenario
-bajo `T00000001`. El documento y el nombre del bloque deben coincidir con los que tenga el
-estudiante en CheckU, o el resultado será «inconsistente».
+Para ver otro escenario, se copia el bloque de `escenarios` en lugar de `usuarios.T00000001` y se pulsa
+«Consultar de nuevo». El documento y el nombre del bloque deben coincidir con los que tenga el
+estudiante en CheckU, o el resultado será «inconsistente». `test_ejemplo.py` comprueba cada escenario.
 
 ## Probarlo en local
 
