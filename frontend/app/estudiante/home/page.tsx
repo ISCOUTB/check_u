@@ -15,6 +15,7 @@ import type { SolicitudListado } from '../solicitudes/listado';
 import type { NivelAcademico } from '../documentos-requeridos';
 
 import styles from './home.module.css';
+import BotonSolicitudes from './BotonSolicitudes';
 import NotificacionesPanel from './NotificacionesPanel';
 import SeccionBienvenida from './SeccionBienvenida';
 import TarjetaAviso from './TarjetaAviso';
@@ -54,6 +55,7 @@ export default function Home() {
   const [resumenListado, setResumenListado] = useState<{
     total: number;
     reciente: SolicitudListado | null;
+    hayActiva: boolean;
     error: string | null;
   } | null>(null);
 
@@ -79,6 +81,7 @@ export default function Home() {
         setResumenListado({
           total: lista.length,
           reciente: lista[0] ?? null,
+          hayActiva: lista.some((solicitud) => solicitud.activa),
           error: null,
         });
       })
@@ -87,6 +90,7 @@ export default function Home() {
         setResumenListado({
           total: 0,
           reciente: null,
+          hayActiva: false,
           error:
             error instanceof Error
               ? error.message
@@ -221,6 +225,18 @@ export default function Home() {
           etiqueta="PORTAL DE GRADOS"
           titulo={`¡Hola, ${usuario.name}!`}
           descripcion="Bienvenido a CheckU. Consulta información sobre tu proceso de solicitud de grado."
+          acciones={
+            resumenListado && resumenListado.total > 0 ? (
+              <>
+                <BotonSolicitudes />
+                {!resumenListado.hayActiva && (
+                  <Button href="/estudiante/bienvenida" variante="secundario">
+                    Nueva preinscripción
+                  </Button>
+                )}
+              </>
+            ) : undefined
+          }
         />
 
         <SeccionBienvenida
