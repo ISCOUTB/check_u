@@ -13,12 +13,8 @@ db/
     02-userbase.sql
   migrations/
     003-borrador-parcial.sql
-    004-analisis-preinscripcion.sql
-    005-reenvios-idempotentes.sql
-    006-opciones-campos.sql
-    007-notificaciones.sql
-    008-cancelacion-preinscripcion.sql
-    009-estado-solicitud.sql
+    009-validacion-periodos.sql
+    010-paz-y-salvo-consulta.sql
   tests/
     aceptacion.sql
     verificar.ps1
@@ -28,10 +24,11 @@ db/
 
 - `01-schema.sql`: tablas, restricciones, índices y triggers.
 - `02-userbase.sql`: únicamente los dos usuarios indicados por el equipo.
-- `migrations/*.sql`: cambios idempotentes para bases existentes. La migración
-  `006-opciones-campos.sql` crea `opciones_campo`, ajusta la restricción de
-  discapacidad y carga las 31 opciones iniciales. La `009-estado-solicitud.sql` (Tarea 42, después de la 008 de la Tarea 44) agrega el
-  estado `ACEPTADA` y la resolución manual de documentos (`MANUAL`, `DOCUMENTO_RESUELTO`).
+- `migrations/*.sql`: cambios idempotentes para bases existentes; `levantar.ps1` aplica los
+  pendientes después del esquema base y los registra en `schema_migrations`. Las migraciones 004 a
+  009 de antes quedaron incluidas en `01-schema.sql` (#124). La `010-paz-y-salvo-consulta.sql`
+  (Tarea 50) permite el Paz y Salvo como documento sin archivo (`origen = 'CONSULTA'`); el mismo
+  bloque está al final de `01-schema.sql`.
 - `tests/aceptacion.sql`: comprueba datos y rechazos esperados; revierte sus cambios.
 - `tests/verificar.ps1`: ejecuta esquema, seed y pruebas dos veces con `psql`.
 - `tests/resultado_verificacion.txt`: registro de la verificación ejecutada.

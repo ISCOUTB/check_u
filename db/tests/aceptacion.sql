@@ -150,6 +150,10 @@ BEGIN
     PERFORM pg_temp.debe_rechazar(format('UPDATE informacion_pregrado SET es_empleado_utb=NULL, tipo_contrato=''Temporal'' WHERE id_solicitud=%s', solicitud_p), '23514');
     UPDATE informacion_pregrado SET es_empleado_utb=FALSE, tipo_contrato=NULL WHERE id_solicitud=solicitud_p;
 
+    -- Tarea 50: solo un documento de origen CONSULTA (Paz y Salvo) puede no tener archivo.
+    PERFORM pg_temp.debe_rechazar(format('INSERT INTO documentos(id_solicitud,tipo_documento,orden,version,estado) VALUES (%s,''saber_pro'',1,1,''CARGADO'')', solicitud_p), '23514');
+    PERFORM pg_temp.debe_rechazar(format('INSERT INTO documentos(id_solicitud,tipo_documento,orden,version,estado,origen,nombre_original,mime_type,tamano_bytes) VALUES (%s,''saber_pro'',1,1,''CARGADO'',''OTRO'',''a.pdf'',''application/pdf'',1)', solicitud_p), '23514');
+
     -- Tarea 42: ACEPTADA es un estado de la solicitud; un estado desconocido se rechaza.
     SELECT estado INTO prueba FROM solicitud_grado WHERE id_solicitud = solicitud_p;
     UPDATE solicitud_grado SET estado = 'ACEPTADA' WHERE id_solicitud = solicitud_p;
