@@ -312,6 +312,14 @@
     justify-content: space-between;
   }
 
+  .bienvenidaPrincipal {
+    min-width: 0;
+  }
+
+  .accionesBienvenida {
+    flex: 1;
+  }
+
   .bienvenidaAccion {
     flex-shrink: 0;
     align-self: center;
@@ -372,4 +380,5 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
+  justify-content: flex-end;
 }
