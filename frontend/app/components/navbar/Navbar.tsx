@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState, type FocusEvent } from 'react';
 import BotonTema from '@/app/components/ui/BotonTema';
 import Icono, { type NombreIcono } from '@/app/components/ui/Icono';
+import { desplazarAAncla } from '@/app/lib/anclas';
 import styles from './Navbar.module.css';
 
 interface NavbarProps {
@@ -172,7 +173,12 @@ export default function Navbar({
                       <Link
                         href={enlace.href}
                         className={styles.opcion}
-                        onClick={() => setAbierto(false)}
+                        onClick={() => {
+                          setAbierto(false);
+                          // Si el ancla ya está en la página, Next no vuelve a
+                          // desplazarse (por ejemplo, al repetir el mismo hash).
+                          desplazarAAncla(enlace.href);
+                        }}
                       >
                         <Icono nombre={enlace.icono} />
                         {enlace.texto}

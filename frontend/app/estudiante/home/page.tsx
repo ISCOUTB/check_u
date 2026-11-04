@@ -9,6 +9,7 @@ import PageHeader from '@/app/components/ui/PageHeader';
 
 import { useEstadoNavegacion } from '@/app/lib/useEstadoNavegacion';
 import { useSesion } from '@/app/lib/useSesion';
+import { desplazarAAncla } from '@/app/lib/anclas';
 
 import { obtenerSolicitudes } from '../solicitudes/api';
 import type { SolicitudListado } from '../solicitudes/listado';
@@ -159,6 +160,30 @@ export default function Home() {
   const cargando =
     cargandoSesion || (Boolean(usuario) && cargandoEstado && !errorEstado);
 
+  const datosListos =
+    resumenListado !== null &&
+    (resumenListado.reciente === null ||
+      solicitud !== undefined ||
+      Boolean(errorSolicitud));
+
+  /**
+   * El navegador y Next.js solo desplazan al ancla cuando el destino ya existe.
+   * Al entrar con `#notificaciones` (o al navegar desde otra página) el home
+   * muestra primero "Verificando sesión...", así que el desplazamiento se
+   * repite cuando el contenido ya está montado.
+   */
+  useEffect(() => {
+    if (!usuario || cargando || errorEstado || !datosListos) return;
+
+    const irAlAncla = () => {
+      desplazarAAncla(window.location.hash);
+    };
+
+    irAlAncla();
+    window.addEventListener('hashchange', irAlAncla);
+    return () => window.removeEventListener('hashchange', irAlAncla);
+  }, [usuario, cargando, errorEstado, datosListos]);
+
   if (cargando || !usuario) {
     return (
       <main
@@ -197,12 +222,6 @@ export default function Home() {
       </main>
     );
   }
-
-  const datosListos =
-    resumenListado !== null &&
-    (resumenListado.reciente === null ||
-      solicitud !== undefined ||
-      Boolean(errorSolicitud));
 
   const hrefContinuar = '/estudiante/preinscripcion';
   const nombreNivel = nivelEfectivo === 'PREGRADO' ? 'pregrado' : 'posgrado';
