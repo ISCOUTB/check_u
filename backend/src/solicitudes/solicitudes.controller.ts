@@ -82,7 +82,7 @@ export class SolicitudesController {
   @UseInterceptors(
     FilesInterceptor('documentos', MAXIMO_DOCUMENTOS, {
       storage: memoryStorage(),
-      limits: { fileSize: 25 * 1024 * 1024, fieldSize: 1024 * 1024, fields: 3 },
+      limits: { fileSize: 5 * 1024 * 1024, fieldSize: 1024 * 1024, fields: 3 },
     }),
   )
   async enviarPreinscripcion(
@@ -128,10 +128,14 @@ export class SolicitudesController {
     const sesion = readSessionId(req);
     const user = sesion ? this.authService.getUser(sesion) : null;
     if (!user) throw new UnauthorizedException('Sesión no válida o expirada');
-    if (user.role !== 'funcionario') throw new ForbiddenException('Acceso restringido al rol autorizado.');
+    if (user.role !== 'funcionario')
+      throw new ForbiddenException('Acceso restringido al rol autorizado.');
     const a = await this.reenvios.originalFuncionario(id);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(a.nombre)}`);
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename*=UTF-8''${encodeURIComponent(a.nombre)}`,
+    );
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(a.bytes);

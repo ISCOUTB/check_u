@@ -26,6 +26,7 @@ export const MENSAJE_PAZ_Y_SALVO_NO_SE_SUBE =
   'Paz y Salvo se consulta automáticamente con Biblioteca; no se sube.';
 
 export function validarArchivos(archivos: PdfPreinscripcion[]) {
+  const MAX_PDF_BYTES = 5 * 1024 * 1024;
   if (!archivos.length || archivos.length > MAXIMO_DOCUMENTOS)
     throw new BadRequestException(
       'Adjunta nuevamente los PDF requeridos para enviar la preinscripción.',
@@ -41,15 +42,16 @@ export function validarArchivos(archivos: PdfPreinscripcion[]) {
       );
     claves.add(a.tipo);
     total += a.buffer.length;
+
     if (
       a.mimetype !== 'application/pdf' ||
       a.buffer.length === 0 ||
-      a.buffer.length > 25 * 1024 * 1024 ||
+      a.buffer.length > MAX_PDF_BYTES ||
       a.buffer.subarray(0, 5).toString() !== '%PDF-' ||
       a.originalname.length > 255
     )
       throw new BadRequestException(
-        'Los documentos deben ser PDF válidos de hasta 25 MB.',
+        'Los documentos deben ser PDF válidos de hasta 5 MB.',
       );
   }
   // El motor admite 25 MB por solicitud; cada PDF se transmite individualmente.

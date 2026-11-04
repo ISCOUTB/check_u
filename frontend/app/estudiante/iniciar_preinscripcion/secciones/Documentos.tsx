@@ -1,153 +1,151 @@
-"use client";
+'use client';
 
-import { useRef, useState } from "react";
-import { documentosRequeridos, type DocumentoDelFormulario } from "@/app/estudiante/documentos-requeridos";
-import { tamanoMaximoPdfBytes } from "../api";
-import type { DocumentoCargado } from "../tipos";
+import { useRef, useState } from 'react';
 import {
-    idDocumento,
-    MENSAJE_NO_ES_PDF,
-    tieneFirmaPdf,
-    validarPdf,
-    type Progreso,
-} from "../validacion";
-import ZonaDocumento from "../ZonaDocumento";
-import styles from "../iniciar_preinscripcion.module.css";
-import { Seccion, type PropsSeccion } from "./comun";
+  documentosRequeridos,
+  type DocumentoDelFormulario,
+} from '@/app/estudiante/documentos-requeridos';
+import type { DocumentoCargado } from '../tipos';
+import {
+  idDocumento,
+  mensajeRechazoArchivo,
+  TAMANO_MAXIMO_PDF_BYTES,
+  tieneFirmaPdf,
+  validarPdf,
+  type Progreso,
+} from '../validacion';
+import ZonaDocumento from '../ZonaDocumento';
+import styles from '../iniciar_preinscripcion.module.css';
+import { Seccion, type PropsSeccion } from './comun';
 
 /** Tamaño máximo de un PDF o null si no hay límite configurado. */
-const MAXIMO_PDF = tamanoMaximoPdfBytes();
+const MAXIMO_PDF = TAMANO_MAXIMO_PDF_BYTES;
 
 export default function Documentos({
-    borrador,
-    cambiar,
-    errores,
-    progreso,
+  borrador,
+  cambiar,
+  errores,
+  progreso,
 }: PropsSeccion & { progreso: Progreso }) {
-    const [rechazos, setRechazos] = useState<Record<string, string>>({});
-    const [aviso, setAviso] = useState({ texto: "", vez: 0 });
+  const [rechazos, setRechazos] = useState<Record<string, string>>({});
+  const [aviso, setAviso] = useState({ texto: '', vez: 0 });
 
-    const avisar = (texto: string) =>
-        setAviso((anterior) => ({
-            texto,
-            vez: anterior.vez + 1,
-        }));
+  const avisar = (texto: string) =>
+    setAviso((anterior) => ({
+      texto,
+      vez: anterior.vez + 1,
+    }));
 
-    const documentos = documentosRequeridos(borrador.nivel, borrador.segundoPrograma === true);
-    const { cargados, requeridos } = progreso.documentos;
+  const documentos = documentosRequeridos(
+    borrador.nivel,
+    borrador.segundoPrograma === true,
+  );
+  const { cargados, requeridos } = progreso.documentos;
 
-    // Evita aplicar el resultado de una selección anterior de archivo.
-    const elecciones = useRef<Record<string, number>>({});
+  // Evita aplicar el resultado de una selección anterior de archivo.
+  const elecciones = useRef<Record<string, number>>({});
 
-    const nuevaEleccion = (documento: DocumentoDelFormulario) => {
-        elecciones.current[documento.id] =
-            (elecciones.current[documento.id] ?? 0) + 1;
+  const nuevaEleccion = (documento: DocumentoDelFormulario) => {
+    elecciones.current[documento.id] =
+      (elecciones.current[documento.id] ?? 0) + 1;
 
-        return elecciones.current[documento.id];
+    return elecciones.current[documento.id];
+  };
+
+  const revisar = async (archivo: File): Promise<string | null> => {
+    const rechazo = validarPdf(archivo, MAXIMO_PDF);
+
+    if (rechazo) return rechazo;
+
+    try {
+      return (await tieneFirmaPdf(archivo))
+        ? null
+        : mensajeRechazoArchivo(archivo);
+    } catch {
+      return 'No fue posible leer el archivo. Vuelve a seleccionarlo.';
+    }
+  };
+
+  const cargar = async (documento: DocumentoDelFormulario, archivo: File) => {
+    const eleccion = nuevaEleccion(documento);
+    const rechazo = await revisar(archivo);
+
+    if (elecciones.current[documento.id] !== eleccion) return;
+
+    setRechazos((actual) => ({
+      ...actual,
+      [documento.id]: rechazo ?? '',
+    }));
+
+    if (rechazo) {
+      avisar(`${documento.etiqueta}: ${rechazo}`);
+      return;
+    }
+
+    const cargado: DocumentoCargado = {
+      archivo,
+      id: documento.id,
+      nombre: archivo.name,
+      tamano: archivo.size,
     };
 
-    const revisar = async (archivo: File): Promise<string | null> => {
-        const rechazo = validarPdf(archivo, MAXIMO_PDF);
+    cambiar((b) => ({
+      ...b,
+      documentos: {
+        ...b.documentos,
+        [documento.id]: cargado,
+      },
+    }));
 
-        if (rechazo) return rechazo;
+    avisar(`${documento.etiqueta}: ${archivo.name} cargado.`);
+  };
 
-        try {
-            return (await tieneFirmaPdf(archivo))
-                ? null
-                : MENSAJE_NO_ES_PDF;
-        } catch {
-            return "No fue posible leer el archivo. Vuelve a seleccionarlo.";
-        }
-    };
+  const quitar = (documento: DocumentoDelFormulario) => {
+    nuevaEleccion(documento);
 
-    const cargar = async (
-        documento: DocumentoDelFormulario,
-        archivo: File,
-    ) => {
-        const eleccion = nuevaEleccion(documento);
-        const rechazo = await revisar(archivo);
+    cambiar((b) => {
+      const restantes = { ...b.documentos };
+      delete restantes[documento.id];
 
-        if (elecciones.current[documento.id] !== eleccion) return;
+      return {
+        ...b,
+        documentos: restantes,
+      };
+    });
 
-        setRechazos((actual) => ({
-            ...actual,
-            [documento.id]: rechazo ?? "",
-        }));
+    setRechazos((actual) => ({
+      ...actual,
+      [documento.id]: '',
+    }));
 
-        if (rechazo) {
-            avisar(`${documento.etiqueta}: ${rechazo}`);
-            return;
-        }
+    avisar(`${documento.etiqueta}: archivo quitado.`);
+  };
 
-        const cargado: DocumentoCargado = {
-            archivo,
-            id: documento.id,
-            nombre: archivo.name,
-            tamano: archivo.size,
-        };
+  return (
+    <Seccion
+      id="documentos"
+      descripcion="Cada documento va en su propio archivo PDF. Si recargas un borrador, selecciona nuevamente los PDF antes de enviar."
+    >
+      <p className={styles.contador}>
+        {cargados} de {requeridos} documentos cargados
+      </p>
 
-        cambiar((b) => ({
-            ...b,
-            documentos: {
-                ...b.documentos,
-                [documento.id]: cargado,
-            },
-        }));
+      <ul className={styles.zonas}>
+        {documentos.map((documento) => (
+          <ZonaDocumento
+            key={documento.id}
+            documento={documento}
+            cargado={borrador.documentos[documento.id]}
+            error={rechazos[documento.id] || errores[idDocumento(documento.id)]}
+            alCargar={(archivo) => void cargar(documento, archivo)}
+            alQuitar={() => quitar(documento)}
+          />
+        ))}
+      </ul>
 
-        avisar(`${documento.etiqueta}: ${archivo.name} cargado.`);
-    };
-
-    const quitar = (documento: DocumentoDelFormulario) => {
-        nuevaEleccion(documento);
-
-        cambiar((b) => {
-            const restantes = { ...b.documentos };
-            delete restantes[documento.id];
-
-            return {
-                ...b,
-                documentos: restantes,
-            };
-        });
-
-        setRechazos((actual) => ({
-            ...actual,
-            [documento.id]: "",
-        }));
-
-        avisar(`${documento.etiqueta}: archivo quitado.`);
-    };
-
-    return (
-        <Seccion
-            id="documentos"
-            descripcion="Cada documento va en su propio archivo PDF. Si recargas un borrador, selecciona nuevamente los PDF antes de enviar."
-        >
-            <p className={styles.contador}>
-                {cargados} de {requeridos} documentos cargados
-            </p>
-
-            <ul className={styles.zonas}>
-                {documentos.map((documento) => (
-                    <ZonaDocumento
-                        key={documento.id}
-                        documento={documento}
-                        cargado={borrador.documentos[documento.id]}
-                        error={
-                            rechazos[documento.id] ||
-                            errores[idDocumento(documento.id)]
-                        }
-                        alCargar={(archivo) =>
-                            void cargar(documento, archivo)
-                        }
-                        alQuitar={() => quitar(documento)}
-                    />
-                ))}
-            </ul>
-
-            <p className="solo-lector" aria-live="polite">
-                <span key={aviso.vez}>{aviso.texto}</span>
-            </p>
-        </Seccion>
-    );
+      <p className="solo-lector" aria-live="polite">
+        <span key={aviso.vez}>{aviso.texto}</span>
+      </p>
+    </Seccion>
+  );
 }
