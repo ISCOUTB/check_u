@@ -16,11 +16,12 @@
 # .\levantar.ps1                 (entorno completo)
 # .\levantar.ps1 --only-db       (solo PostgreSQL y migraciones)
 # .\levantar.ps1 --reset-db      (respaldar y reconstruir la BD)
+# .\levantar.ps1 --only-ocr      (reconstruir y levantar solo el motor OCR)
 # ============================================================
 
 $ErrorActionPreference = 'Stop'
 
-$argumentosPermitidos = @('--only-db', '--reset-db')
+$argumentosPermitidos = @('--only-db', '--reset-db', '--only-ocr')
 $argumentosNoReconocidos = @(
   $args | Where-Object { $_ -notin $argumentosPermitidos }
 )
@@ -29,12 +30,18 @@ if ($argumentosNoReconocidos.Count -gt 0) {
   throw "Parametro no reconocido: $($argumentosNoReconocidos -join ', ')"
 }
 
-if (($args -contains '--only-db') -and ($args -contains '--reset-db')) {
-  throw 'No puedes combinar --only-db y --reset-db.'
+$conteoBanderas = 0
+if ($args -contains '--only-db') { $conteoBanderas++ }
+if ($args -contains '--reset-db') { $conteoBanderas++ }
+if ($args -contains '--only-ocr') { $conteoBanderas++ }
+
+if ($conteoBanderas -gt 1) {
+  throw 'No puedes combinar las banderas --only-db, --reset-db y --only-ocr.'
 }
 
 $soloBaseDatos = $args -contains '--only-db'
 $reiniciarBaseDatos = $args -contains '--reset-db'
+$soloOCR = $args -contains '--only-ocr'
 
 $raiz = $PSScriptRoot
 
@@ -199,12 +206,17 @@ function Install-Dependencies {
 
 function Start-ComposeService {
   param(
-    [string]$Servicio
+    [string]$Servicio,
+    [switch]$Build
   )
 
-  Invoke-Docker -Argumentos @(
-    'compose', '-f', $compose, 'up', '-d', $Servicio
-  )
+  $argumentos = @('compose', '-f', $compose, 'up', '-d')
+  if ($Build) {
+    $argumentos += '--build'
+  }
+  $argumentos += $Servicio
+
+  Invoke-Docker -Argumentos $argumentos
 }
 
 # ------------------------------------------------------------
@@ -331,6 +343,9 @@ try {
   elseif ($reiniciarBaseDatos) {
     Write-Host "`n===== CHECKU: REINICIO DE BASE DE DATOS =====" -ForegroundColor Cyan
   }
+  elseif ($soloOCR) {
+    Write-Host "`n===== CHECKU: RECONSTRUIR MOTOR OCR =====" -ForegroundColor Cyan
+  }
   else {
     Write-Host "`n===== CHECKU: LEVANTAR ENTORNO LOCAL =====" -ForegroundColor Cyan
   }
@@ -343,19 +358,21 @@ try {
     throw 'No se encontro el archivo Compose local.'
   }
 
-  if (-not (Test-Path $schema)) {
-    throw "No se encontro $schema"
+  if (-not $soloOCR) {
+    if (-not (Test-Path $schema)) {
+      throw "No se encontro $schema"
+    }
+
+    if (-not (Test-Path $userbase)) {
+      throw "No se encontro $userbase"
+    }
+
+    if (-not (Test-Path $migraciones -PathType Container)) {
+      throw "No se encontro la carpeta db/migrations."
+    }
   }
 
-  if (-not (Test-Path $userbase)) {
-    throw "No se encontro $userbase"
-  }
-
-  if (-not (Test-Path $migraciones -PathType Container)) {
-    throw "No se encontro la carpeta db/migrations."
-  }
-
-  if (-not $soloBaseDatos) {
+  if (-not $soloBaseDatos -and -not $soloOCR) {
     if (-not (Test-Path (Join-Path $raiz 'backend\package.json'))) {
       throw 'No existe backend\package.json'
     }
@@ -373,10 +390,15 @@ try {
 
   if (-not $soloBaseDatos) {
 
-    Write-Host "`n[1/7] Iniciando OCR..." -ForegroundColor Yellow
-
-    # No utiliza --build: reutiliza la imagen existente.
-    Start-ComposeService -Servicio 'ocr'
+    if ($soloOCR) {
+      Write-Host "`n[1/7] Reconstruyendo e iniciando OCR (--build)..." -ForegroundColor Yellow
+      Start-ComposeService -Servicio 'ocr' -Build
+    }
+    else {
+      Write-Host "`n[1/7] Iniciando OCR..." -ForegroundColor Yellow
+      # No utiliza --build: reutiliza la imagen existente.
+      Start-ComposeService -Servicio 'ocr'
+    }
 
     $ocrIniciado = $false
 
@@ -403,6 +425,14 @@ try {
     if (-not (Test-MotorOCR)) {
       & docker compose -f $compose logs --tail 100 ocr
       throw 'El motor OCR no respondio correctamente.'
+    }
+
+    if ($soloOCR) {
+      Write-Host "`n===== MOTOR OCR RECONSTRUIDO Y LISTO =====" -ForegroundColor Green
+      Write-Host 'OCR:       http://localhost:5001'
+      Write-Host 'Salud OCR: http://localhost:5001/salud'
+      Write-Host 'No se iniciaron base de datos, backend ni frontend.'
+      exit 0
     }
   }
 
