@@ -80,3 +80,20 @@ def cargar_config(
         max_reintentos=max_reintentos,
         page_size=page_size,
     )
+
+def crear_cliente():
+    """Cliente según ALMA_MODO: «simulado» (por defecto, lee ALMA_SIMULACION_ARCHIVO) o «real».
+
+    Los consumidores solo usan usuario/prestamos/multas/solicitudes, así que pasar a la API real
+    es cambiar esta variable.
+    """
+    # Importación diferida: cliente.py y simulado.py importan este módulo.
+    from .cliente import AlmaCliente
+    from .simulado import AlmaClienteSimulado
+
+    modo = os.environ.get("ALMA_MODO", "").strip().lower() or "simulado"
+    if modo == "simulado":
+        return AlmaClienteSimulado()
+    if modo == "real":
+        return AlmaCliente()
+    raise AlmaConfigError("ALMA_MODO debe ser «simulado» o «real».")

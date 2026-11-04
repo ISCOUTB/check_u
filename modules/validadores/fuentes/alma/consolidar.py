@@ -1,4 +1,8 @@
-"""Consolida los tres criterios en estado general, paz_y_salvo y acciones."""
+"""Consolida préstamos, multas y solicitudes en estado general, paz_y_salvo y acciones.
+
+Tarea 50: la opción de grado ya no entra en la consolidación (su fuente sigue sin definirse) y
+se informa aparte como dato informativo.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +16,7 @@ EstadoGeneral = Literal["cumple", "no_cumple", "no_evaluable"]
 def consolidar_estado(
     prestamos: Criterio,
     multas: Criterio,
-    opcion_grado: Criterio,
+    solicitudes: Criterio,
 ) -> tuple[EstadoGeneral, bool | None]:
     """Reglas del issue:
 
@@ -20,7 +24,7 @@ def consolidar_estado(
     - ninguno no_cumple pero alguno no_evaluable → no_evaluable, null
     - los tres cumple → cumple, true
     """
-    criterios = (prestamos, multas, opcion_grado)
+    criterios = (prestamos, multas, solicitudes)
 
     if any(c.resultado == "no_cumple" for c in criterios):
         return "no_cumple", False
@@ -32,25 +36,25 @@ def consolidar_estado(
 def acciones_requeridas(
     prestamos: Criterio,
     multas: Criterio,
-    opcion_grado: Criterio,
+    solicitudes: Criterio,
 ) -> list[str]:
     acciones: list[str] = []
     if prestamos.resultado == "no_cumple":
         acciones.append("Devolver los préstamos pendientes en Biblioteca.")
     if multas.resultado == "no_cumple":
         acciones.append("Pagar los cargos pendientes en Biblioteca.")
-    if opcion_grado.resultado == "no_cumple":
-        acciones.append("Completar la entrega de la opción de grado.")
+    if solicitudes.resultado == "no_cumple":
+        acciones.append("Cerrar o cancelar las solicitudes pendientes en Biblioteca.")
     return acciones
 
 
-def mensaje_general(estado: EstadoGeneral, prestamos: Criterio, multas: Criterio, opcion_grado: Criterio) -> str:
+def mensaje_general(estado: EstadoGeneral, prestamos: Criterio, multas: Criterio, solicitudes: Criterio) -> str:
     if estado == "cumple":
         return "El estudiante cumple los criterios consultados de paz y salvo."
     if estado == "no_cumple":
         partes = [
             c.mensaje
-            for c in (prestamos, multas, opcion_grado)
+            for c in (prestamos, multas, solicitudes)
             if c.resultado == "no_cumple"
         ]
         return " ".join(partes) if partes else "El estudiante no cumple uno o más criterios."
@@ -65,7 +69,7 @@ def criterio_a_dict(nombre: str, c: Criterio) -> dict[str, Any]:
         "motivo": c.motivo,
         "mensaje": c.mensaje,
     }
-    if nombre == "prestamos":
+    if nombre in ("prestamos", "solicitudes"):
         base["pendientes"] = c.pendientes
     elif nombre == "multas":
         base["pendientes"] = c.pendientes
@@ -73,4 +77,5 @@ def criterio_a_dict(nombre: str, c: Criterio) -> dict[str, Any]:
         base["moneda"] = c.moneda
     elif nombre == "opcion_grado":
         base["entregada"] = c.entregada
+        base["informativo"] = True
     return base

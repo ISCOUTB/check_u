@@ -20,6 +20,7 @@ Hoy existen el de **Saber Pro** (Tarea 08e), el de **cédula** (Tarea 08a) y el 
 | `saber_pro/certificados/` | Certificados públicos de Camerfirma Colombia (ver su README). |
 | `consola.py` | Comando compartido para probar un validador con archivos propios (`python -m modules.validadores.<tipo>`). |
 | `fuentes/rui.py` | Adaptador del RUI: `consultar_rui(numero)` → encontrado / sin registro / sin respuesta. |
+| `fuentes/alma/` | Paz y Salvo de Biblioteca (Tareas 21 y 50): cliente real y simulado (`ALMA_MODO`), criterios de préstamos, multas y solicitudes, y `consultar_para_checku` (contraste de identidad). El motor lo expone en `POST /biblioteca/paz-y-salvo`. Ver `docs/tarea50_paz_y_salvo_alma.md`. |
 | `cedula/__init__.py` | `validar_cedula(contenido, id_student=…, document_version=…)`. |
 | `cedula/paginas.py`, `cedula/calidad.py` | PDF o imagen → páginas; resolución y nitidez de cada página. |
 | `cedula/extraccion.py` | Adapta lo que devuelve `leer_cedula` (modules/cedula) a datos con confianza; reconoce la versión de la cédula. |

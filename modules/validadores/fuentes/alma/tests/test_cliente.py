@@ -82,3 +82,20 @@ def test_paginacion_dos_paginas():
     assert lista.completo is True
     assert len(lista.items) == 2
     assert session.get.call_count == 2
+
+def test_cliente_real_usuario():
+    """Tarea 50: GET /almaws/v1/users/{id}; un 404 es «no existe en ALMA», no un error."""
+    session = MagicMock()
+    ok = MagicMock()
+    ok.status_code = 200
+    ok.json.return_value = {"primary_id": "T0001", "first_name": "Ana"}
+    session.get.return_value = ok
+    cliente = AlmaCliente(_cfg(), session=session, sleep=lambda _s: None)
+    assert cliente.usuario("T0001")["primary_id"] == "T0001"
+    args, _ = session.get.call_args
+    assert args[0].endswith("/almaws/v1/users/T0001")
+
+    no = MagicMock()
+    no.status_code = 404
+    session.get.return_value = no
+    assert cliente.usuario("T0001") is None
