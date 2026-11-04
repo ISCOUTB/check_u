@@ -4,7 +4,6 @@ import Button from '@/app/components/ui/Button';
 import Icono from '@/app/components/ui/Icono';
 import type { SolicitudListado } from '../solicitudes/listado';
 import { presentarEstado } from '../solicitudes/listado';
-import BotonSolicitudes from './BotonSolicitudes';
 import styles from './home.module.css';
 
 interface SeccionBienvenidaProps {
@@ -28,6 +27,10 @@ export default function SeccionBienvenida({
     ? `Revisa el estado de tu solicitud de ${nombreNivel}. Puedes consultar el historial completo o iniciar una nueva preinscripción.`
     : 'Cuando inicies una preinscripción aparecerá aquí con su estado y su periodo asignado.';
 
+  const revisarHref = reciente
+    ? `/estudiante/preinscripcion?solicitud=${encodeURIComponent(reciente.id)}`
+    : hrefContinuar;
+
   return (
     <section className={styles.bienvenida} aria-labelledby="titulo-bienvenida">
       <div className={styles.bienvenidaPrincipal}>
@@ -42,17 +45,19 @@ export default function SeccionBienvenida({
         </div>
       </div>
 
-      <div className={styles.accionesBienvenida}>
-        {reciente?.activa && (
-          <Button href={hrefContinuar} className={styles.bienvenidaAccion}>
-            Continuar mi preinscripción
-          </Button>
-        )}
-        <BotonSolicitudes />
-        <Button href="/estudiante/bienvenida" variante="secundario">
-          Nueva preinscripción
-        </Button>
-      </div>
+      {(reciente?.activa || reciente?.estado === 'CANCELADA') && (
+        <div className={styles.accionesBienvenida}>
+          {reciente?.activa ? (
+            <Button href={hrefContinuar} className={styles.bienvenidaAccion}>
+              Continuar mi preinscripción
+            </Button>
+          ) : (
+            <Button href={revisarHref} className={styles.bienvenidaAccion}>
+              Revisar
+            </Button>
+          )}
+        </div>
+      )}
     </section>
   );
 }
