@@ -296,7 +296,7 @@
 }
 
 .motivo {
-  color: var(--status-invalid-text);
+  color: var(--color-text-secondary);
 }
 
 .documentoAccion {
