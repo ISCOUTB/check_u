@@ -64,7 +64,7 @@ El proyecto se organiza en componentes independientes:
 | Motor documental | Módulos Python del proyecto | OCR, extracción y validación documental. |
 | Infraestructura local | `docker-compose.local.yml` o `docker.compose.local.yml` | Servicios de desarrollo local. |
 | Despliegue | Configuración de Dokploy | Despliegue del proyecto en el entorno correspondiente. |
-| Arranque local | `levantar.ps1` | Preparación de la base de datos e inicio del frontend y backend. |
+| Arranque local | `levantar.ps1` | Preparación de la base de datos, motor OCR e inicio del frontend y backend (`--only-db`, `--only-ocr`, `--reset-db`). |
 | Respaldos locales | `backups/` | Copias de seguridad SQL excluidas del repositorio. |
 
 La disponibilidad de cada funcionalidad depende de su estado de implementación e integración.
@@ -335,43 +335,53 @@ Por eso, cualquier cambio de esquema debe probarse primero en una base de desarr
 
 ### Funcionamiento de `levantar.ps1`
 
-El script ubicado en la raíz del repositorio permite iniciar el entorno local de CheckU reconstruyendo la base de datos desde los archivos SQL actuales.
+El script ubicado en la raíz del repositorio (`levantar.ps1`) prepara y gestiona la infraestructura local de CheckU (motor OCR, base de datos PostgreSQL, migraciones, dependencias y aplicaciones).
 
-Ejecuta desde PowerShell:
+Utiliza exclusivamente `docker-compose.local.yml`, conserva las dependencias instaladas y los datos de PostgreSQL por defecto, no reconstruye imágenes Docker en cada ejecución y aplica automáticamente las migraciones pendientes de `db/migrations`.
+
+#### Modos de uso:
+
+Ejecuta desde PowerShell en la raíz del proyecto:
 
 ```powershell
 cd C:\check_u
+
+# 1. Entorno completo (OCR + PostgreSQL + migraciones + backend + frontend):
 .\levantar.ps1
+
+# 2. Solo base de datos (inicia PostgreSQL y aplica migraciones sin backend/frontend/OCR):
+.\levantar.ps1 --only-db
+
+# 3. Solo motor OCR (reconstruye la imagen con --build y verifica /salud sin iniciar BD ni apps):
+.\levantar.ps1 --only-ocr
+
+# 4. Reconstrucción de la base de datos (respalda y recrea la BD limpia desde 01-schema y 02-userbase):
+.\levantar.ps1 --reset-db
 ```
 
-El flujo previsto es:
+#### Flujo de ejecución general:
 
-1. Verificar los archivos requeridos y la disponibilidad de Docker.
-2. Levantar el servicio PostgreSQL.
-3. Esperar a que PostgreSQL esté listo.
-4. Crear un respaldo SQL de la base anterior, si existe.
-5. Eliminar la base de datos local anterior y crear una nueva.
-6. Importar `db/init/01-schema.sql`.
-7. Importar `db/init/02-userbase.sql`.
-8. Comprobar que la nueva base responda correctamente.
-9. Iniciar el backend y el frontend en terminales independientes.
+1. **Validación:** Comprueba la disponibilidad de Docker y los archivos requeridos del proyecto.
+2. **Motor OCR (puerto 5001):** Inicia el contenedor `checku-ocr-local` (reconstruyendo con `--build` cuando se pasa `--only-ocr`) y valida su salud en `http://localhost:5001/salud`. Con `--only-ocr`, finaliza aquí exitosamente.
+3. **PostgreSQL (puerto 5432):** Inicia el contenedor `checku-db-local` y espera hasta alcanzar el estado *healthy*.
+4. **Base de datos (`checku_local`):**
+   - **Por defecto:** Si la base ya existe, conserva todos los datos y verifica el esquema sin modificarlos.
+   - **Con `--reset-db`:** Si se solicita reinicio o la base no existe, genera un respaldo previo en `backups/`, elimina la base anterior y crea una vacía.
+5. **Esquema y usuarios base:** Aplica `db/init/01-schema.sql` y `db/init/02-userbase.sql` de manera idempotente.
+6. **Migraciones:** Ejecuta en orden alfabético las migraciones pendientes de `db/migrations/` y las registra en la tabla `schema_migrations`. Con `--only-db`, finaliza aquí exitosamente.
+7. **Aplicaciones:** Si no se usaron banderas de terminación temprana, instala dependencias faltantes (`npm ci` / `npm install`) e inicia el backend (`npm run start:dev` en puerto 3000) y frontend (`npm run dev` en puerto 3001) en ventanas independientes.
 
-Si falla una operación crítica, el script debe detenerse y mostrar el error. No debe continuar con la importación o el arranque como si todo hubiera salido bien.
+Si falla una operación crítica, el script se detiene inmediatamente (`$ErrorActionPreference = 'Stop'`) y muestra el mensaje de error.
 
-### Advertencia: se pierden los datos operativos
+### Advertencia: reconstrucción con `--reset-db`
 
-Cada ejecución de `levantar.ps1` que complete la fase de reconstrucción reemplaza la base activa.
+Por defecto, `.\levantar.ps1` **conserva tus datos**. La reconstrucción con pérdida de datos solo ocurre explíticamente al indicar `--reset-db`:
 
-Esto significa que se pierden los datos locales que no estén incluidos en los SQL de inicialización, por ejemplo:
+- Genera un respaldo automático en `backups/checku_<fecha>.sql`.
+- Elimina y recrea la base `checku_local`.
+- Se pierden los datos locales que no estén incluidos en los SQL de inicialización (usuarios creados en pruebas, solicitudes cargadas, documentos y estados de prueba).
 
-- Usuarios creados manualmente durante las pruebas.
-- Solicitudes de grado de prueba.
-- Documentos y estados registrados en la base.
-- Comentarios e información transaccional.
-
-Los usuarios base y demás datos incluidos en los scripts se vuelven a cargar.
-
-**No ejecutes este script contra una base de datos de producción ni contra una base con información que debas conservar.**
+**No ejecutes este script contra una base de datos de producción ni utilices `--reset-db` si tienes información de prueba que debas conservar.**
 
 ### Respaldos locales
 
