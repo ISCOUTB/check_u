@@ -75,7 +75,7 @@ export default function TarjetaSolicitudReciente({
   if (resumenListado.reciente === null) {
     return (
       <Card titulo="Mi solicitud de grado" id="mi-solicitud">
-        <p className={styles.textoSecundario}>
+        <p className={styles.textoSecundario} style={{ marginBottom: '15px' }}>
           No tienes solicitudes registradas todavía.
         </p>
         <Button href="/estudiante/bienvenida">Nueva preinscripción</Button>
