@@ -1,6 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { ANCHOS, API, DETALLE_FUNCIONARIA, revisarAxe, sesionComo, TEMAS } from './soporte';
 const DETALLE = '/funcionario/detalle_preinscripcion/1';
+
+async function abrirPestana(page: Page, nombre: string) {
+    await page.getByRole('tab', { name: nombre, exact: true }).click();
+}
+
 test.beforeEach(async ({page}) => { await page.emulateMedia({reducedMotion:'reduce'}); });
 
 for (const tema of TEMAS) for (const ancho of ANCHOS) {
@@ -9,7 +14,7 @@ for (const tema of TEMAS) for (const ancho of ANCHOS) {
         await page.setViewportSize({width:ancho,height:1000});
         await page.emulateMedia({colorScheme:tema,reducedMotion:'reduce'});
         await page.goto(DETALLE);
-        await expect(page.getByRole('heading',{name:'Acciones de revisión',exact:true})).toBeVisible();
+        await expect(page.getByRole('heading',{name:'Resumen documental',exact:true})).toBeVisible();
         await revisarAxe(page);
         expect(await page.evaluate(() => document.documentElement.scrollWidth-window.innerWidth)).toBeLessThanOrEqual(0);
     });
@@ -19,7 +24,9 @@ test('sin sesión redirige al login',async ({page}) => {
 });
 test('consulta información y análisis persistidos, conserva foco al cerrar',async ({page}) => {
     await sesionComo(page,'funcionario'); await page.goto(DETALLE);
+    await abrirPestana(page, 'Información del estudiante');
     await expect(page.getByLabel('Tipo de discapacidad')).toHaveValue('Física');
+    await abrirPestana(page, 'Documentos');
     const abrir=page.getByRole('button',{name:'Ver análisis automático: Documento de identidad'});
     await abrir.click();
     const dialogo=page.getByRole('dialog');
@@ -46,6 +53,7 @@ for(const [accion,boton,estado] of [
             await r.fulfill({status:201,json:{ok:true,idRevision:1}});
         });
         await page.goto(DETALLE);
+        await abrirPestana(page, 'Acciones de revisión');
         await page.getByRole('combobox',{name:'Acción',exact:true}).selectOption(accion);
         if(accion==='recarga') {
             await expect(page.getByRole('checkbox')).toHaveCount(1);
@@ -62,6 +70,7 @@ for(const [accion,boton,estado] of [
         await expect(dialogo).toBeHidden();
         if(estado==='ACEPTADA'||estado==='CERRADA') await expect(page.getByRole('button',{name:boton,exact:true})).toBeDisabled();
         await page.reload();
+        await abrirPestana(page, 'Acciones de revisión');
         await expect(page.getByRole('heading',{name:'Acciones de revisión',exact:true})).toBeVisible();
         expect(envios).toBe(1);
     });
@@ -70,6 +79,7 @@ test('cancelar confirmación no envía y corrección exige selección',async ({p
     await sesionComo(page,'funcionario'); let envios=0;
     await page.route(`${API}/funcionario/solicitudes/1/revisiones`,r=>{envios++;return r.fulfill({status:201,json:{ok:true}});});
     await page.goto(DETALLE);
+    await abrirPestana(page, 'Acciones de revisión');
     await page.getByRole('combobox',{name:'Acción',exact:true}).selectOption('recarga');
     await page.getByRole('button',{name:'Solicitar corrección',exact:true}).click();
     await expect(page.locator('main').getByRole('alert')).toContainText('Selecciona al menos');
@@ -82,14 +92,41 @@ test('fallo al guardar conserva comentario y obliga a consultar antes de repetir
     await sesionComo(page,'funcionario');
     await page.route(`${API}/funcionario/solicitudes/1/revisiones`,r=>r.fulfill({status:503,json:{message:'Base no disponible'}}));
     await page.goto(DETALLE);
+    await abrirPestana(page, 'Acciones de revisión');
     await page.getByLabel('Comentario (obligatorio)').fill('Conservar este comentario');
     await page.getByRole('button',{name:'Enviar comentario',exact:true}).click();
     await page.getByRole('button',{name:'Confirmar acción',exact:true}).click();
     await expect(page.locator('main').getByRole('alert')).toContainText('Base no disponible');
     await expect(page.getByLabel('Comentario (obligatorio)')).toHaveValue('Conservar este comentario');
     await expect(page.getByRole('button',{name:'Enviar comentario',exact:true})).toBeDisabled();
-    await page.getByRole('button',{name:'Actualizar solicitud'}).click();
+    await page.getByRole('button',{name:'Recargar solicitud'}).click();
     await expect(page.getByRole('button',{name:'Enviar comentario',exact:true})).toBeEnabled();
+});
+test('el icono superior recarga la solicitud y muestra su tooltip', async ({page}) => {
+    await sesionComo(page,'funcionario');
+    let consultas=0;
+    await page.route(`${API}/funcionario/solicitudes/1`,r=>{consultas++;return r.fulfill({json:DETALLE_FUNCIONARIA});});
+    await page.goto(DETALLE);
+    await expect(page.getByRole('heading',{name:'Resumen documental',exact:true})).toBeVisible();
+    const recargar=page.getByRole('button',{name:'Recargar solicitud',exact:true});
+    await expect(recargar).toHaveAttribute('title','Recargar solicitud');
+    await expect(page.getByText('Actualizar solicitud')).toHaveCount(0);
+    await recargar.hover();
+    await expect(page.getByText('Recargar solicitud',{exact:true})).toBeVisible();
+    expect(consultas).toBe(1);
+    await recargar.click();
+    await expect.poll(()=>consultas).toBe(2);
+});
+test('el formulario anuncia el resumen de 15 caracteres y el historial conserva el comentario completo', async ({page}) => {
+    await sesionComo(page,'funcionario');
+    const comentario='Este comentario es mucho más largo que quince caracteres y debe conservarse completo.';
+    await page.route(`${API}/funcionario/solicitudes/1`,r=>r.fulfill({json:{...DETALLE_FUNCIONARIA,
+        revisiones:[{id:'1',resultado:'POR_REVISAR',comentario,funcionario:'Rafael Prueba',fecha:'2026-10-05T15:00:00.000Z',documentos:[]}]}}));
+    await page.goto(DETALLE);
+    await abrirPestana(page, 'Acciones de revisión');
+    await expect(page.getByText(/primeros 15 caracteres/)).toBeVisible();
+    await abrirPestana(page, 'Historial de revisiones');
+    await expect(page.getByText(comentario,{exact:true})).toBeVisible();
 });
 test('solicitud inexistente no presenta datos de ejemplo ni acciones',async ({page})=>{
     await sesionComo(page,'funcionario');
@@ -104,6 +141,7 @@ test('solo se acepta una solicitud válida', async ({page}) => {
     await sesionComo(page,'funcionario');
     await page.route(`${API}/funcionario/solicitudes/1`,r=>r.fulfill({json:{...DETALLE_FUNCIONARIA,estadoSolicitud:'NO_VALIDA'}}));
     await page.goto(DETALLE);
+    await abrirPestana(page, 'Acciones de revisión');
     await expect(page.getByText('Estado:')).toContainText('No válida');
     await expect(page.getByRole('option',{name:'Aceptar solicitud'})).toHaveAttribute('disabled','');
     await expect(page.getByText('Solo se puede aceptar una solicitud válida.',{exact:true})).toBeVisible();
@@ -129,6 +167,7 @@ test('marcar válido un documento por revisar lo confirma y envía la resolució
         await r.fulfill({status:201,json:{ok:true,estadoSolicitud:'VALIDA'}});
     });
     await page.goto(DETALLE);
+    await abrirPestana(page, 'Documentos');
     await expect(page.getByRole('button',{name:/Marcar válido/})).toHaveCount(1);
     await page.getByRole('button',{name:'Marcar válido: Paz y Salvo de Biblioteca'}).click();
     const dialogo = page.getByRole('dialog');
@@ -151,6 +190,7 @@ test('marcar no válido exige el motivo antes de enviar', async ({page}) => {
         await r.fulfill({status:201,json:{ok:true,estadoSolicitud:'NO_VALIDA'}});
     });
     await page.goto(DETALLE);
+    await abrirPestana(page, 'Documentos');
     await page.getByRole('button',{name:'Marcar no válido: Paz y Salvo de Biblioteca'}).click();
     const dialogo = page.getByRole('dialog');
     await dialogo.getByRole('button',{name:'Confirmar'}).click();

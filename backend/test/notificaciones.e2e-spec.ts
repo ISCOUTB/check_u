@@ -589,6 +589,7 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
         const revision = await contextoFuncionaria.newPage();
         await revision.goto('http://127.0.0.1:3004/funcionario/dashboard');
         await revision.getByRole('link', {name:'Ver solicitud 1',exact:true}).first().click();
+        await revision.getByRole('tab',{name:'Acciones de revisión',exact:true}).click();
         await revision.getByLabel('Comentario (obligatorio)').fill('Revisa la información del formulario.');
         await revision.getByRole('button',{name:'Enviar comentario',exact:true}).click();
         await revision.getByRole('button',{name:'Confirmar acción',exact:true}).click();
@@ -597,14 +598,17 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
         await revision.getByRole('checkbox').first().check();
         await revision.getByRole('button',{name:'Solicitar corrección',exact:true}).click();
         await revision.getByRole('button',{name:'Confirmar acción',exact:true}).click();
-        await revision.getByText('Corrección solicitada',{exact:true}).waitFor();
+        await revision.getByRole('tab',{name:'Historial de revisiones',exact:true}).click();
+        await revision.locator('[role=tabpanel]:visible').getByText('Corrección solicitada',{exact:true}).waitFor();
         for (const accion of ['aceptada','anulada']) {
           const id = await solicitud();
           await revision.goto(`http://127.0.0.1:3004/funcionario/detalle_preinscripcion/${id}`);
+          await revision.getByRole('tab',{name:'Acciones de revisión',exact:true}).click();
           await revision.getByRole('combobox',{name:'Acción',exact:true}).selectOption(accion);
           await revision.getByRole('button',{name:accion==='aceptada'?'Aceptar solicitud':'Anular solicitud',exact:true}).click();
           await revision.getByRole('button',{name:'Confirmar acción',exact:true}).click();
-          await revision.getByText(accion==='aceptada'?'Solicitud aceptada':'Solicitud anulada',{exact:true}).waitFor();
+          await revision.getByRole('tab',{name:'Historial de revisiones',exact:true}).click();
+          await revision.locator('[role=tabpanel]:visible').getByText(accion==='aceptada'?'Solicitud aceptada':'Solicitud anulada',{exact:true}).waitFor();
         }
         await contextoFuncionaria.close();
         const contexto = await browser.newContext({
