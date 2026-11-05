@@ -60,3 +60,26 @@ export async function cancelarPreinscripcion(id: string): Promise<{estado:'CANCE
     throw e;
   } finally {clearTimeout(timer);}
 }
+
+/** Tarea 50: vuelve a consultar el Paz y Salvo en Biblioteca; cuenta como un reenvío del día. */
+export async function reconsultarPazYSalvo(id: string, clave: string): Promise<{estado:string}> {
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),15000);
+  try {
+    const r=await fetch(`${API_URL}/estudiante/solicitudes/${encodeURIComponent(id)}/paz-y-salvo/consulta`, {
+      method:'POST',credentials:'include',cache:'no-store',signal:controller.signal,
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({clave}),
+    });
+    const data=await r.json().catch(()=>null);
+    if (!r.ok) throw Object.assign(new Error(typeof data?.message==='string'?data.message:'No fue posible consultar Biblioteca.'), {estado:r.status});
+    return data;
+  } catch(e) {
+    if(controller.signal.aborted) throw new Error('La consulta a Biblioteca tardó demasiado. Revisa tu solicitud antes de reintentar.');
+    throw e;
+  } finally {clearTimeout(timer);}
+}
+
+/** Clave de un intento de «Consultar de nuevo»; se reutiliza en los reintentos (useConsultaPazYSalvo). */
+export function claveConsultaPazYSalvo(): string {
+  return `consulta-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+}

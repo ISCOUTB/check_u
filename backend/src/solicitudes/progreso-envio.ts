@@ -12,7 +12,7 @@ export function etapaDocumento(tipo: string, orden: number, doble: boolean) {
     academic_evaluation: doble
       ? `Verificando evaluación de grado expedida por Banner ${orden}.`
       : 'Verificando evaluación de grado expedida por Banner.',
-    paz_y_salvo_bib: 'Verificando paz y salvo con Biblioteca.',
+    paz_y_salvo_bib: 'Consultando Paz y Salvo en Biblioteca.',
     saber_pro: 'Verificando resultados Saber Pro.',
   };
   return (

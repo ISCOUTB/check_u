@@ -3,6 +3,8 @@ import { CancelacionesController } from './cancelaciones.controller.js';
 import { NotificacionesModule } from '../notificaciones/notificaciones.module.js';
 import { ReenviosService } from './reenvios.service.js';
 import { ResolucionesService } from './resoluciones.service.js';
+import { ConsultaPazYSalvoService } from './consulta-paz-y-salvo.service.js';
+import { ReconsultaPazYSalvoService } from './reconsulta-paz-y-salvo.service.js';
 import { PlazosSolicitudService } from './plazos-solicitud.service.js';
 import { DocumentosModule } from '../documentos/documentos.module.js';
 import { ArchivosTemporalesService } from './archivos-temporales.service.js';
@@ -27,6 +29,8 @@ import { SolicitudesService } from './solicitudes.service.js';
     CancelacionesService,
     ReenviosService,
     ResolucionesService,
+    ConsultaPazYSalvoService,
+    ReconsultaPazYSalvoService,
     PlazosSolicitudService,
     SolicitudesService,
     AnalisisPreinscripcionService,

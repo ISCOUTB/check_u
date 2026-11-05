@@ -7,19 +7,99 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { AppModule } from '../../src/app.module.js';
 import { DatabaseService } from '../../src/database/database.service.js';
-import {
-  BibliotecaService,
-  type RespuestaPazYSalvo,
-} from '../../src/biblioteca/biblioteca.service.js';
+import { BibliotecaService } from '../../src/biblioteca/biblioteca.service.js';
 import {
   claveDocumento,
-  documentosRequeridos,
+  documentosASubir,
 } from '../../src/solicitudes/requisitos-documentales.js';
 import { crearDbBorrador } from './db-borrador.js';
 
 // Tarea 42: la aplicación real sobre PGlite, con el motor y Biblioteca simulados. Solo datos inventados.
 
 export const PERIODO = '11111111-1111-4111-8111-111111111111';
+
+export type RespuestaBiblioteca =
+  | 'paz_y_salvo'
+  | 'con_deuda'
+  | 'sin_respuesta'
+  | 'inconsistente'
+  | 'no_encontrado'
+  | 'error'
+  | 'invalido';
+
+const ESTADO_BIBLIOTECA: Record<string, string> = {
+  paz_y_salvo: 'cumple',
+  con_deuda: 'no_cumple',
+  sin_respuesta: 'no_evaluable',
+  inconsistente: 'inconsistente',
+  no_encontrado: 'no_encontrado',
+};
+
+/** Resultado con la forma de POST /biblioteca/paz-y-salvo del motor (datos inventados). */
+export function resultadoBiblioteca(respuesta: RespuestaBiblioteca) {
+  if (respuesta === 'invalido') return { foo: 1 };
+  const estado = ESTADO_BIBLIOTECA[respuesta];
+  const multas = estado === 'no_cumple' ? 1 : 0;
+  return {
+    user_id: 'T00000001',
+    estado,
+    paz_y_salvo:
+      estado === 'cumple' ? true : estado === 'no_cumple' ? false : null,
+    consultado_en: '2026-11-04T10:00:00-05:00',
+    valido_hasta: null,
+    criterios:
+      estado === 'cumple' || estado === 'no_cumple'
+        ? {
+            prestamos: {
+              resultado: 'cumple',
+              motivo: null,
+              mensaje: 'Sin préstamos.',
+              pendientes: 0,
+            },
+            multas: {
+              resultado: multas ? 'no_cumple' : 'cumple',
+              motivo: null,
+              mensaje: multas ? 'Tiene 1 multa pendiente.' : 'Sin multas.',
+              pendientes: multas,
+              valor_total: multas ? 15000 : 0,
+              moneda: 'COP',
+            },
+            solicitudes: {
+              resultado: 'cumple',
+              motivo: null,
+              mensaje: 'Sin solicitudes.',
+              pendientes: 0,
+            },
+            opcion_grado: {
+              resultado: 'no_evaluable',
+              motivo: 'source_pending',
+              mensaje: 'Sin fuente.',
+              entregada: null,
+              informativo: true,
+            },
+          }
+        : {},
+    acciones_requeridas: multas
+      ? ['Pagar los cargos pendientes en Biblioteca.']
+      : [],
+    mensaje:
+      estado === 'cumple'
+        ? 'El estudiante cumple los criterios consultados de paz y salvo.'
+        : estado === 'no_cumple'
+          ? 'Tiene 1 multa pendiente.'
+          : `Resultado de prueba: ${estado}.`,
+    fuente: 'alma_simulada',
+    identidad: {
+      coincide:
+        estado === 'inconsistente'
+          ? false
+          : estado === 'cumple' || estado === 'no_cumple'
+            ? true
+            : null,
+      campos_distintos: estado === 'inconsistente' ? ['numero_documento'] : [],
+    },
+  };
+}
 export const PDF = Buffer.from(
   '%PDF-1.4\nDocumento sintético para transporte\n%%EOF',
 );
@@ -66,8 +146,12 @@ export interface Flujo {
    * la clave, p. ej. `academic_evaluation-2`) y después por el tipo (`saber_pro`).
    */
   clasificacion: Record<string, Clasificacion>;
-  /** Respuesta de Biblioteca; 'error' hace que la consulta lance. */
-  biblioteca: { respuesta: RespuestaPazYSalvo | 'error' };
+  /**
+   * Respuesta de Biblioteca (Tarea 50: resultado del motor). Los nombres viejos se conservan:
+   * paz_y_salvo → cumple, con_deuda → no_cumple, sin_respuesta → no_evaluable. 'error' hace que
+   * la consulta lance y 'invalido' devuelve una forma que no es la del motor.
+   */
+  biblioteca: { respuesta: RespuestaBiblioteca; llamadas: number };
   /** Respuesta HTTP del motor; un número distinto de 200 simula una falla técnica. */
   motor: { estado: number; llamadas: string[] };
   cerrar(): Promise<void>;
@@ -77,16 +161,21 @@ export async function montarFlujo(): Promise<Flujo> {
   const carpeta = await mkdtemp(join(tmpdir(), 'checku42-'));
   process.env.DOCUMENTOS_TEMP_DIR = carpeta;
   const base = await crearDbBorrador();
-  const biblioteca: Flujo['biblioteca'] = { respuesta: 'paz_y_salvo' };
+  const biblioteca: Flujo['biblioteca'] = {
+    respuesta: 'paz_y_salvo',
+    llamadas: 0,
+  };
   const m = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(DatabaseService)
     .useValue(base.servicio)
     .overrideProvider(BibliotecaService)
     .useValue({
-      consultarPazYSalvo: () =>
-        biblioteca.respuesta === 'error'
+      consultar: () => {
+        biblioteca.llamadas++;
+        return biblioteca.respuesta === 'error'
           ? Promise.reject(new Error('Biblioteca no responde'))
-          : Promise.resolve(biblioteca.respuesta),
+          : Promise.resolve(resultadoBiblioteca(biblioteca.respuesta));
+      },
     })
     .compile();
   const app = m.createNestApplication<INestApplication<App>>();
@@ -133,6 +222,7 @@ export async function reiniciar(flujo: Flujo, diasHastaFin = 30) {
   );
   flujo.clasificacion = {};
   flujo.biblioteca.respuesta = 'paz_y_salvo';
+  flujo.biblioteca.llamadas = 0;
   flujo.motor.estado = 200;
   flujo.motor.llamadas = [];
   vi.stubGlobal('fetch', async (_url: unknown, opts: { body: FormData }) => {
@@ -207,8 +297,7 @@ export function enviar(
     claves,
   }: { nivel?: string; doble?: boolean; claves?: string[] } = {},
 ) {
-  const tipos =
-    claves ?? documentosRequeridos(nivel, doble).map(claveDocumento);
+  const tipos = claves ?? documentosASubir(nivel, doble).map(claveDocumento);
   let r = flujo.estudiante
     .post('/api/solicitudes/enviar')
     .field('datos', JSON.stringify(datosPreinscripcion(nivel, doble)))

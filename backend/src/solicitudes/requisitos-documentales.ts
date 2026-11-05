@@ -9,12 +9,19 @@ export type TipoSolicitud =
 export interface DocumentoRequerido {
   tipo: TypeDocument;
   orden: 1 | 2;
+  /** Tarea 50: «consulta» = el sistema lo verifica (Paz y Salvo con ALMA); no se sube. */
+  origen: 'archivo' | 'consulta';
 }
 
-const uno = (tipo: TypeDocument): DocumentoRequerido => ({ tipo, orden: 1 });
+const uno = (tipo: TypeDocument): DocumentoRequerido => ({
+  tipo,
+  orden: 1,
+  origen: tipo === 'paz_y_salvo_bib' ? 'consulta' : 'archivo',
+});
 const segundo = (tipo: TypeDocument): DocumentoRequerido => ({
   tipo,
   orden: 2,
+  origen: 'archivo',
 });
 
 export const DOCUMENTOS_POR_TIPO: Readonly<
@@ -44,8 +51,11 @@ export const DOCUMENTOS_POR_TIPO: Readonly<
   ]),
 });
 
+/** Máximo de PDF en un envío: el mayor total de documentos que se suben. */
 export const MAXIMO_DOCUMENTOS = Math.max(
-  ...Object.values(DOCUMENTOS_POR_TIPO).map((d) => d.length),
+  ...Object.values(DOCUMENTOS_POR_TIPO).map(
+    (d) => d.filter((r) => r.origen === 'archivo').length,
+  ),
 );
 
 const CON_SEGUNDO = new Set<string>(
@@ -72,6 +82,16 @@ export function documentosRequeridos(
   doblePrograma: boolean,
 ): readonly DocumentoRequerido[] {
   return DOCUMENTOS_POR_TIPO[tipoSolicitud(nivel, doblePrograma)];
+}
+
+/** Los documentos que el estudiante sube (sin Paz y Salvo, que se consulta). */
+export function documentosASubir(
+  nivel: string,
+  doblePrograma: boolean,
+): readonly DocumentoRequerido[] {
+  return documentosRequeridos(nivel, doblePrograma).filter(
+    (d) => d.origen === 'archivo',
+  );
 }
 
 /** Clave del transporte: el tipo, con `-2` para el documento del segundo programa. */

@@ -9,6 +9,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AppModule } from '../src/app.module.js';
 import { DatabaseService } from '../src/database/database.service.js';
+import { BibliotecaService } from '../src/biblioteca/biblioteca.service.js';
+import { resultadoBiblioteca } from './soporte/flujo-tarea42.js';
 import { NotificacionesService } from '../src/notificaciones/notificaciones.service.js';
 import { crearDbBorrador } from './soporte/db-borrador.js';
 
@@ -19,7 +21,6 @@ const PDF = Buffer.from('%PDF-1.4\nPDF sintético de transporte\n%%EOF');
 const TIPOS = [
   'identification',
   'academic_evaluation',
-  'paz_y_salvo_bib',
   'estampilla_pro_cultura',
   'saber_pro',
 ];
@@ -76,6 +77,9 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
     const m = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DatabaseService)
       .useValue(servicio)
+      // Tarea 50: Paz y Salvo se consulta en ALMA a través del motor; aquí, siempre a paz y salvo.
+      .overrideProvider(BibliotecaService)
+      .useValue({ consultar: async () => resultadoBiblioteca('paz_y_salvo') })
       .compile();
     app = m.createNestApplication();
     app.useLogger(false);
@@ -217,22 +221,13 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
     const antes = (
       await base.db.query('SELECT * FROM cancelaciones_preinscripcion')
     ).rows;
+    // Las migraciones de las Tareas 42 y 44 quedaron incluidas en 01-schema.sql (#124), que
+    // levantar.ps1 vuelve a aplicar sobre bases existentes.
     const sql = await readFile(
-      new URL(
-        '../../db/migrations/008-cancelacion-preinscripcion.sql',
-        import.meta.url,
-      ),
+      new URL('../../db/init/01-schema.sql', import.meta.url),
       'utf8',
     );
-    // Tarea 42: 009 va siempre después de 008 y ajusta la regla de cancelación al estado calculado.
-    const sql009 = await readFile(
-      new URL('../../db/migrations/009-estado-solicitud.sql', import.meta.url),
-      'utf8',
-    );
-    for (let i = 0; i < 2; i++) {
-      await base.db.exec(sql);
-      await base.db.exec(sql009);
-    }
+    for (let i = 0; i < 2; i++) await base.db.exec(sql);
     expect(
       (await base.db.query('SELECT * FROM cancelaciones_preinscripcion')).rows,
     ).toEqual(antes);

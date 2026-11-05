@@ -27,10 +27,11 @@ import {
 import { DatabaseService } from '../database/database.service.js';
 import { TIPO_DOCUMENTO_LEGADO } from '../contratos/mapeo.js';
 import { recalcularEstado } from './recalcular-estado.js';
+import { ConsultaPazYSalvoService } from './consulta-paz-y-salvo.service.js';
 import {
   admiteSegundo,
   claveDocumento,
-  documentosRequeridos,
+  documentosASubir,
 } from './requisitos-documentales.js';
 import type {
   DatosEnvioPreinscripcion,
@@ -56,6 +57,7 @@ export class SolicitudesService {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly analisis: AnalisisPreinscripcionService,
+    private readonly pazYSalvo: ConsultaPazYSalvoService,
   ) {}
 
   async obtenerSolicitudEstudiante(
@@ -146,7 +148,7 @@ export class SolicitudesService {
     informar('Documentos cargados.');
     // Primero guarda el borrador. Un fallo del motor no pierde los campos del estudiante.
     const datos = validarBorrador(payload);
-    const esperados = documentosRequeridos(
+    const esperados = documentosASubir(
       datos.nivel === 'POSGRADO' ? 'POSGRADO' : 'PREGRADO',
       datos.nivel !== 'POSGRADO' && datos.segundoPrograma === true,
     ).map(claveDocumento);
@@ -253,6 +255,16 @@ export class SolicitudesService {
           informar,
         );
 
+        // Tarea 50: el Paz y Salvo no se sube; se consulta en Biblioteca (ALMA) y queda como
+        // documento sin archivo de esta entrega.
+        informar('Consultando Paz y Salvo en Biblioteca.');
+        await this.pazYSalvo.crearYConsultar(
+          client,
+          solicitud.id_solicitud,
+          idEntrega,
+          1,
+        );
+
         // 6. El estado de la solicitud sale de sus documentos (Tarea 42a), una sola vez por envío.
         const estado = await recalcularEstado(client, solicitud.id_solicitud, {
           envioInicial: true,
@@ -350,6 +362,8 @@ export class SolicitudesService {
       const documentos: Record<string, DocumentoCargadoDTO> = {};
       for (const doc of docs.rows) {
         const tipo = normalizarTipoDocumento(doc.tipo_documento);
+        // Tarea 50: un PDF de Paz y Salvo de un borrador viejo ya no se muestra ni se envía.
+        if (tipo === 'paz_y_salvo_bib') continue;
         const clave = doc.orden === 2 ? `${tipo}-2` : tipo;
         documentos[clave] = {
           id: clave,
@@ -559,6 +573,8 @@ export class SolicitudesService {
           const tipo = normalizarTipoDocumento(original.replace(/-2$/, ''));
           if (!TypeDocument.safeParse(tipo).success)
             throw new BadRequestException('Tipo documental inválido');
+          // Tarea 50: Paz y Salvo ya no se sube; un borrador viejo que lo traiga se guarda sin él.
+          if (tipo === 'paz_y_salvo_bib') continue;
           const orden =
             original.endsWith('-2') ||
             doc.id?.endsWith('-2') ||
@@ -787,7 +803,8 @@ export class SolicitudesService {
     const hayPrograma2 = resPrograma.rows.some(
       (p) => p.orden === 2 && p.programa?.trim(),
     );
-    const faltantes = documentosRequeridos(tipoSolicitud, hayPrograma2)
+    // Tarea 50: Paz y Salvo no se sube; lo consulta el sistema al enviar.
+    const faltantes = documentosASubir(tipoSolicitud, hayPrograma2)
       .filter((d) => !existentes.has(claveDocumento(d)))
       .map((d) => (d.orden === 2 ? `${d.tipo} (segundo programa)` : d.tipo));
 

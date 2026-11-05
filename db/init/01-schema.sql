@@ -924,3 +924,21 @@ BEGIN
     RETURN NEW;
 END $$;
 COMMIT;
+
+-- Tarea 50 (igual que db/migrations/010-paz-y-salvo-consulta.sql): Paz y Salvo se consulta en
+-- ALMA y queda como documento sin archivo (origen CONSULTA). Al final, como los demás bloques
+-- repetibles que levantar.ps1 vuelve a aplicar sobre bases existentes.
+BEGIN;
+ALTER TABLE documentos ADD COLUMN IF NOT EXISTS origen VARCHAR(10) NOT NULL DEFAULT 'ARCHIVO';
+ALTER TABLE documentos ALTER COLUMN nombre_original DROP NOT NULL;
+ALTER TABLE documentos ALTER COLUMN mime_type DROP NOT NULL;
+ALTER TABLE documentos ALTER COLUMN tamano_bytes DROP NOT NULL;
+ALTER TABLE documentos DROP CONSTRAINT IF EXISTS chk_documento_origen;
+ALTER TABLE documentos ADD CONSTRAINT chk_documento_origen CHECK (origen IN ('ARCHIVO', 'CONSULTA'));
+ALTER TABLE documentos DROP CONSTRAINT IF EXISTS chk_documento_tamano;
+ALTER TABLE documentos ADD CONSTRAINT chk_documento_tamano CHECK (tamano_bytes IS NULL OR tamano_bytes > 0);
+ALTER TABLE documentos DROP CONSTRAINT IF EXISTS chk_documento_archivo;
+ALTER TABLE documentos ADD CONSTRAINT chk_documento_archivo CHECK (
+    origen = 'CONSULTA' OR (nombre_original IS NOT NULL AND mime_type IS NOT NULL AND tamano_bytes > 0)
+);
+COMMIT;

@@ -3,6 +3,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { crearDbBorrador } from './soporte/db-borrador.js';
 import { PlazosSolicitudService } from '../src/solicitudes/plazos-solicitud.service.js';
 import {
+  datosPreinscripcion,
   documentosActuales,
   enviar,
   estadoSolicitud,
@@ -10,8 +11,10 @@ import {
   PERIODO,
   reenviar,
   reiniciar,
+  resultadoBiblioteca,
   type Flujo,
 } from './soporte/flujo-tarea42.js';
+import { BibliotecaService } from '../src/biblioteca/biblioteca.service.js';
 
 describe('Tarea 42: esquema', () => {
   let base: Awaited<ReturnType<typeof crearDbBorrador>>;
@@ -129,10 +132,8 @@ describe('Tarea 42: esquema', () => {
     ).rows[0].id;
     await base.db.exec(
       await readFile(
-        new URL(
-          '../../db/migrations/009-estado-solicitud.sql',
-          import.meta.url,
-        ),
+        // La antigua migración 009 de la Tarea 42 quedó al final de 01-schema.sql (#124).
+        new URL('../../db/init/01-schema.sql', import.meta.url),
         'utf8',
       ),
     );
@@ -206,6 +207,27 @@ describe('Tarea 42: el esquema base solo, como lo aplica levantar.ps1', () => {
         'SELECT estado_anterior FROM cancelaciones_preinscripcion',
       );
       expect(a.rows).toEqual([{ estado_anterior: 'NO_VALIDA' }]);
+      // Tarea 50: Paz y Salvo es un documento sin archivo (origen CONSULTA).
+      const consulta = await db.query<{ origen: string }>(
+        `INSERT INTO documentos(id_solicitud,id_entrega,tipo_documento,orden,version,estado,origen)
+        VALUES($1,$2,'paz_y_salvo_bib',1,1,'VALIDO','CONSULTA') RETURNING origen`,
+        [s.rows[0].id, e.rows[0].id],
+      );
+      expect(consulta.rows).toEqual([{ origen: 'CONSULTA' }]);
+      await expect(
+        db.query(
+          `INSERT INTO documentos(id_solicitud,id_entrega,tipo_documento,orden,version,estado)
+          VALUES($1,$2,'saber_pro',1,1,'VALIDO')`,
+          [s.rows[0].id, e.rows[0].id],
+        ),
+      ).rejects.toThrow(/chk_documento_archivo/);
+      await expect(
+        db.query(
+          `INSERT INTO documentos(id_solicitud,id_entrega,tipo_documento,orden,version,estado,origen,nombre_original,mime_type,tamano_bytes)
+          VALUES($1,$2,'saber_pro',2,1,'VALIDO','OTRO','s.pdf','application/pdf',10)`,
+          [s.rows[0].id, e.rows[0].id],
+        ),
+      ).rejects.toThrow(/chk_documento_origen/);
     } finally {
       await db.close();
     }
@@ -225,30 +247,121 @@ describe('Tarea 42: flujo de la solicitud', () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  describe('Paz y Salvo', () => {
+  describe('Tarea 50: Paz y Salvo no se sube', () => {
+    it('un borrador viejo con PDF de Paz y Salvo se envía sin él', async () => {
+      await flujo.estudiante
+        .post('/api/solicitudes/borrador')
+        .send({
+          ...datosPreinscripcion(),
+          documentos: [
+            { id: 'paz_y_salvo_bib', nombre: 'paz.pdf', tamano: 10 },
+            { id: 'saber_pro', nombre: 'saber.pdf', tamano: 10 },
+          ],
+        })
+        .expect(201);
+      const envio = await enviar(flujo).expect(201);
+      const pdfs = await flujo.base.db.query<{ n: number }>(
+        "SELECT count(*)::int AS n FROM documentos WHERE id_solicitud=$1 AND tipo_documento='paz_y_salvo_bib' AND origen='ARCHIVO'",
+        [envio.body.id_solicitud],
+      );
+      expect(pdfs.rows[0].n).toBe(0);
+    });
+
+    it('adjuntar el PDF de Paz y Salvo se rechaza', async () => {
+      const r = await enviar(flujo, {
+        claves: [
+          'identification',
+          'academic_evaluation',
+          'paz_y_salvo_bib',
+          'estampilla_pro_cultura',
+          'saber_pro',
+        ],
+      }).expect(400);
+      expect(r.body.message).toBe(
+        'Paz y Salvo se consulta automáticamente con Biblioteca; no se sube.',
+      );
+    });
+  });
+
+  describe('Paz y Salvo (Tarea 50: consulta a ALMA, sin archivo)', () => {
     it.each([
-      ['paz_y_salvo', 'VALIDO'],
-      ['con_deuda', 'NO_VALIDO'],
-      ['error', 'POR_REVISAR'],
+      ['paz_y_salvo', 'VALIDO', 'VALIDA'],
+      ['con_deuda', 'NO_VALIDO', 'NO_VALIDA'],
+      ['inconsistente', 'INCONSISTENTE', 'INCONSISTENTE'],
+      ['no_encontrado', 'POR_REVISAR', 'POR_REVISAR'],
+      ['sin_respuesta', 'POR_REVISAR', 'POR_REVISAR'],
+      ['error', 'POR_REVISAR', 'POR_REVISAR'],
+      ['invalido', 'POR_REVISAR', 'POR_REVISAR'],
     ] as const)(
-      'Biblioteca responde %s: el documento queda %s y el envío se completa',
-      async (respuesta, esperado) => {
+      'Biblioteca responde %s: el documento queda %s y la solicitud %s',
+      async (respuesta, documento, solicitud) => {
         flujo.biblioteca.respuesta = respuesta;
         const envio = await enviar(flujo).expect(201);
-        const docs = await documentosActuales(flujo, envio.body.id_solicitud);
-        expect(docs.paz_y_salvo_bib.estado).toBe(esperado);
+        const id = envio.body.id_solicitud as number;
+        expect(envio.body.estado).toBe(solicitud);
+        const fila = await flujo.base.db.query<Record<string, unknown>>(
+          `SELECT d.estado, d.origen, d.nombre_original, d.tamano_bytes, v.tipo_validacion,
+            v.detalle->'resultado'->>'estado' AS resultado
+          FROM documentos d JOIN validaciones v ON v.id_documento=d.id_documento
+          WHERE d.id_solicitud=$1 AND d.tipo_documento='paz_y_salvo_bib'`,
+          [id],
+        );
+        expect(fila.rows).toHaveLength(1);
+        expect(fila.rows[0]).toMatchObject({
+          estado: documento,
+          origen: 'CONSULTA',
+          nombre_original: null,
+          tamano_bytes: null,
+          tipo_validacion: 'REQUISITOS',
+        });
         expect(flujo.motor.llamadas).not.toContain('paz_y_salvo_bib');
-        const analisis = await flujo.estudiante
-          .get('/api/estudiante/solicitud/analisis')
-          .expect(200);
-        const paz = analisis.body.documentos.find(
-          (d: { tipo: string }) => d.tipo === 'paz_y_salvo_bib',
-        );
-        expect(paz.resultados[0].mensaje).not.toContain(
-          'pendiente de integración',
-        );
+        expect(flujo.biblioteca.llamadas).toBe(1);
       },
     );
+
+    it('el detalle del estudiante y el de la funcionaria traen el resultado de Biblioteca', async () => {
+      flujo.biblioteca.respuesta = 'con_deuda';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const analisis = await flujo.estudiante
+        .get('/api/estudiante/solicitud/analisis')
+        .expect(200);
+      const detalle = await flujo.funcionaria
+        .get(`/api/funcionario/solicitudes/${id}`)
+        .expect(200);
+      for (const cuerpo of [analisis.body, detalle.body]) {
+        const paz = cuerpo.documentos.find(
+          (d: { tipo: string }) => d.tipo === 'paz_y_salvo_bib',
+        );
+        expect(paz.origen).toBe('CONSULTA');
+        expect(paz.archivoDisponible).toBe(false);
+        expect(paz.bibliotecaResultado.estado).toBe('no_cumple');
+        expect(paz.bibliotecaResultado.criterios.multas.valor_total).toBe(
+          15000,
+        );
+        expect(paz.resultados[0].mensaje).toBe('Tiene 1 multa pendiente.');
+      }
+    });
+
+    it('la consulta usa la identidad guardada en CheckU', async () => {
+      const consultar = vi
+        .fn()
+        .mockResolvedValue(resultadoBiblioteca('paz_y_salvo'));
+      const biblioteca = flujo.app.get(BibliotecaService);
+      const original = biblioteca.consultar;
+      biblioteca.consultar = consultar;
+      try {
+        await enviar(flujo).expect(201);
+      } finally {
+        biblioteca.consultar = original;
+      }
+      expect(consultar).toHaveBeenCalledWith({
+        codigo: 'T00000001',
+        numeroDocumento: '1000000001',
+        nombres: 'Estudiante',
+        apellidos: 'Prueba',
+      });
+    });
   });
 
   describe('estado tras el envío', () => {
@@ -354,6 +467,141 @@ describe('Tarea 42: flujo de la solicitud', () => {
     });
   });
 
+  describe('Tarea 50: Consultar de nuevo el Paz y Salvo', () => {
+    let claves = 0;
+    const clave = () => `reconsulta-prueba-${++claves}`;
+    function reconsultar(id: number, c = clave()) {
+      return flujo.estudiante
+        .post(`/api/estudiante/solicitudes/${id}/paz-y-salvo/consulta`)
+        .send({ clave: c });
+    }
+    function reconsultarFuncionaria(id: number, agente = flujo.funcionaria) {
+      return agente
+        .post(`/api/funcionario/solicitudes/${id}/paz-y-salvo/consulta`)
+        .send({});
+    }
+    async function conDeuda() {
+      flujo.biblioteca.respuesta = 'con_deuda';
+      const envio = await enviar(flujo).expect(201);
+      expect(envio.body.estado).toBe('NO_VALIDA');
+      return envio.body.id_solicitud as number;
+    }
+    async function usados() {
+      const r = await flujo.estudiante
+        .get('/api/estudiante/solicitud/analisis')
+        .expect(200);
+      return r.body.politicaReenvios.usados as number;
+    }
+    async function entregas(id: number) {
+      const r = await flujo.base.db.query<{ n: number }>(
+        'SELECT count(*)::int AS n FROM entregas WHERE id_solicitud=$1',
+        [id],
+      );
+      return r.rows[0].n;
+    }
+
+    it('el estudiante se pone al día y la reconsulta deja la solicitud VALIDA, contando un reenvío', async () => {
+      const id = await conDeuda();
+      flujo.biblioteca.respuesta = 'paz_y_salvo';
+      const r = await reconsultar(id).expect(201);
+      expect(r.body).toMatchObject({ ok: true, id_solicitud: id, estado: 'VALIDA' });
+      expect(await usados()).toBe(1);
+      const docs = await documentosActuales(flujo, id);
+      expect(docs.paz_y_salvo_bib.estado).toBe('VALIDO');
+      const versiones = await flujo.base.db.query<{ version: number; origen: string }>(
+        "SELECT version, origen FROM documentos WHERE id_solicitud=$1 AND tipo_documento='paz_y_salvo_bib' ORDER BY version",
+        [id],
+      );
+      expect(versiones.rows).toEqual([
+        { version: 1, origen: 'CONSULTA' },
+        { version: 2, origen: 'CONSULTA' },
+      ]);
+    });
+
+    it('un Paz y Salvo en PDF de antes de la Tarea 50 se vuelve a consultar como versión 2', async () => {
+      const id = await conDeuda();
+      // Simula una solicitud enviada antes de la Tarea 50: la versión 1 era un PDF subido.
+      await flujo.base.db.query(
+        `UPDATE documentos SET origen='ARCHIVO', nombre_original='paz.pdf', mime_type='application/pdf', tamano_bytes=10
+         WHERE id_solicitud=$1 AND tipo_documento='paz_y_salvo_bib'`,
+        [id],
+      );
+      flujo.biblioteca.respuesta = 'paz_y_salvo';
+      await reconsultar(id).expect(201);
+      const versiones = await flujo.base.db.query<{ version: number; origen: string }>(
+        "SELECT version, origen FROM documentos WHERE id_solicitud=$1 AND tipo_documento='paz_y_salvo_bib' ORDER BY version",
+        [id],
+      );
+      expect(versiones.rows).toEqual([
+        { version: 1, origen: 'ARCHIVO' },
+        { version: 2, origen: 'CONSULTA' },
+      ]);
+      expect((await documentosActuales(flujo, id)).paz_y_salvo_bib.estado).toBe('VALIDO');
+    });
+
+    it('la misma clave dos veces crea una sola entrega', async () => {
+      const id = await conDeuda();
+      await reconsultar(id, 'reconsulta-repetida').expect(201);
+      await reconsultar(id, 'reconsulta-repetida').expect(201);
+      expect(await entregas(id)).toBe(2);
+      expect(flujo.biblioteca.llamadas).toBe(2);
+    });
+
+    it('cuenta en el límite de 3 reenvíos del día', async () => {
+      const id = await conDeuda();
+      for (let i = 0; i < 3; i++) await reconsultar(id).expect(201);
+      const r = await reconsultar(id).expect(409);
+      expect(r.body.message).toContain('Alcanzaste los tres reenvíos de hoy');
+    });
+
+    it('desde fecha_fin − 6 ya no se puede consultar de nuevo', async () => {
+      const id = await conDeuda();
+      await flujo.base.db.query(
+        `UPDATE periodos_grado SET fecha_fin=(CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date+6`,
+      );
+      const r = await reconsultar(id).expect(409);
+      expect(r.body.message).toContain('El plazo para corregir documentos terminó');
+    });
+
+    it('un Paz y Salvo VALIDO no se vuelve a consultar', async () => {
+      flujo.clasificacion.saber_pro = 'invalid';
+      const envio = await enviar(flujo).expect(201);
+      const r = await reconsultar(envio.body.id_solicitud).expect(403);
+      expect(r.body.message).toBe('No se permite reemplazar un documento válido.');
+    });
+
+    it('otro estudiante no puede consultar una solicitud ajena', async () => {
+      const id = await conDeuda();
+      await flujo.base.db.query(
+        "INSERT INTO usuarios(id_usuario,nombres,apellidos,correo,rol,codigo_estudiante) VALUES(950,'Otra','Persona','otra50@example.org','ESTUDIANTE','T00000950') ON CONFLICT DO NOTHING",
+      );
+      await flujo.base.db.query('UPDATE solicitud_grado SET id_estudiante=950 WHERE id_solicitud=$1', [id]);
+      await reconsultar(id).expect(404);
+    });
+
+    it('la funcionaria consulta de nuevo sin gastar intentos del estudiante', async () => {
+      const id = await conDeuda();
+      flujo.biblioteca.respuesta = 'paz_y_salvo';
+      const r = await reconsultarFuncionaria(id).expect(201);
+      expect(r.body).toEqual({ ok: true, estadoSolicitud: 'VALIDA' });
+      expect(await usados()).toBe(0);
+      expect(await entregas(id)).toBe(1);
+      const docs = await documentosActuales(flujo, id);
+      expect(docs.paz_y_salvo_bib.estado).toBe('VALIDO');
+    });
+
+    it('la funcionaria no consulta una solicitud decidida y un estudiante no usa su ruta', async () => {
+      const id = await conDeuda();
+      await reconsultarFuncionaria(id, flujo.estudiante).expect(403);
+      await flujo.funcionaria
+        .post(`/api/funcionario/solicitudes/${id}/revisiones`)
+        .send({ accion: 'anulada' })
+        .expect(201);
+      const r = await reconsultarFuncionaria(id).expect(409);
+      expect(r.body.message).toBe('La solicitud ya fue decidida.');
+    });
+  });
+
   describe('reenvíos', () => {
     /** Envía con Saber Pro no válido y devuelve el id de la solicitud y el del documento. */
     async function conSaberProInvalido() {
@@ -426,16 +674,29 @@ describe('Tarea 42: flujo de la solicitud', () => {
     });
 
     it('un documento POR_REVISAR sí se puede reenviar', async () => {
-      flujo.biblioteca.respuesta = 'error';
+      // Tarea 50: Paz y Salvo ya no se sube; se usa un documento con archivo por revisar.
+      flujo.clasificacion.saber_pro = 'to_check';
       const envio = await enviar(flujo).expect(201);
       const id = envio.body.id_solicitud as number;
       expect(envio.body.estado).toBe('POR_REVISAR');
       const docs = await documentosActuales(flujo, id);
-      flujo.biblioteca.respuesta = 'paz_y_salvo';
-      const r = await reenviar(flujo, id, [
-        docs.paz_y_salvo_bib.id_documento,
-      ]).expect(201);
+      flujo.clasificacion.saber_pro = 'valid';
+      const r = await reenviar(flujo, id, [docs.saber_pro.id_documento]).expect(
+        201,
+      );
       expect(r.body.estado).toBe('VALIDA');
+    });
+
+    it('el Paz y Salvo no se reenvía como archivo', async () => {
+      flujo.biblioteca.respuesta = 'con_deuda';
+      const envio = await enviar(flujo).expect(201);
+      const docs = await documentosActuales(flujo, envio.body.id_solicitud);
+      const r = await reenviar(flujo, envio.body.id_solicitud, [
+        docs.paz_y_salvo_bib.id_documento,
+      ]).expect(400);
+      expect(r.body.message).toBe(
+        'Paz y Salvo se consulta automáticamente con Biblioteca; no se sube.',
+      );
     });
 
     it('un error técnico del motor no consume un reenvío', async () => {
@@ -571,9 +832,14 @@ describe('Tarea 42: flujo de la solicitud', () => {
     });
 
     it('resolver una versión vieja, un documento VALIDO o uno inexistente se rechaza', async () => {
-      const { id, docs, paz } = await conPazYSalvoPorRevisar();
-      await reenviar(flujo, id, [paz]).expect(201);
-      const r = await resolver(paz, { resultado: 'VALIDO' }).expect(409);
+      // Tarea 50: la versión vieja es la de un documento con archivo (Paz y Salvo no se reenvía).
+      flujo.clasificacion.saber_pro = 'to_check';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const docs = await documentosActuales(flujo, id);
+      const viejo = docs.saber_pro.id_documento;
+      await reenviar(flujo, id, [viejo]).expect(201);
+      const r = await resolver(viejo, { resultado: 'VALIDO' }).expect(409);
       expect(r.body.message).toBe(
         'El documento ya no está por revisar o no es la versión actual.',
       );
@@ -581,6 +847,39 @@ describe('Tarea 42: flujo de la solicitud', () => {
         resultado: 'VALIDO',
       }).expect(409);
       await resolver(999999, { resultado: 'VALIDO' }).expect(404);
+    });
+
+    // Tarea 50 (opción A de Héctor): un Paz y Salvo Inconsistente con ALMA lo puede resolver la funcionaria.
+    it('la funcionaria resuelve un Paz y Salvo Inconsistente y la solicitud se recalcula', async () => {
+      flujo.biblioteca.respuesta = 'inconsistente';
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const paz = (await documentosActuales(flujo, id)).paz_y_salvo_bib;
+      expect(paz.estado).toBe('INCONSISTENTE');
+      const r = await resolver(paz.id_documento, {
+        resultado: 'VALIDO',
+        comentario: 'El nombre en Biblioteca tiene una tilde distinta; es la misma persona.',
+      }).expect(201);
+      expect(r.body.estadoSolicitud).toBe('VALIDA');
+      expect((await documentosActuales(flujo, id)).paz_y_salvo_bib.estado).toBe('VALIDO');
+      const historial = await flujo.base.db.query<{ estado_anterior: string; estado_nuevo: string }>(
+        `SELECT h.estado_anterior, h.estado_nuevo FROM historial_validaciones h
+         JOIN validaciones v ON v.id_validacion=h.id_validacion
+         WHERE v.id_documento=$1 AND v.tipo_validacion='MANUAL'`,
+        [paz.id_documento],
+      );
+      expect(historial.rows).toEqual([{ estado_anterior: 'INCONSISTENTE', estado_nuevo: 'VALIDO' }]);
+    });
+
+    it('un documento Inconsistente que no es Paz y Salvo sigue sin resolverse a mano', async () => {
+      const envio = await enviar(flujo).expect(201);
+      const id = envio.body.id_solicitud as number;
+      const saber = (await documentosActuales(flujo, id)).saber_pro.id_documento;
+      await flujo.base.db.query("UPDATE documentos SET estado='INCONSISTENTE' WHERE id_documento=$1", [saber]);
+      const r = await resolver(saber, { resultado: 'VALIDO' }).expect(409);
+      expect(r.body.message).toBe(
+        'El documento ya no está por revisar o no es la versión actual.',
+      );
     });
 
     it('una solicitud decidida no admite resoluciones', async () => {

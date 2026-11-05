@@ -24,6 +24,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from modules.validadores.fuentes.alma.consultar import consultar_para_checku  # noqa: E402
 from modules.api.validacion import (  # noqa: E402
     VALIDADORES,
     analizar_documento,
@@ -45,6 +46,20 @@ def salud():
             "tipos_soportados": sorted(VALIDADORES.keys()),
         }
     )
+
+
+@app.post("/biblioteca/paz-y-salvo")
+def paz_y_salvo():
+    """
+    Tarea 50: consulta de Paz y Salvo en ALMA (simulada o real según ALMA_MODO).
+    JSON: {"id_student": "T…", "identidad": {"numero_documento", "nombres", "apellidos"}}
+    """
+    datos = request.get_json(silent=True) or {}
+    id_student = str(datos.get("id_student") or "").strip()
+    if not id_student:
+        return jsonify({"error": "estudiante.id_student es obligatorio."}), 400
+    identidad = datos.get("identidad") if isinstance(datos.get("identidad"), dict) else {}
+    return jsonify(consultar_para_checku(id_student, identidad))
 
 
 @app.post("/analizar")

@@ -1,9 +1,4 @@
 import { NotificacionesService } from '../notificaciones/notificaciones.service.js';
-import {
-  BibliotecaService,
-  consultarConLimite,
-  type RespuestaPazYSalvo,
-} from '../biblioteca/biblioteca.service.js';
 import { etapaDocumento, type InformarAvance } from './progreso-envio.js';
 import {
   BadGatewayException,
@@ -26,6 +21,10 @@ export interface PdfPreinscripcion {
   tipo: string;
 }
 
+/** Tarea 50: Paz y Salvo lo consulta el sistema en ALMA. */
+export const MENSAJE_PAZ_Y_SALVO_NO_SE_SUBE =
+  'Paz y Salvo se consulta automáticamente con Biblioteca; no se sube.';
+
 export function validarArchivos(archivos: PdfPreinscripcion[]) {
   const MAX_PDF_BYTES = 5 * 1024 * 1024;
   if (!archivos.length || archivos.length > MAXIMO_DOCUMENTOS)
@@ -35,6 +34,8 @@ export function validarArchivos(archivos: PdfPreinscripcion[]) {
   const claves = new Set<string>();
   let total = 0;
   for (const a of archivos) {
+    if (leerClave(a.tipo ?? '')?.tipo === 'paz_y_salvo_bib')
+      throw new BadRequestException(MENSAJE_PAZ_Y_SALVO_NO_SE_SUBE);
     if (typeof a.tipo !== 'string' || !leerClave(a.tipo) || claves.has(a.tipo))
       throw new BadRequestException(
         'Tipos documentales inválidos o repetidos.',
@@ -58,26 +59,6 @@ export function validarArchivos(archivos: PdfPreinscripcion[]) {
     throw new BadRequestException('El conjunto de PDF no puede superar 50 MB.');
 }
 
-const PAZ_Y_SALVO: Record<
-  RespuestaPazYSalvo,
-  { estado: string; mensaje: string }
-> = {
-  paz_y_salvo: {
-    estado: 'VALIDO',
-    mensaje: 'Biblioteca confirmó que estás a paz y salvo.',
-  },
-  con_deuda: {
-    estado: 'NO_VALIDO',
-    mensaje:
-      'Biblioteca reporta pendientes a tu nombre. Ponte a paz y salvo y vuelve a subir el documento.',
-  },
-  sin_respuesta: {
-    estado: 'POR_REVISAR',
-    mensaje:
-      'No fue posible consultar a Biblioteca. Una funcionaria lo revisará.',
-  },
-};
-
 @Injectable()
 export class AnalisisPreinscripcionService {
   constructor(
@@ -85,7 +66,6 @@ export class AnalisisPreinscripcionService {
     private readonly temporales: ArchivosTemporalesService,
     private readonly db: DatabaseService,
     private readonly notificaciones: NotificacionesService,
-    private readonly biblioteca: BibliotecaService,
   ) {}
 
   obtenerDetalle(idEstudiante: number) {
@@ -159,22 +139,7 @@ export class AnalisisPreinscripcionService {
       let detalle: Record<string, unknown>;
       let estado = 'POR_REVISAR';
       let mensaje: string;
-      if (doc.tipo_documento === 'paz_y_salvo_bib') {
-        // El PDF se conserva, pero el estado lo da Biblioteca. Si no responde, lo revisa una funcionaria.
-        const respuesta: RespuestaPazYSalvo = await consultarConLimite(
-          this.biblioteca,
-          u.codigo_estudiante as string,
-        );
-        ({ estado, mensaje } = PAZ_Y_SALVO[respuesta]);
-        detalle = {
-          fuente: 'biblioteca_demo',
-          respuesta,
-          extracted_data: {},
-          rules: [],
-          errors: [],
-          mensaje,
-        };
-      } else {
+      {
         // Mismo servicio de POST /api/documentos/analizar; no se duplica el cliente ni los validadores.
         // Un documento por llamada: el motor usa document_order=1; se conserva la orden del transporte.
         const respuesta = await this.motor.analizar({

@@ -3,6 +3,7 @@ import { flujoProgreso, type InformarAvance } from './progreso-envio.js';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { MAXIMO_DOCUMENTOS } from './requisitos-documentales.js';
+import { ReconsultaPazYSalvoService } from './reconsulta-paz-y-salvo.service.js';
 import {
   ResolucionesService,
   type CuerpoResolucion,
@@ -49,6 +50,7 @@ export class SolicitudesController {
     private readonly analisis: AnalisisPreinscripcionService,
     private readonly reenvios: ReenviosService,
     private readonly resoluciones: ResolucionesService,
+    private readonly reconsulta: ReconsultaPazYSalvoService,
   ) {}
 
   @Get('estudiante/solicitud')
@@ -137,6 +139,37 @@ export class SolicitudesController {
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.send(a.bytes);
+  }
+
+  /** Tarea 50: el estudiante vuelve a consultar su Paz y Salvo en Biblioteca (cuenta como reenvío). */
+  @Post('estudiante/solicitudes/:id/paz-y-salvo/consulta')
+  @Header('Cache-Control', 'private, no-store')
+  reconsultarPazYSalvo(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { clave?: unknown },
+  ) {
+    const user = this.obtenerEstudianteAutenticado(req);
+    return this.reconsulta.porEstudiante(
+      user.id,
+      id,
+      typeof body?.clave === 'string' ? body.clave : '',
+    );
+  }
+
+  /** Tarea 50: la funcionaria vuelve a consultar el Paz y Salvo (no gasta intentos del estudiante). */
+  @Post('funcionario/solicitudes/:id/paz-y-salvo/consulta')
+  @Header('Cache-Control', 'private, no-store')
+  reconsultarPazYSalvoFuncionaria(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const sesion = readSessionId(req);
+    const user = sesion ? this.authService.getUser(sesion) : null;
+    if (!user) throw new UnauthorizedException('Sesión no válida o expirada');
+    if (user.role !== 'funcionario')
+      throw new ForbiddenException('Acceso restringido al rol autorizado.');
+    return this.reconsulta.porFuncionaria(id);
   }
 
   /** Tarea 42a: la funcionaria marca un documento «Por revisar» como válido o no válido. */

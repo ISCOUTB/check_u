@@ -1,0 +1,385 @@
+{
+  "_leeme": [
+    "Ejemplo de la simulación de la API Users de ALMA (Tarea 50). Solo datos inventados.",
+    "1. Copia este archivo como alma_simulacion.json en una carpeta fuera del repositorio (git ignora alma_simulacion*.json y **/datos_locales/).",
+    "2. Llena user_identifier[CC].value con el número de documento que pusiste en el formulario de CheckU. Si lo dejas vacío, el resultado es «inconsistente».",
+    "3. first_name y last_name son los del estudiante de prueba de db/init/02-userbase.sql (T00000001). Si usas otro estudiante, cámbialos y la clave de usuarios.",
+    "4. Para ver otro escenario, copia el bloque de «escenarios» que quieras en lugar de usuarios.T00000001 y pulsa «Consultar de nuevo».",
+    "5. Apunta ALMA_SIMULACION_ARCHIVO a ese archivo (o ALMA_SIMULACION_DIR a su carpeta con docker-compose.local.yml). Ver backend/.env.example y docs/tarea50_paz_y_salvo_alma.md."
+  ],
+  "usuarios": {
+    "T00000001": {
+      "user": {
+        "primary_id": "T00000001",
+        "first_name": "Lisandro",
+        "last_name": "Zapata",
+        "user_group": {
+          "value": "ESTUDIANTE",
+          "desc": "Estudiante de pregrado"
+        },
+        "status": {
+          "value": "ACTIVE",
+          "desc": "Activo"
+        },
+        "user_identifier": [
+          {
+            "id_type": {
+              "value": "CC",
+              "desc": "Cédula de ciudadanía"
+            },
+            "value": "",
+            "status": "ACTIVE"
+          },
+          {
+            "id_type": {
+              "value": "BARCODE",
+              "desc": "Código de barras"
+            },
+            "value": "BT00000001",
+            "status": "ACTIVE"
+          }
+        ]
+      },
+      "loans": {
+        "item_loan": [],
+        "total_record_count": 0
+      },
+      "fees": {
+        "fee": [],
+        "total_record_count": 0,
+        "total_sum": 0,
+        "currency": "COP"
+      },
+      "requests": {
+        "user_request": [],
+        "total_record_count": 0
+      }
+    }
+  },
+  "escenarios": {
+    "prestamos": {
+      "user": {
+        "primary_id": "T00000001",
+        "first_name": "Lisandro",
+        "last_name": "Zapata",
+        "user_group": {
+          "value": "ESTUDIANTE",
+          "desc": "Estudiante de pregrado"
+        },
+        "status": {
+          "value": "ACTIVE",
+          "desc": "Activo"
+        },
+        "user_identifier": [
+          {
+            "id_type": {
+              "value": "CC",
+              "desc": "Cédula de ciudadanía"
+            },
+            "value": "",
+            "status": "ACTIVE"
+          },
+          {
+            "id_type": {
+              "value": "BARCODE",
+              "desc": "Código de barras"
+            },
+            "value": "BT00000001",
+            "status": "ACTIVE"
+          }
+        ]
+      },
+      "loans": {
+        "item_loan": [
+          {
+            "loan_id": "910000000001",
+            "loan_status": "ACTIVE",
+            "item_barcode": "39000000001",
+            "title": "Cálculo diferencial (ejemplar de prueba)",
+            "loan_date": "2026-10-20T15:00:00Z",
+            "due_date": "2026-11-10T23:59:00Z",
+            "library": {
+              "value": "CENTRAL",
+              "desc": "Biblioteca central"
+            }
+          }
+        ],
+        "total_record_count": 1
+      },
+      "fees": {
+        "fee": [],
+        "total_record_count": 0,
+        "total_sum": 0,
+        "currency": "COP"
+      },
+      "requests": {
+        "user_request": [],
+        "total_record_count": 0
+      }
+    },
+    "solicitudes": {
+      "user": {
+        "primary_id": "T00000001",
+        "first_name": "Lisandro",
+        "last_name": "Zapata",
+        "user_group": {
+          "value": "ESTUDIANTE",
+          "desc": "Estudiante de pregrado"
+        },
+        "status": {
+          "value": "ACTIVE",
+          "desc": "Activo"
+        },
+        "user_identifier": [
+          {
+            "id_type": {
+              "value": "CC",
+              "desc": "Cédula de ciudadanía"
+            },
+            "value": "",
+            "status": "ACTIVE"
+          },
+          {
+            "id_type": {
+              "value": "BARCODE",
+              "desc": "Código de barras"
+            },
+            "value": "BT00000001",
+            "status": "ACTIVE"
+          }
+        ]
+      },
+      "loans": {
+        "item_loan": [],
+        "total_record_count": 0
+      },
+      "fees": {
+        "fee": [],
+        "total_record_count": 0,
+        "total_sum": 0,
+        "currency": "COP"
+      },
+      "requests": {
+        "user_request": [
+          {
+            "request_id": "930000000001",
+            "request_type": "HOLD",
+            "request_sub_type": {
+              "value": "PATRON_PHYSICAL",
+              "desc": "Reserva de material"
+            },
+            "request_status": "IN_PROCESS",
+            "title": "Física general (ejemplar de prueba)",
+            "request_date": "2026-10-28Z"
+          },
+          {
+            "request_id": "930000000002",
+            "request_type": "HOLD",
+            "request_sub_type": {
+              "value": "PATRON_PHYSICAL",
+              "desc": "Reserva de material"
+            },
+            "request_status": "NOT_STARTED",
+            "title": "Química orgánica (ejemplar de prueba)",
+            "request_date": "2026-10-28Z"
+          }
+        ],
+        "total_record_count": 2
+      }
+    },
+    "multas": {
+      "user": {
+        "primary_id": "T00000001",
+        "first_name": "Lisandro",
+        "last_name": "Zapata",
+        "user_group": {
+          "value": "ESTUDIANTE",
+          "desc": "Estudiante de pregrado"
+        },
+        "status": {
+          "value": "ACTIVE",
+          "desc": "Activo"
+        },
+        "user_identifier": [
+          {
+            "id_type": {
+              "value": "CC",
+              "desc": "Cédula de ciudadanía"
+            },
+            "value": "",
+            "status": "ACTIVE"
+          },
+          {
+            "id_type": {
+              "value": "BARCODE",
+              "desc": "Código de barras"
+            },
+            "value": "BT00000001",
+            "status": "ACTIVE"
+          }
+        ]
+      },
+      "loans": {
+        "item_loan": [],
+        "total_record_count": 0
+      },
+      "fees": {
+        "fee": [
+          {
+            "id": "920000000001",
+            "type": {
+              "value": "OVERDUEFINE",
+              "desc": "Multa por retraso"
+            },
+            "status": "ACTIVE",
+            "balance": 15000,
+            "original_amount": 15000,
+            "currency": "COP",
+            "creation_time": "2026-10-15T10:00:00Z",
+            "comment": "Devolución tardía (dato de prueba)"
+          }
+        ],
+        "total_record_count": 1,
+        "total_sum": 15000,
+        "currency": "COP"
+      },
+      "requests": {
+        "user_request": [],
+        "total_record_count": 0
+      }
+    },
+    "combinado": {
+      "user": {
+        "primary_id": "T00000001",
+        "first_name": "Lisandro",
+        "last_name": "Zapata",
+        "user_group": {
+          "value": "ESTUDIANTE",
+          "desc": "Estudiante de pregrado"
+        },
+        "status": {
+          "value": "ACTIVE",
+          "desc": "Activo"
+        },
+        "user_identifier": [
+          {
+            "id_type": {
+              "value": "CC",
+              "desc": "Cédula de ciudadanía"
+            },
+            "value": "",
+            "status": "ACTIVE"
+          },
+          {
+            "id_type": {
+              "value": "BARCODE",
+              "desc": "Código de barras"
+            },
+            "value": "BT00000001",
+            "status": "ACTIVE"
+          }
+        ]
+      },
+      "loans": {
+        "item_loan": [
+          {
+            "loan_id": "910000000001",
+            "loan_status": "ACTIVE",
+            "item_barcode": "39000000001",
+            "title": "Cálculo diferencial (ejemplar de prueba)",
+            "loan_date": "2026-10-20T15:00:00Z",
+            "due_date": "2026-11-10T23:59:00Z",
+            "library": {
+              "value": "CENTRAL",
+              "desc": "Biblioteca central"
+            }
+          }
+        ],
+        "total_record_count": 1
+      },
+      "fees": {
+        "fee": [
+          {
+            "id": "920000000001",
+            "type": {
+              "value": "OVERDUEFINE",
+              "desc": "Multa por retraso"
+            },
+            "status": "ACTIVE",
+            "balance": 15000,
+            "original_amount": 15000,
+            "currency": "COP",
+            "creation_time": "2026-10-15T10:00:00Z",
+            "comment": "Devolución tardía (dato de prueba)"
+          }
+        ],
+        "total_record_count": 1,
+        "total_sum": 15000,
+        "currency": "COP"
+      },
+      "requests": {
+        "user_request": [
+          {
+            "request_id": "930000000001",
+            "request_type": "HOLD",
+            "request_sub_type": {
+              "value": "PATRON_PHYSICAL",
+              "desc": "Reserva de material"
+            },
+            "request_status": "IN_PROCESS",
+            "title": "Física general (ejemplar de prueba)",
+            "request_date": "2026-10-28Z"
+          }
+        ],
+        "total_record_count": 1
+      }
+    },
+    "inconsistente": {
+      "user": {
+        "primary_id": "T00000001",
+        "first_name": "Lisandro",
+        "last_name": "Zapata",
+        "user_group": {
+          "value": "ESTUDIANTE",
+          "desc": "Estudiante de pregrado"
+        },
+        "status": {
+          "value": "ACTIVE",
+          "desc": "Activo"
+        },
+        "user_identifier": [
+          {
+            "id_type": {
+              "value": "CC",
+              "desc": "Cédula de ciudadanía"
+            },
+            "value": "9999999999",
+            "status": "ACTIVE"
+          },
+          {
+            "id_type": {
+              "value": "BARCODE",
+              "desc": "Código de barras"
+            },
+            "value": "BT00000001",
+            "status": "ACTIVE"
+          }
+        ]
+      },
+      "loans": {
+        "item_loan": [],
+        "total_record_count": 0
+      },
+      "fees": {
+        "fee": [],
+        "total_record_count": 0,
+        "total_sum": 0,
+        "currency": "COP"
+      },
+      "requests": {
+        "user_request": [],
+        "total_record_count": 0
+      }
+    }
+  }
+}

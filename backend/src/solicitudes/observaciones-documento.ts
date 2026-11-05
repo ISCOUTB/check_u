@@ -1,3 +1,11 @@
+/** Fuentes de la consulta de Paz y Salvo (Tarea 50: ALMA, simulado o real; antes un demo). */
+export const FUENTES_BIBLIOTECA: readonly string[] = [
+  'alma',
+  'alma_simulada',
+  'sin_respuesta',
+  'biblioteca_demo',
+];
+
 /** Se proyectan reglas reales; los detalles sin evidencia nunca se sustituyen por una aprobación. */
 export function observacionesDocumento(
   estadoDb: string,
@@ -10,9 +18,9 @@ export function observacionesDocumento(
     return [
       { estado, mensaje: 'Análisis pendiente. No hay resultados registrados.' },
     ];
-  // Paz y Salvo: el estado lo da la consulta a Biblioteca, que deja su propio mensaje.
+  // Paz y Salvo: el estado lo da la consulta a Biblioteca (ALMA; antes un demo), que deja su mensaje.
   if (
-    detalle.fuente === 'biblioteca_demo' &&
+    FUENTES_BIBLIOTECA.includes(String(detalle.fuente)) &&
     typeof detalle.mensaje === 'string'
   )
     return [{ estado, mensaje: detalle.mensaje }];

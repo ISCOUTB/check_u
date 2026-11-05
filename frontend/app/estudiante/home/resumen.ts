@@ -7,7 +7,7 @@
  */
 
 import {
-    documentosRequeridos,
+    requisitosSolicitud,
     type NivelAcademico,
 } from "../documentos-requeridos";
 import type {
@@ -16,6 +16,7 @@ import type {
     SolicitudDetalle,
 } from "../preinscripcion/types";
 import type { ContextoPeriodo } from "../iniciar_preinscripcion/PeriodoInscripcion";
+import type { ResultadoBiblioteca } from "@/app/components/biblioteca/tipos";
 
 export type EstadoRequisito = EstadoDocumento | "falta_cargar";
 
@@ -28,6 +29,9 @@ export interface RequisitoResumen {
     /** Solo lo decide el backend. La UI nunca lo deduce del estado. */
     resubmissionAllowed: boolean;
     documentoId?: string;
+    /** Tarea 50: Paz y Salvo consultado en Biblioteca (no se sube; se vuelve a consultar). */
+    consulta?: boolean;
+    biblioteca?: ResultadoBiblioteca | null;
 }
 
 const MENSAJE_POR_ESTADO: Record<EstadoDocumento, string> = {
@@ -78,16 +82,23 @@ export function construirRequisitos(
     const porClave = new Map(
         documentos.map((documento) => [claveDocumento(documento), documento]),
     );
-    const requisitos = documentosRequeridos(nivel, segundoPrograma).map(
+    // Tarea 50: el resumen cuenta todos los requisitos, también el Paz y Salvo que se consulta.
+    const requisitos: RequisitoResumen[] = requisitosSolicitud(nivel, segundoPrograma).map(
         ({ id, etiqueta }) => {
             const documento = porClave.get(id);
             if (!documento) {
+                const consulta = id === "paz_y_salvo_bib";
                 return {
                     clave: id,
                     nombre: etiqueta,
                     estado: "falta_cargar" as const,
-                    observaciones: ["Aún no has cargado este documento."],
+                    observaciones: [
+                        consulta
+                            ? "Se consulta automáticamente con Biblioteca al enviar tu solicitud."
+                            : "Aún no has cargado este documento.",
+                    ],
                     resubmissionAllowed: false,
+                    consulta,
                 };
             }
             porClave.delete(id);
@@ -99,6 +110,9 @@ export function construirRequisitos(
                 observaciones: observacionesDocumento(documento, estado),
                 resubmissionAllowed: documento.resubmission_allowed,
                 documentoId: documento.id,
+                // Revisión final: también un Paz y Salvo en PDF de antes de la Tarea 50 se vuelve a consultar.
+                consulta: id === "paz_y_salvo_bib",
+                biblioteca: documento.bibliotecaResultado ?? null,
             };
         },
     );

@@ -25,6 +25,7 @@ import {
   enviarDocumentosReenvio,
   ErrorConsultaSolicitud,
 } from './api';
+import { useConsultaPazYSalvo } from './useConsultaPazYSalvo';
 import type {
   SolicitudDetalle,
   EstadoDocumento,
@@ -161,6 +162,7 @@ function analisisPersistido(doc: DocumentoSolicitud): DocumentAnalysisData {
         detail: error,
       })),
     ],
+    biblioteca: doc.bibliotecaResultado ?? null,
   };
 }
 
@@ -219,6 +221,7 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
   const [enviando, setEnviando] = useState(false);
   const [mensajeEnvio, setMensajeEnvio] = useState<string | null>(null);
   const [docParaCargar, setDocParaCargar] = useState<string | null>(null);
+  const consultarBiblioteca = useConsultaPazYSalvo();
 
   // La consulta de detalle ya comprueba propiedad y devuelve 404 si no hay solicitud.
   // No esperar una consulta adicional de resumen antes de solicitar el detalle.
@@ -390,6 +393,22 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
   const seleccionadosList = Object.keys(seleccionados);
   const puedeEnviar =
     solicitud.estadoSolicitud!=='CANCELADA' && seleccionadosList.length > 0 && reenviosRestantes > 0 && !enviando;
+
+  async function consultarDeNuevo() {
+    if (!solicitud || enviando) return;
+    setEnviando(true);
+    setMensajeEnvio(null);
+    try {
+      if (!(await consultarBiblioteca(solicitud.id))) return;
+      setCargando(true);
+      setErrorDatos(null);
+      setIntento((n) => n + 1);
+    } catch (error) {
+      setMensajeEnvio(error instanceof Error ? error.message : 'No fue posible consultar Biblioteca.');
+    } finally {
+      setEnviando(false);
+    }
+  }
 
   function abrirAnalisis(doc: DocumentoSolicitud) {
     setAnalysisData(analisisPersistido(doc));
@@ -805,7 +824,7 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
                         Ver análisis automático
                       </button>
 
-                      {doc.resubmission_allowed && !archivo && (
+                      {doc.resubmission_allowed && !archivo && doc.tipo !== 'paz_y_salvo_bib' && (
                         <button
                           type="button"
                           className={styles.btnSecundario}
@@ -813,6 +832,19 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
                           onClick={() => iniciarCarga(doc.id!)}
                         >
                           Volver a cargar
+                        </button>
+                      )}
+
+                      {/* Tarea 50: el Paz y Salvo no se sube (tampoco el PDF de antes); se vuelve a consultar en Biblioteca. */}
+                      {doc.resubmission_allowed && doc.tipo === 'paz_y_salvo_bib' && (
+                        <button
+                          type="button"
+                          className={styles.btnSecundario}
+                          disabled={enviando}
+                          aria-label={`Consultar de nuevo: ${doc.nombre}`}
+                          onClick={() => consultarDeNuevo()}
+                        >
+                          Consultar de nuevo
                         </button>
                       )}
 

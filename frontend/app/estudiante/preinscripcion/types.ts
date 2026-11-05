@@ -1,4 +1,5 @@
 import type { DatosInformacionEstudiante } from "@/app/components/informacion_estudiante/types";
+import type { ResultadoBiblioteca } from '@/app/components/biblioteca/tipos';
 import type { ContextoPeriodo } from "../iniciar_preinscripcion/PeriodoInscripcion";
 /**
  * types.ts — Tipos de dominio para la página de detalle de preinscripción del estudiante.
@@ -35,6 +36,10 @@ export interface ResultadoAnalisis {
 
 export interface DocumentoSolicitud {
   version?: number;
+  /** Tarea 50: CONSULTA = Paz y Salvo consultado en Biblioteca (sin archivo); ARCHIVO = PDF subido. */
+  origen?: 'ARCHIVO' | 'CONSULTA';
+  /** Tarea 50: resultado de la consulta de Paz y Salvo en Biblioteca (solo origen CONSULTA). */
+  bibliotecaResultado?: ResultadoBiblioteca | null;
   /** Estado guardado del documento (VALIDO, NO_VALIDO, INCONSISTENTE, POR_REVISAR…). */
   estado?: string;
   id?: string;

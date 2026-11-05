@@ -197,6 +197,58 @@ def evaluar_multas(lista: ListaAlma) -> Criterio:
     )
 
 
+_SOLICITUD_PENDIENTE = {"not_started", "in_process", "on_hold_shelf", "active", "pending"}
+_SOLICITUD_FINAL = {"completed", "canceled", "cancelled", "history"}
+
+
+def _solicitud_pendiente(item: dict[str, Any]) -> bool | None:
+    """True si sigue abierta en Biblioteca, False si terminó, None si el estado no se reconoce."""
+    for clave in ("request_status", "status"):
+        valor = item.get(clave)
+        if valor is None:
+            continue
+        texto = str(valor).strip().lower()
+        if texto in _SOLICITUD_PENDIENTE:
+            return True
+        if texto in _SOLICITUD_FINAL:
+            return False
+        return None
+    return None
+
+
+def evaluar_solicitudes(lista: ListaAlma) -> Criterio:
+    """Tarea 50: una solicitud abierta en Biblioteca impide el paz y salvo."""
+    if not lista.completo:
+        return _criterio_listado_incompleto(lista)
+
+    pendientes = 0
+    for item in lista.items:
+        estado = _solicitud_pendiente(item)
+        if estado is None:
+            return Criterio(
+                resultado="no_evaluable",
+                pendientes=None,
+                motivo="incomplete_data",
+                mensaje="No se pudo interpretar el estado de una o más solicitudes.",
+            )
+        if estado:
+            pendientes += 1
+
+    if pendientes == 0:
+        return Criterio(
+            resultado="cumple",
+            pendientes=0,
+            motivo=None,
+            mensaje="No tiene solicitudes pendientes en Biblioteca.",
+        )
+    return Criterio(
+        resultado="no_cumple",
+        pendientes=pendientes,
+        motivo=None,
+        mensaje=f"Tiene {pendientes} solicitud(es) pendiente(s) en Biblioteca.",
+    )
+
+
 def evaluar_opcion_grado(lista: ListaAlma | None = None) -> Criterio:
     """La fuente institucional aún no está definida por Biblioteca.
 

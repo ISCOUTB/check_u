@@ -233,6 +233,18 @@ class AlmaCliente:
             detalle=f"Listado {tipo} completo ({len(acumulados)} registro(s)).",
         )
 
+    def usuario(self, user_id: str) -> dict[str, Any] | None:
+        """Registro del usuario (GET /users/{id}); None si ALMA no lo tiene (404)."""
+        if not user_id or not str(user_id).strip():
+            raise AlmaClienteError("user_id vacío: no se puede consultar ALMA.")
+        url = f"{self._config.base_url}/almaws/v1/users/{str(user_id).strip()}"
+        try:
+            return self._get_json(url, {})
+        except AlmaClienteError as error:
+            if error.codigo_http == 404:
+                return None
+            raise
+
     def prestamos(self, user_id: str) -> ListaAlma:
         return self.listar(user_id, "loans")
 

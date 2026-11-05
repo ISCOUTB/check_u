@@ -34,7 +34,7 @@ test('envía los bytes PDF en multipart y reintenta tras un fallo sin simular é
     expect(opciones?.headers).toBeUndefined();
     const form = opciones?.body as FormData;
     expect(form).toBeInstanceOf(FormData);
-    expect(form.getAll('documentos')).toHaveLength(5);
+    expect(form.getAll('documentos')).toHaveLength(4); // Tarea 50: Paz y Salvo no se sube
     expect(await (form.getAll('documentos')[0] as File).text()).toBe('%PDF-1.4');
     expect(String(form.get('datos'))).not.toContain('"archivo"');
     return llamadas === 1 ? Response.json({ message: 'interno SQL' }, { status: 503 }) : Response.json({ ok: true });

@@ -5,6 +5,7 @@ import {
   claveDocumento,
   documentosRequeridos,
   leerClave,
+  documentosASubir,
   MAXIMO_DOCUMENTOS,
   tipoSolicitud,
 } from './requisitos-documentales.js';
@@ -35,7 +36,29 @@ describe('requisitos documentales por tipo de solicitud', () => {
       'paz_y_salvo_bib',
       'estampilla_pro_cultura',
     ]);
-    expect(MAXIMO_DOCUMENTOS).toBe(7);
+    // Tarea 50: Paz y Salvo no se sube, así que el máximo de PDF es 6 (doble programa).
+    expect(MAXIMO_DOCUMENTOS).toBe(6);
+  });
+
+  it('Paz y Salvo es una consulta: se suben 4, 6 y 2 PDF', () => {
+    const subir = (nivel: string, doble: boolean) =>
+      documentosASubir(nivel, doble).map(claveDocumento);
+    expect(subir('PREGRADO', false)).toEqual([
+      'identification',
+      'academic_evaluation',
+      'estampilla_pro_cultura',
+      'saber_pro',
+    ]);
+    expect(subir('PREGRADO', true)).toHaveLength(6);
+    expect(subir('PREGRADO', true)).not.toContain('paz_y_salvo_bib');
+    expect(subir('POSGRADO', false)).toEqual([
+      'identification',
+      'estampilla_pro_cultura',
+    ]);
+    const paz = documentosRequeridos('POSGRADO', false).find(
+      (d) => d.tipo === 'paz_y_salvo_bib',
+    );
+    expect(paz?.origen).toBe('consulta');
   });
 
   it('posgrado ignora el doble programa', () => {
@@ -74,10 +97,18 @@ describe('validarArchivos', () => {
     tipo,
   });
 
-  it('acepta los 7 PDF del doble programa', () => {
+  it('acepta los 6 PDF del doble programa', () => {
     expect(() =>
-      validarArchivos(claves('PREGRADO', true).map(pdf)),
+      validarArchivos(
+        documentosASubir('PREGRADO', true).map(claveDocumento).map(pdf),
+      ),
     ).not.toThrow();
+  });
+
+  it('rechaza un PDF de Paz y Salvo: se consulta con Biblioteca', () => {
+    expect(() => validarArchivos([pdf('paz_y_salvo_bib')])).toThrow(
+      'Paz y Salvo se consulta automáticamente con Biblioteca; no se sube.',
+    );
   });
 
   it('rechaza un segundo documento de un tipo que no lo admite', () => {
@@ -86,9 +117,12 @@ describe('validarArchivos', () => {
     ).toThrow('Tipos documentales inválidos o repetidos.');
   });
 
-  it('rechaza más de 7 archivos', () => {
-    const ocho = [...claves('PREGRADO', true), 'identification'].map(pdf);
-    expect(() => validarArchivos(ocho)).toThrow(
+  it('rechaza más de 6 archivos', () => {
+    const siete = [
+      ...documentosASubir('PREGRADO', true).map(claveDocumento),
+      'identification',
+    ].map(pdf);
+    expect(() => validarArchivos(siete)).toThrow(
       'Adjunta nuevamente los PDF requeridos para enviar la preinscripción.',
     );
   });

@@ -62,6 +62,12 @@ export async function resolverDocumento(id: string, resultado: 'VALIDO' | 'NO_VA
         body: JSON.stringify({ resultado, ...(comentario ? { comentario } : {}) }),
     });
 }
+/** Tarea 50: la funcionaria vuelve a consultar el Paz y Salvo en Biblioteca (no gasta intentos del estudiante). */
+export async function reconsultarPazYSalvoFuncionaria(id: string) {
+    return consultar(`/funcionario/solicitudes/${encodeURIComponent(id)}/paz-y-salvo/consulta`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+}
 export async function registrarRevision(id: string, accion: AccionRevision, comentario: string, documentos: number[]) {
     return consultar(`/funcionario/solicitudes/${encodeURIComponent(id)}/revisiones`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },

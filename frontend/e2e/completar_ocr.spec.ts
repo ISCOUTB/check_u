@@ -81,7 +81,7 @@ test('el primer envío confirma el resultado antes de redirigir', async ({ page 
   await page.getByLabel('Código estudiantil (obligatorio)').fill('T00012345');
   await page.getByRole('radiogroup', {name:'Modalidad (obligatorio)'}).getByRole('radio',{name:'Presencial'}).check();
   await page.getByLabel('Programa (obligatorio)').selectOption({label:'Programa de ejemplo'});
-  for (const id of ['identification','paz_y_salvo_bib','estampilla_pro_cultura']) {
+  for (const id of ['identification','estampilla_pro_cultura']) { // Tarea 50: Paz y Salvo no se sube
     await page.locator(`#documento-${id}`).setInputFiles({name:`${id}.pdf`,mimeType:'application/pdf',buffer:Buffer.from(PDF)});
   }
   await page.getByRole('button',{name:'Enviar preinscripción',exact:true}).click();

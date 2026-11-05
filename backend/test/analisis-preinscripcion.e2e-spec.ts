@@ -16,6 +16,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AppModule } from '../src/app.module.js';
 import { DatabaseService } from '../src/database/database.service.js';
+import { BibliotecaService } from '../src/biblioteca/biblioteca.service.js';
+import { resultadoBiblioteca } from './soporte/flujo-tarea42.js';
 import { ArchivosTemporalesService } from '../src/solicitudes/archivos-temporales.service.js';
 import { crearDbBorrador } from './soporte/db-borrador.js';
 
@@ -26,7 +28,6 @@ const PDF = Buffer.from(
 const TIPOS = [
   'identification',
   'academic_evaluation',
-  'paz_y_salvo_bib',
   'estampilla_pro_cultura',
   'saber_pro',
 ];
@@ -121,6 +122,9 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
     const modulo = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DatabaseService)
       .useValue(base.servicio)
+      // Tarea 50: Paz y Salvo se consulta en ALMA a través del motor; aquí, siempre a paz y salvo.
+      .overrideProvider(BibliotecaService)
+      .useValue({ consultar: async () => resultadoBiblioteca('paz_y_salvo') })
       .compile();
     app = modulo.createNestApplication();
     app.setGlobalPrefix('api');
@@ -150,9 +154,11 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
       (nivel === 'PREGRADO'
         ? [
             ...TIPOS,
-            ...(doble ? ['academic_evaluation-2', 'estampilla_pro_cultura-2'] : []),
+            ...(doble
+              ? ['academic_evaluation-2', 'estampilla_pro_cultura-2']
+              : []),
           ]
-        : ['identification', 'paz_y_salvo_bib', 'estampilla_pro_cultura']);
+        : ['identification', 'estampilla_pro_cultura']);
     let req = agente
       .post('/api/solicitudes/enviar')
       .field('datos', JSON.stringify(datos(nivel, doble)))
@@ -178,16 +184,16 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
         'SELECT * FROM documentos ORDER BY id_documento',
       );
       expect(docs.rows).toHaveLength(cantidad);
-      expect(
-        docs.rows.find((d) => d.tipo_documento === 'paz_y_salvo_bib')?.estado,
-      ).toBe('VALIDO'); // Tarea 42: lo decide Biblioteca (demo: T00000001 está a paz y salvo)
+      const paz = docs.rows.find((d) => d.tipo_documento === 'paz_y_salvo_bib');
+      // Tarea 50: Paz y Salvo es una consulta a Biblioteca, sin archivo.
+      expect(paz).toMatchObject({ estado: 'VALIDO', origen: 'CONSULTA' });
       expect(
         (await base.db.query('SELECT * FROM validaciones')).rows,
       ).toHaveLength(cantidad);
       expect(
         (await base.db.query('SELECT * FROM historial_validaciones')).rows,
       ).toHaveLength(cantidad);
-      expect(await readdir(carpeta)).toHaveLength(cantidad);
+      expect(await readdir(carpeta)).toHaveLength(cantidad - 1); // Paz y Salvo no tiene archivo
       const ruta = (
         await base.db.query('SELECT ruta_archivo FROM rutas LIMIT 1')
       ).rows[0].ruta_archivo as string;
@@ -320,7 +326,7 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
       "UPDATE rutas SET expira_en = CURRENT_TIMESTAMP - INTERVAL '1 day'",
     );
     await limpieza.limpiar();
-    expect(await readdir(carpeta)).toHaveLength(5); // recalcula según el periodo vigente, no la fecha obsoleta
+    expect(await readdir(carpeta)).toHaveLength(4); // recalcula según el periodo vigente, no la fecha obsoleta
     await base.db.exec(
       "UPDATE periodos_grado SET fecha_inicio = CURRENT_DATE - 90, fecha_fin = ((CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date - 16)",
     );
@@ -335,7 +341,7 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
           'SELECT * FROM rutas WHERE activa = FALSE AND eliminado_en IS NOT NULL',
         )
       ).rows,
-    ).toHaveLength(5);
+    ).toHaveLength(4); // Tarea 50: Paz y Salvo no tiene archivo ni ruta
     expect(
       (await base.db.query('SELECT * FROM validaciones')).rows,
     ).toHaveLength(5);
@@ -363,7 +369,7 @@ describe('Tarea 36: multipart → motor → PostgreSQL → consulta de sesión �
       "UPDATE periodos_grado SET fecha_inicio = CURRENT_DATE - 90, fecha_fin = ((CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date - 15)",
     );
     await limpieza.limpiar();
-    expect(await readdir(carpeta)).toHaveLength(5);
+    expect(await readdir(carpeta)).toHaveLength(4);
     await base.db.exec(
       "UPDATE periodos_grado SET fecha_fin = ((CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date - 16)",
     );

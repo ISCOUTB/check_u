@@ -30,3 +30,8 @@ build/
 !**/.env.example
 # Respaldos locales de la base de datos
 /backups/
+# Tarea 50: datos de prueba de la simulación de ALMA (nunca al repositorio).
+alma_simulacion*.json
+**/datos_locales/
+# El ejemplo sí se versiona: sin números de documento, cada desarrollador lo copia y lo llena.
+!modules/validadores/fuentes/alma/alma_simulacion.example.json

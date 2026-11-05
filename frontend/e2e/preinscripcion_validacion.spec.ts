@@ -111,7 +111,7 @@ test("seccionesDelNivel: pregrado sin estudios y posgrado sin Saber Pro", () => 
 // faltantes
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("un borrador vacío de pregrado falta lo obligatorio y los 5 documentos, pero no el correo", () => {
+test("un borrador vacío de pregrado falta lo obligatorio y los 4 documentos, pero no el correo", () => {
     const resultado = faltantes(borradorVacio("PREGRADO", CORREO));
 
     expect(resultado.map((faltante) => faltante.id)).toEqual([
@@ -124,7 +124,6 @@ test("un borrador vacío de pregrado falta lo obligatorio y los 5 documentos, pe
         idCampoPrograma("programa", 1),
         "documento-identification",
         "documento-academic_evaluation",
-        "documento-paz_y_salvo_bib",
         "documento-estampilla_pro_cultura",
         "documento-saber_pro",
     ]);
@@ -151,24 +150,18 @@ test("cada faltante trae su sección, su etiqueta y su mensaje", () => {
     });
 });
 
-test("el Paz y Salvo es un documento requerido y se muestra", () => {
+test("el Paz y Salvo ya no se pide en el formulario: se consulta con Biblioteca (Tarea 50)", () => {
     for (const nivel of ["PREGRADO", "POSGRADO"] as const) {
-        const pazYSalvo = faltantes(borradorVacio(nivel, CORREO)).find(
-            (faltante) => faltante.id === "documento-paz_y_salvo_bib",
-        );
-        expect(pazYSalvo?.etiqueta).toBe("Paz y Salvo de Biblioteca");
+        expect(ids(borradorVacio(nivel, CORREO))).not.toContain("documento-paz_y_salvo_bib");
     }
-
-    const borrador = completo("PREGRADO");
-    delete borrador.documentos["paz_y_salvo_bib"];
-    expect(ids(borrador)).toEqual(["documento-paz_y_salvo_bib"]);
+    // Un borrador completo no necesita Paz y Salvo para estar listo.
+    expect(ids(completo("PREGRADO"))).toEqual([]);
 });
 
-test("un borrador vacío de posgrado pide sus 3 documentos", () => {
+test("un borrador vacío de posgrado pide sus 2 documentos", () => {
     const documentos = ids(borradorVacio("POSGRADO", CORREO)).filter((id) => id.startsWith("documento-"));
     expect(documentos).toEqual([
         "documento-identification",
-        "documento-paz_y_salvo_bib",
         "documento-estampilla_pro_cultura",
     ]);
 });
@@ -300,11 +293,11 @@ test("progreso de un borrador vacío de pregrado", () => {
         { id: "contacto", titulo: "Contacto y residencia", faltan: 0, opcional: true },
         { id: "academico", titulo: "Información académica", faltan: 3, opcional: false },
         { id: "saber_pro", titulo: "Saber Pro y vinculación con la UTB", faltan: 0, opcional: true },
-        { id: "documentos", titulo: "Documentos", faltan: 5, opcional: false },
+        { id: "documentos", titulo: "Documentos", faltan: 4, opcional: false },
     ]);
-    expect(resultado.documentos).toEqual({ cargados: 0, requeridos: 5 });
+    expect(resultado.documentos).toEqual({ cargados: 0, requeridos: 4 });
     expect(resultado.seccionesPendientes).toBe(2);
-    expect(resultado.documentosPendientes).toBe(5);
+    expect(resultado.documentosPendientes).toBe(4);
     expect(resultado.listo).toBe(false);
 });
 
@@ -312,7 +305,7 @@ test("progreso de posgrado usa sus secciones y sus 3 documentos", () => {
     const resultado = progreso(borradorVacio("POSGRADO", CORREO));
 
     expect(resultado.secciones.map((seccion) => seccion.id)).toEqual(seccionesDelNivel("POSGRADO"));
-    expect(resultado.documentos).toEqual({ cargados: 0, requeridos: 3 });
+    expect(resultado.documentos).toEqual({ cargados: 0, requeridos: 2 });
 });
 
 test("las secciones sin obligatorios son opcionales en cada nivel; Documentos nunca", () => {
@@ -350,8 +343,8 @@ test("progreso cuenta los documentos cargados y las secciones que se completan",
 
     expect(resultado.secciones.find((seccion) => seccion.id === "identificacion")?.faltan).toBe(0);
     expect(resultado.seccionesPendientes).toBe(1);
-    expect(resultado.documentos).toEqual({ cargados: 2, requeridos: 5 });
-    expect(resultado.documentosPendientes).toBe(3);
+    expect(resultado.documentos).toEqual({ cargados: 2, requeridos: 4 });
+    expect(resultado.documentosPendientes).toBe(2);
     expect(resultado.listo).toBe(false);
 });
 
@@ -359,15 +352,15 @@ test("progreso sin segundo programa no cuenta la segunda evaluación ni la segun
     const borrador = completo("PREGRADO");
 
     borrador.segundoPrograma = true;
-    expect(progreso(borrador).documentos).toEqual({ cargados: 5, requeridos: 7 });
+    expect(progreso(borrador).documentos).toEqual({ cargados: 4, requeridos: 6 });
 
     cargar(borrador, "academic_evaluation-2");
     cargar(borrador, "estampilla_pro_cultura-2");
-    expect(progreso(borrador).documentos).toEqual({ cargados: 7, requeridos: 7 });
+    expect(progreso(borrador).documentos).toEqual({ cargados: 6, requeridos: 6 });
 
     borrador.segundoPrograma = false;
     const resultado = progreso(borrador);
-    expect(resultado.documentos).toEqual({ cargados: 5, requeridos: 5 });
+    expect(resultado.documentos).toEqual({ cargados: 4, requeridos: 4 });
     expect(resultado.documentosPendientes).toBe(0);
 });
 

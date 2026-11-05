@@ -30,6 +30,8 @@ export interface RequisitoDocumento {
      * Retirarlo del flujo solo requerirá quitar esta entrada del arreglo.
      */
     retirando?: boolean;
+    /** Tarea 50: lo verifica el sistema (Paz y Salvo con ALMA); no tiene zona de carga. */
+    consulta?: boolean;
     /** En pregrado con segundo programa se pide otro documento de este tipo (evaluación y estampilla). */
     unoPorPrograma?: boolean;
 }
@@ -64,11 +66,12 @@ export const DOCUMENTOS_REQUERIDOS: Record<NivelAcademico, RequisitoDocumento[]>
             unoPorPrograma: true,
         },
         {
-            // TODO: Próximo a retirar del flujo de grado cuando se automatice la consulta con biblioteca.
+            // Tarea 50: lo consulta el sistema en Biblioteca (ALMA); el estudiante no lo sube.
             tipo: "paz_y_salvo_bib",
             nombre: "Paz y Salvo Biblioteca.",
             etiqueta: "Paz y Salvo de Biblioteca",
-            retirando: true,
+            nota: "(Se consulta automáticamente con Biblioteca; no se sube.)",
+            consulta: true,
         },
         {
             tipo: "estampilla_pro_cultura",
@@ -90,11 +93,12 @@ export const DOCUMENTOS_REQUERIDOS: Record<NivelAcademico, RequisitoDocumento[]>
             etiqueta: "Documento de identidad",
         },
         {
-            // TODO: Próximo a retirar del flujo de grado cuando se automatice la consulta con biblioteca.
+            // Tarea 50: lo consulta el sistema en Biblioteca (ALMA); el estudiante no lo sube.
             tipo: "paz_y_salvo_bib",
             nombre: "Paz y Salvo Biblioteca.",
             etiqueta: "Paz y Salvo de Biblioteca",
-            retirando: true,
+            nota: "(Se consulta automáticamente con Biblioteca; no se sube.)",
+            consulta: true,
         },
         {
             tipo: "estampilla_pro_cultura",
@@ -113,15 +117,37 @@ export const DOCUMENTOS_POR_NIVEL: Record<NivelAcademico, string[]> = {
 };
 
 /**
- * Documentos que el formulario pide para un nivel, en orden. Con segundo programa
- * en pregrado agrega al final el segundo comprobante de la estampilla.
- * No quita los marcados retirando: se incluyen los 5 de pregrado y 3 de posgrado.
+ * Todos los requisitos de la solicitud, en orden: 5 en pregrado (7 con segundo programa) y 3 en
+ * posgrado. Incluye el Paz y Salvo, que se consulta con Biblioteca (Tarea 50).
+ */
+export function requisitosSolicitud(
+    nivel: NivelAcademico,
+    segundoPrograma: boolean = false,
+): DocumentoDelFormulario[] {
+    return listar(DOCUMENTOS_REQUERIDOS[nivel], nivel, segundoPrograma);
+}
+
+/**
+ * Documentos que el formulario pide subir, en orden: los requisitos sin los que se consultan
+ * (Paz y Salvo). Con segundo programa en pregrado agrega al final la segunda evaluación y el
+ * segundo comprobante de la estampilla.
  */
 export function documentosRequeridos(
     nivel: NivelAcademico,
     segundoPrograma: boolean = false,
 ): DocumentoDelFormulario[] {
-    const base = DOCUMENTOS_REQUERIDOS[nivel];
+    return listar(
+        DOCUMENTOS_REQUERIDOS[nivel].filter((d) => !d.consulta),
+        nivel,
+        segundoPrograma,
+    );
+}
+
+function listar(
+    base: RequisitoDocumento[],
+    nivel: NivelAcademico,
+    segundoPrograma: boolean,
+): DocumentoDelFormulario[] {
     const documentos: DocumentoDelFormulario[] = base.map(({ tipo, etiqueta }) => ({
         id: tipo,
         tipo,
