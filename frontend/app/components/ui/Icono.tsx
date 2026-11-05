@@ -22,6 +22,14 @@ const TRAZOS = {
         </>
     ),
     procesando: <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5" />,
+    recargar: (
+        <>
+            <path d="M20 11a8 8 0 0 0-14.9-3.5L4 9" />
+            <path d="M4 4v5h5" />
+            <path d="M4 13a8 8 0 0 0 14.9 3.5L20 15" />
+            <path d="M20 20v-5h-5" />
+        </>
+    ),
     en_proceso: (
         <>
             <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4.5h-4.5" />

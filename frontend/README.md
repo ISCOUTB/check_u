@@ -100,4 +100,4 @@ La estética es la del inicio del estudiante: la paleta azul, tarjetas blancas y
 | `/estudiante/home` | Inicio del estudiante | La sesión es real (`/auth/me`); la solicitud activa, las notificaciones y la política de reenvíos son datos simulados (ver `app/estudiante/home/api.ts`) |
 | `/estudiante/preinscripcion` | Carga de documentos | Página provisional; la real es otra tarea |
 | `/funcionario/dashboard` | Solicitudes del personal de grados | La sesión es real; las solicitudes son datos simulados (`datos.ts`) |
-| `/funcionario/detalle_preinscripcion/[id]` | Detalle de una solicitud | La sesión es real; los datos son simulados (`datos.ts`) y son los mismos para cualquier número |
+| `/funcionario/detalle_preinscripcion/[id]` | Detalle de una solicitud | Conectado al backend; incluye resumen documental, información del estudiante, documentos, acciones de revisión e historial |

@@ -45,7 +45,8 @@ test.describe("dashboard", () => {
         await sesionComo(page, "funcionario");
         await page.goto(DASHBOARD);
         await page.getByRole("link", { name: "Ver solicitud 1" }).click();
-        await expect(page).toHaveURL("/funcionario/detalle_preinscripcion/1");
+        // La primera visita a la ruta compila la página en el servidor de desarrollo; damos margen.
+        await expect(page).toHaveURL("/funcionario/detalle_preinscripcion/1", { timeout: 30_000 });
     });
 
     test("los filtros indican cuál está activo y anuncian el conteo", async ({ page }) => {
