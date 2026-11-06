@@ -1,8 +1,4 @@
-
-import {
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 
 export type UserRole = 'estudiante' | 'funcionario';
@@ -23,38 +19,52 @@ interface Session {
   expiresAt: number;
 }
 
-@Injectable()
-export class AuthService {
-  private readonly users: TestUser[] = [
+function leerObligatorio(nombre: string): string {
+  const valor = process.env[nombre]?.trim();
+  if (!valor) {
+    throw new Error(
+      `Falta la variable de entorno ${nombre}. ` +
+        `Cópiala desde backend/.env.example a backend/.env y define un valor.`,
+    );
+  }
+  return valor;
+}
+
+function usuariosDesdeEntorno(): TestUser[] {
+  return [
     {
       id: 1,
-      username: 'lizapata@utb.edu.co',
-      password: '12345',
-      name: 'Lisandro Zapata',
+      username: leerObligatorio('AUTH_ESTUDIANTE_USERNAME'),
+      password: leerObligatorio('AUTH_ESTUDIANTE_PASSWORD'),
+      name: process.env.AUTH_ESTUDIANTE_NAME?.trim() || 'Estudiante',
       role: 'estudiante',
     },
     {
       id: 2,
-      username: 'rmarriaga@utb.edu.co',
-      password: '12345',
-      name: 'Rosana Marriaga',
+      username: leerObligatorio('AUTH_FUNCIONARIO_USERNAME'),
+      password: leerObligatorio('AUTH_FUNCIONARIO_PASSWORD'),
+      name: process.env.AUTH_FUNCIONARIO_NAME?.trim() || 'Funcionario',
       role: 'funcionario',
     },
   ];
+}
 
+@Injectable()
+export class AuthService {
+  private readonly users: TestUser[];
   private readonly sessions = new Map<string, Session>();
+
+  constructor() {
+    this.users = usuariosDesdeEntorno();
+  }
 
   login(username: string, password: string) {
     const user = this.users.find(
-      (item) =>
-        item.username === username &&
-        item.password === password,
+      (item) => item.username === username && item.password === password,
     );
 
     if (!user) {
-      throw new UnauthorizedException(
-        'Usuario o contraseña incorrectos',
-      );
+      throw new UnauthorizedException('Usuario o contraseña incorrectos');
     }
 
     const safeUser: SafeUser = {
