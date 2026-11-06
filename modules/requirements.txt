@@ -16,3 +16,5 @@ requests==2.34.2
 lxml>=5.0.0
 #flask
 Flask
+#Gunicorn
+gunicorn==23.0.0
