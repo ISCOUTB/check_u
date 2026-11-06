@@ -22,4 +22,6 @@ COPY . /app
 
 EXPOSE 5001
 
-CMD ["python", "modules/api/app.py"]
+# Producción: Gunicorn (sin debug de Flask). FLASK_DEBUG no aplica aquí.
+ENV FLASK_DEBUG=0
+CMD ["gunicorn", "-b", "0.0.0.0:5001", "-w", "2", "--timeout", "120", "modules.api.app:app"]
