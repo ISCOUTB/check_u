@@ -33,6 +33,8 @@ from modules.api.validacion import (  # noqa: E402
 
 app = Flask(__name__)
 
+app.config["PROPAGATE_EXCEPTIONS"] = False
+
 # Límite razonable de subida (ajusta si hace falta)
 app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024  # 25 MB
 
@@ -136,14 +138,14 @@ def analizar():
                     "error": str(e),
                 }
             )
-        except Exception as e:
-            # Error interno del motor
+        except Exception:
+            # No filtrar el mensaje interno al cliente (Tarea seguridad F3).
             errores.append(
                 {
                     "indice": indice,
                     "nombre": archivo.filename,
                     "type_document": tipo,
-                    "error": f"Error al procesar: {e}",
+                    "error": "No fue posible procesar el documento. Intenta de nuevo.",
                 }
             )
 
@@ -159,8 +161,17 @@ def analizar():
 
 
 def main():
-    # Puerto distinto a webapp (5000) para no chocar
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    """Arranque local de desarrollo. En Docker/producción se usa Gunicorn."""
+    import os
+
+    puerto = int(os.environ.get("PORT", "5001"))
+    # Solo True si FLASK_DEBUG=1|true|yes. Por defecto desactivado (F3).
+    debug = os.environ.get("FLASK_DEBUG", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    app.run(host="0.0.0.0", port=puerto, debug=debug)
 
 
 if __name__ == "__main__":
