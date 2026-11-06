@@ -5,8 +5,8 @@ Pruebas de extremo a extremo de los flujos del estudiante y de la funcionaria de
 
 ## Resultado general
 
-Se ejecutaron los **14 escenarios**: **7 exitosos** y **7 fallidos**. Ningún escenario falló por completo
-salvo el 13: en los otros 6 fallidos, el flujo principal funciona y falla alguna comprobación concreta.
+Se ejecutaron los **14 escenarios**: **7 exitosos** y **7 fallidos**. En los fallidos,
+el flujo principal funciona y falla alguna comprobación concreta; el más incompleto es el 13.
 Quedan registrados **13 hallazgos**: 3 de severidad alta, 4 media, 1 por aclarar y 5 baja.
 
 | # | Escenario | Resultado | Motor | Hallazgos |
@@ -137,7 +137,7 @@ Quedan registrados **13 hallazgos**: 3 de severidad alta, 4 media, 1 por aclarar
 
 - **Pasos:** crear «Grados 2027-1» y luego otro con el mismo nombre y otras fechas.
 - **Esperado (#133, escenario 10):** evitar periodos duplicados.
-- **Observado:** solo se rechaza el duplicado de las mismas fechas de recepción. Con el mismo nombre se crea un segundo periodo, indistinguible en la lista del estudiante.
+- **Observado:** solo se rechaza el duplicado de las mismas fechas de recepción. Con el mismo nombre se crea un segundo periodo.
 - **Causa:** la validación de `backend/src/periodos/periodos.service.ts` compara solo las fechas.
 - **Recomendación:** validar también el nombre, si el equipo lo considera un duplicado.
 - **Evidencia:** [10-e](capturas/10-e-nombre-duplicado.png). Prueba: E10.
@@ -154,12 +154,12 @@ No es necesariamente un error de código: los documentos del proyecto se contrad
 
 La aplicación sigue a `PROMPT_BASE.md`. Con **dos programas**, para lo que la #133 pide verificar la configuración, el formulario pide los mismos 2 documentos: una sola estampilla, mientras que pregrado pide una por programa.
 
-- **Pregunta para Lisandro:** ¿posgrado debe pedir Evaluación de Banner? ¿Y una estampilla por programa?
+- **Pregunta para quien definió la tarea:** ¿posgrado debe pedir Evaluación de Banner? ¿Y una estampilla por programa?
 - **Evidencia:** [02-a](capturas/02-a-formulario-posgrado-un-programa.png), [02-d](capturas/02-d-formulario-posgrado-dos-programas.png). Pruebas: E2.1 (en rojo hasta aclararlo) y E2.2.
 
 ### H-09. Los filtros no se pueden usar sin periodo ni sin nivel (baja)
 
-Todas las combinaciones de periodo, nivel, estado y fechas devolvieron lo correcto. Pero la #133 pide usarlos también individualmente, y sin periodo la tabla dice «Selecciona un periodo», mientras que el nivel no tiene una opción «Todos». Además, los filtros vienen plegados, así que al entrar se pide elegir un periodo sin que se vea el selector. Evidencia: [11-d](capturas/11-d-sin-periodo.png). Prueba: E11.
+Todas las combinaciones de periodo, nivel, estado y fechas devolvieron lo correcto. Pero la #133 pide usarlos también individualmente, y sin periodo la tabla dice «Selecciona un periodo», mientras que el nivel no tiene una opción «Todos». Evidencia: [11-d](capturas/11-d-sin-periodo.png). Prueba: E11.
 
 ### H-10. El estudiante ve «Inválida» y la funcionaria «No válida» (baja)
 
