@@ -2,7 +2,8 @@
 export const CAMPOS_OPCIONES = [
   'TIPO_DOCUMENTO',
   'GENERO',
-  'PROGRAMA',
+  'PROGRAMA_PREGRADO',
+  'PROGRAMA_POSGRADO',
   'OPCION_GRADO',
   'TIPO_DISCAPACIDAD',
 ] as const;
@@ -12,7 +13,8 @@ export type CampoOpciones = (typeof CAMPOS_OPCIONES)[number];
 export const ETIQUETAS_CAMPO: Record<CampoOpciones, string> = {
   TIPO_DOCUMENTO: 'Tipo de documento',
   GENERO: 'Género',
-  PROGRAMA: 'Programa académico',
+  PROGRAMA_PREGRADO: 'Programa académico de Pregrado',
+  PROGRAMA_POSGRADO: 'Programa académico de Posgrado',
   OPCION_GRADO: 'Opción de grado',
   TIPO_DISCAPACIDAD: 'Tipo de discapacidad',
 };

@@ -51,19 +51,26 @@ BEGIN
     END IF;
 
     -- Tarea 40: los cinco campos administrables traen sus opciones iniciales.
-    IF (SELECT COUNT(DISTINCT campo) FROM opciones_campo) <> 5 THEN
+    IF (SELECT COUNT(DISTINCT campo) FROM opciones_campo) <> 6 THEN
         RAISE EXCEPTION 'Faltan campos en opciones_campo';
     END IF;
-    IF (SELECT COUNT(*) FROM opciones_campo) <> 31 THEN
-        RAISE EXCEPTION 'Se esperaban 31 opciones iniciales, hay %',
+    IF (SELECT COUNT(*) FROM opciones_campo) <> 36 THEN
+        RAISE EXCEPTION 'Se esperaban 36 opciones iniciales, hay %',
             (SELECT COUNT(*) FROM opciones_campo);
     END IF;
     IF NOT EXISTS (
         SELECT 1 FROM opciones_campo
-        WHERE campo = 'PROGRAMA' AND valor = 'INGENIERIA_DE_SISTEMAS_Y_COMPUTACION'
+        WHERE campo = 'PROGRAMA_PREGRADO' AND valor = 'INGENIERIA_DE_SISTEMAS_Y_COMPUTACION'
           AND etiqueta = 'Ingeniería de Sistemas y Computación' AND orden = 1
     ) THEN
         RAISE EXCEPTION 'Falta el programa inicial de Ingeniería de Sistemas';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM opciones_campo
+        WHERE campo = 'PROGRAMA_POSGRADO' AND valor = 'MAESTRIA_EN_INGENIERIA'
+          AND etiqueta = 'Maestría en Ingeniería' AND orden = 1
+    ) THEN
+        RAISE EXCEPTION 'Falta el programa inicial de posgrado';
     END IF;
 
     -- Fixtures de prueba: SOLO dentro de esta transaccion, que termina en ROLLBACK.

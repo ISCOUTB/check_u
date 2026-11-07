@@ -39,6 +39,8 @@ export type CampoOpcionDemo =
     | "TIPO_DOCUMENTO"
     | "GENERO"
     | "PROGRAMA"
+    | "PROGRAMA_PREGRADO"
+    | "PROGRAMA_POSGRADO"
     | "OPCION_GRADO"
     | "TIPO_DISCAPACIDAD";
 
@@ -62,10 +64,15 @@ export const OPCIONES_CAMPO_DEMO: readonly OpcionCampoDemo[] = [
     { id: 7, campo: "GENERO", valor: "OTRO", etiqueta: "Otro", orden: 3 },
     { id: 8, campo: "GENERO", valor: "NO_INFORMA", etiqueta: "Prefiero no decirlo", orden: 4 },
 
-    { id: 9, campo: "PROGRAMA", valor: "PROGRAMA_DE_EJEMPLO", etiqueta: "Programa de ejemplo", orden: 1 },
-    { id: 10, campo: "PROGRAMA", valor: "OTRO_PROGRAMA_DE_EJEMPLO", etiqueta: "Otro programa de ejemplo", orden: 2 },
-    { id: 11, campo: "PROGRAMA", valor: "INGENIERIA", etiqueta: "Ingeniería", orden: 3 },
-    { id: 12, campo: "PROGRAMA", valor: "INGENIERIA_DE_SISTEMAS", etiqueta: "Ingeniería de Sistemas", orden: 4 },
+    { id: 9, campo: "PROGRAMA_PREGRADO", valor: "PROGRAMA_DE_EJEMPLO", etiqueta: "Programa de ejemplo", orden: 1 },
+    { id: 10, campo: "PROGRAMA_PREGRADO", valor: "OTRO_PROGRAMA_DE_EJEMPLO", etiqueta: "Otro programa de ejemplo", orden: 2 },
+    { id: 11, campo: "PROGRAMA_PREGRADO", valor: "INGENIERIA", etiqueta: "Ingeniería", orden: 3 },
+    { id: 12, campo: "PROGRAMA_PREGRADO", valor: "INGENIERIA_DE_SISTEMAS", etiqueta: "Ingeniería de Sistemas", orden: 4 },
+
+    { id: 22, campo: "PROGRAMA_POSGRADO", valor: "PROGRAMA_DE_EJEMPLO", etiqueta: "Programa de ejemplo", orden: 1 },
+    { id: 23, campo: "PROGRAMA_POSGRADO", valor: "OTRO_PROGRAMA_DE_EJEMPLO", etiqueta: "Otro programa de ejemplo", orden: 2 },
+    { id: 24, campo: "PROGRAMA_POSGRADO", valor: "MAESTRIA_EN_INGENIERIA", etiqueta: "Maestría en Ingeniería", orden: 3 },
+    { id: 25, campo: "PROGRAMA_POSGRADO", valor: "ESPECIALIZACION_EN_GERENCIA", etiqueta: "Especialización en Gerencia", orden: 4 },
 
     { id: 13, campo: "OPCION_GRADO", valor: "TRABAJO_DE_GRADO", etiqueta: "Trabajo de grado", orden: 1 },
     { id: 14, campo: "OPCION_GRADO", valor: "PRACTICA_PROFESIONAL", etiqueta: "Práctica profesional", orden: 2 },
@@ -414,14 +421,25 @@ export async function sesionComo(page: Page, rol: Rol | null, nombre?: string): 
     const esCabeceraCsv = (etiqueta: string): boolean =>
         ["nombre", "etiqueta", "opcion", "opción", "valor"].includes(etiqueta.trim().toLowerCase());
 
-    await page.route(`${API}/opciones-campo`, async (ruta) => {
+    await page.route(/\/opciones-campo(?:\?.*)?$/, async (ruta) => {
         if (!rol) {
             await ruta.fulfill({ status: 401, json: { message: "Sesión no válida o expirada" } });
             return;
         }
         const metodo = ruta.request().method();
         if (metodo === "GET") {
-            await ruta.fulfill({ status: 200, json: opcionesCampo });
+            const url = new URL(ruta.request().url());
+            const nivel = url.searchParams.get("nivel");
+            const campo = url.searchParams.get("campo");
+            let resultado = opcionesCampo;
+            if (campo) {
+                resultado = resultado.filter((o) => o.campo === campo);
+            } else if (nivel === "PREGRADO") {
+                resultado = resultado.filter((o) => o.campo !== "PROGRAMA_POSGRADO");
+            } else if (nivel === "POSGRADO") {
+                resultado = resultado.filter((o) => o.campo !== "PROGRAMA_PREGRADO" && o.campo !== "OPCION_GRADO");
+            }
+            await ruta.fulfill({ status: 200, json: resultado });
             return;
         }
         if (rol !== "funcionario") {

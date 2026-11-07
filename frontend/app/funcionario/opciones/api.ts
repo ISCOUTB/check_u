@@ -16,9 +16,15 @@ export const CAMPOS_ADMIN = [
         icono: "persona",
     },
     {
-        id: "PROGRAMA",
-        titulo: "Programa académico",
-        descripcion: "Programas en los que se puede solicitar grado.",
+        id: "PROGRAMA_PREGRADO",
+        titulo: "Programa académico de Pregrado",
+        descripcion: "Programas de pregrado en los que se puede solicitar grado.",
+        icono: "graduacion",
+    },
+    {
+        id: "PROGRAMA_POSGRADO",
+        titulo: "Programa académico de Posgrado",
+        descripcion: "Programas de posgrado en los que se puede solicitar grado.",
         icono: "graduacion",
     },
     {

@@ -786,6 +786,13 @@ export class SolicitudesService {
             : 'Información académica incompleta: falta programa o modalidad del segundo programa',
         );
       }
+      const programa1 = prog1.programa?.trim().toLocaleLowerCase('es');
+      const programa2 = prog2.programa?.trim().toLocaleLowerCase('es');
+      if (programa1 && programa1 === programa2) {
+        throw new BadRequestException(
+          'El segundo programa debe ser diferente al primer programa',
+        );
+      }
     }
 
     if (tipoSolicitud === 'PREGRADO') {
