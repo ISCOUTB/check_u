@@ -4,6 +4,7 @@ import { cargarPreinscripcion } from "@/app/estudiante/iniciar_preinscripcion/ap
 import { borradorVacio, type BorradorPreinscripcion } from "@/app/estudiante/iniciar_preinscripcion/tipos";
 import {
     ID_CAMPOS,
+    MENSAJE_PROGRAMA_REPETIDO,
     SECCIONES,
     faltantes,
     idCampoExperiencia,
@@ -222,6 +223,30 @@ test("en posgrado el segundo programa pide sus campos pero no una segunda estamp
     expect(resultado).toContain(idCampoPrograma("modalidad", 2));
     expect(resultado).toContain(idCampoPrograma("programa", 2));
     expect(resultado).not.toContain("documento-estampilla_pro_cultura-2");
+});
+
+test("el segundo programa no puede ser igual al primero", () => {
+    const borrador = completo("PREGRADO");
+    conSegundoPrograma(borrador);
+    cargar(borrador, "academic_evaluation-2");
+    cargar(borrador, "estampilla_pro_cultura-2");
+    borrador.programas[1].programa = borrador.programas[0].programa;
+
+    expect(faltantes(borrador)).toEqual([
+        {
+            id: idCampoPrograma("programa", 2),
+            seccion: "academico",
+            etiqueta: "Programa (segundo programa)",
+            mensaje: MENSAJE_PROGRAMA_REPETIDO,
+        },
+    ]);
+
+    // La comparación ignora mayúsculas y espacios.
+    borrador.programas[1].programa = `  ${borrador.programas[0].programa.toUpperCase()}  `;
+    expect(ids(borrador)).toEqual([idCampoPrograma("programa", 2)]);
+
+    borrador.programas[1].programa = "Otro programa de ejemplo";
+    expect(faltantes(borrador)).toEqual([]);
 });
 
 test("sin segundo programa (no o sin responder) el segundo programa no cuenta aunque esté vacío", () => {
