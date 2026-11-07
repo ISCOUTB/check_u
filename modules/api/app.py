@@ -27,6 +27,7 @@ if str(ROOT_DIR) not in sys.path:
 from modules.validadores.fuentes.alma.consultar import consultar_para_checku  # noqa: E402
 from modules.api.validacion import (  # noqa: E402
     VALIDADORES,
+    DocumentoNoAdmitido,
     analizar_documento,
     clasificar_estado_general,
 )
@@ -119,7 +120,7 @@ def analizar():
         try:
             contenido = archivo.read()
             if not contenido:
-                raise ValueError("Archivo vacío.")
+                raise DocumentoNoAdmitido("Archivo vacío.")
 
             resultado = analizar_documento(
                 contenido,
@@ -128,8 +129,7 @@ def analizar():
                 document_version=1,
             )
             resultados.append(resultado)
-        except ValueError as e:
-            # Tipo no soportado o datos inválidos
+        except DocumentoNoAdmitido as e:
             errores.append(
                 {
                     "indice": indice,
@@ -139,7 +139,8 @@ def analizar():
                 }
             )
         except Exception:
-            # No filtrar el mensaje interno al cliente (Tarea seguridad F3).
+            # El detalle va al log del motor; al cliente, un mensaje genérico (#140, F11).
+            app.logger.exception("Fallo al analizar el documento %d (%r).", indice, tipo)
             errores.append(
                 {
                     "indice": indice,

@@ -22,12 +22,15 @@ tiene su propio modulo de lectura en vez de compartir uno solo.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
 from datetime import date
 
 from .amarilla import CampoLeido, _nombres_por_estructura, _unir_cajas
 from .ocr_cajas import Linea, caja_de, compactar, palabras_en_mayuscula
+
+_log = logging.getLogger(__name__)
 
 _ETIQUETAS_A_SALTAR = {
     "NOMBRES", "APELLIDOS", "APEFICOS", "APOLLIDOS", "NACIONALIDAD",
@@ -208,8 +211,9 @@ def leer(
 
     try:
         info = mrz_get_info(texto_mrz)
-    except Exception as e:
-        lectura.errores.append(f"No se pudo interpretar el MRZ: {e}")
+    except Exception:
+        _log.warning("No se pudo interpretar el MRZ.", exc_info=True)
+        lectura.errores.append("No se pudo interpretar el MRZ.")
         info = None
 
     if info is not None:

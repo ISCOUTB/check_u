@@ -6,11 +6,14 @@ No aplica reglas de negocio aquí.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 from modules.malla_curricular import analizar_evaluacion_grado
 from modules.malla_curricular.modelos import ResultadoMallaCurricular
+
+_log = logging.getLogger(__name__)
 
 CAMPOS = (
     "full_name_student",
@@ -23,6 +26,7 @@ CAMPOS = (
 )
 
 DANADO = "El archivo está vacío o dañado."
+SIN_ANALISIS = "No fue posible analizar el documento."
 NO_BANNER = (
     "El documento no corresponde a una Evaluación de Grado expedida por Banner "
     "o la información es ilegible o incompleta."
@@ -106,7 +110,8 @@ def extraer(contenido: bytes) -> ExtraccionAcademicEvaluation:
 
     try:
         resultado = analizar_evaluacion_grado(contenido)
-    except Exception as exc:  # noqa: BLE001 — cualquier fallo de lectura/OCR
-        return _vacia([f"Error al analizar el documento: {exc}"], str(exc))
+    except Exception:  # noqa: BLE001 — cualquier fallo de lectura/OCR
+        _log.exception("Fallo al analizar la Evaluación de Grado.")
+        return _vacia([SIN_ANALISIS], SIN_ANALISIS)
 
     return _desde_malla(resultado)

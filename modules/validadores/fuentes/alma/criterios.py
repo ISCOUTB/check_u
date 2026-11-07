@@ -10,10 +10,13 @@ el criterio queda no_evaluable por datos incompletos.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from .cliente import AlmaClienteError, ListaAlma
+from .cliente import ListaAlma
+
+_log = logging.getLogger(__name__)
 
 ResultadoCriterio = Literal["cumple", "no_cumple", "no_evaluable"]
 MotivoNoEvaluable = Literal[
@@ -34,15 +37,6 @@ class Criterio:
     moneda: str | None = None
     # Solo opción de grado
     entregada: bool | None = None
-
-
-def _criterio_por_error(error: AlmaClienteError) -> Criterio:
-    return Criterio(
-        resultado="no_evaluable",
-        pendientes=None,
-        motivo="source_unavailable",
-        mensaje=error.mensaje,
-    )
 
 
 def _criterio_listado_incompleto(lista: ListaAlma) -> Criterio:
@@ -267,11 +261,11 @@ def evaluar_opcion_grado(lista: ListaAlma | None = None) -> Criterio:
 
 
 def criterio_desde_excepcion(error: Exception) -> Criterio:
-    if isinstance(error, AlmaClienteError):
-        return _criterio_por_error(error)
+    # El detalle (configuración, red) va al log del motor; el mensaje llega al cliente.
+    _log.warning("No se pudo consultar ALMA: %s: %s", type(error).__name__, error)
     return Criterio(
         resultado="no_evaluable",
         pendientes=None,
         motivo="source_unavailable",
-        mensaje=f"No se pudo consultar ALMA ({type(error).__name__}).",
+        mensaje="No fue posible consultar a Biblioteca.",
     )

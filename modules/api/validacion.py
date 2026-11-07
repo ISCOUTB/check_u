@@ -18,6 +18,10 @@ VALIDADORES = {
 }
 
 
+class DocumentoNoAdmitido(ValueError):
+    """Error de la petición, con un mensaje escrito para el cliente."""
+
+
 def analizar_documento(
     contenido: bytes,
     *,
@@ -28,7 +32,7 @@ def analizar_documento(
     """Ejecuta el validador del tipo indicado y devuelve el resultado del contrato."""
     validador = VALIDADORES.get(type_document)
     if validador is None:
-        raise ValueError(
+        raise DocumentoNoAdmitido(
             f"Tipo de documento no soportado: {type_document}. "
             f"Soportados: {', '.join(sorted(VALIDADORES))}"
         )
