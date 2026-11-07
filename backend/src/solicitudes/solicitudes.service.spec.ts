@@ -252,4 +252,202 @@ describe('SolicitudesService', () => {
       });
     });
   });
+
+  describe('validarRequisitosCompletos (Tarea 54: campos obligatorios)', () => {
+    const base = {
+      usuario: {
+        nombres: 'Ana',
+        apellidos: 'Pérez',
+        codigo_estudiante: '123456',
+      },
+      perfil: {
+        tipo_documento_identidad: 'CC',
+        numero_documento: '123456789',
+        fecha_nacimiento: '2000-01-01',
+        genero: 'FEMENINO',
+        telefono_celular: '3001234567',
+        departamento_residencia: 'Bolívar',
+        ciudad_residencia: 'Cartagena',
+        direccion_residencia: 'Calle 1 # 2-3',
+        tiene_discapacidad: false as boolean | null,
+        tipo_discapacidad: null as string | null,
+      },
+      segundoPrograma: false as boolean | null,
+      programas: [
+        {
+          orden: 1,
+          programa: 'Ingeniería de Sistemas',
+          modalidad: 'PRESENCIAL',
+          tipo_opcion_grado: 'TRABAJO',
+        },
+      ] as Array<{
+        orden: number;
+        programa: string | null;
+        modalidad: string | null;
+        tipo_opcion_grado: string | null;
+      }>,
+      pregrado: {
+        conoce_registro_saber_pro: false as boolean | null,
+        numero_registro_saber_pro: null as string | null,
+        fecha_examen_saber_pro: '2024-06-01' as string | null,
+        es_empleado_utb: false as boolean | null,
+        es_hijo_empleado_utb: false as boolean | null,
+      },
+      posgrado: {
+        nivel_estudios_alcanzado: 'PREGRADO',
+        titulo_obtenido: 'Ingeniero',
+      },
+      documentos: [
+        { tipo_documento: 'identification', orden: 1 },
+        { tipo_documento: 'academic_evaluation', orden: 1 },
+        { tipo_documento: 'estampilla_pro_cultura', orden: 1 },
+        { tipo_documento: 'saber_pro', orden: 1 },
+      ] as Array<{ tipo_documento: string; orden: number }>,
+    };
+
+    const preparar = (
+      cambios: {
+        perfil?: Partial<typeof base.perfil>;
+        pregrado?: Partial<typeof base.pregrado>;
+        programas?: typeof base.programas;
+        documentos?: typeof base.documentos;
+        segundoPrograma?: boolean | null;
+      } = {},
+    ) => {
+      const perfil = { ...base.perfil, ...cambios.perfil };
+      const pregrado = { ...base.pregrado, ...cambios.pregrado };
+      const datos = {
+        ...base,
+        ...cambios,
+        perfil,
+        pregrado,
+      };
+      mockClient.query.mockImplementation((sql: string) => {
+        if (sql.includes('FROM usuarios'))
+          return Promise.resolve({ rows: [datos.usuario] });
+        if (sql.includes('FROM perfil_estudiante'))
+          return Promise.resolve({ rows: [datos.perfil] });
+        if (sql.includes('SELECT segundo_programa'))
+          return Promise.resolve({
+            rows: [{ segundo_programa: datos.segundoPrograma }],
+          });
+        if (sql.includes('FROM solicitud_programa'))
+          return Promise.resolve({ rows: datos.programas });
+        if (sql.includes('FROM informacion_pregrado'))
+          return Promise.resolve({ rows: [datos.pregrado] });
+        if (sql.includes('FROM informacion_posgrado'))
+          return Promise.resolve({ rows: [datos.posgrado] });
+        if (sql.includes('FROM documentos'))
+          return Promise.resolve({ rows: datos.documentos });
+        return Promise.resolve({ rows: [] });
+      });
+    };
+
+    const validar = (tipo: 'PREGRADO' | 'POSGRADO' = 'PREGRADO') =>
+      (
+        service as unknown as {
+          validarRequisitosCompletos: (
+            client: PoolClient,
+            idEstudiante: number,
+            idSolicitud: number,
+            tipoSolicitud: string,
+          ) => Promise<void>;
+        }
+      ).validarRequisitosCompletos(
+        mockClient as unknown as PoolClient,
+        1,
+        102,
+        tipo,
+      );
+
+    it('acepta un perfil y una solicitud de pregrado completos', async () => {
+      preparar();
+      await expect(validar()).resolves.toBeUndefined();
+    });
+
+    it.each([
+      ['fecha_nacimiento', 'fecha de nacimiento'],
+      ['genero', 'género'],
+      ['telefono_celular', 'número de celular'],
+      ['departamento_residencia', 'departamento'],
+      ['ciudad_residencia', 'ciudad o municipio'],
+      ['direccion_residencia', 'dirección de residencia'],
+    ] as const)('exige %s en el perfil', async (campo, etiqueta) => {
+      preparar({ perfil: { [campo]: '   ' } });
+      await expect(validar()).rejects.toThrow(etiqueta);
+    });
+
+    it('exige responder si posee alguna discapacidad', async () => {
+      preparar({ perfil: { tiene_discapacidad: null } });
+      await expect(validar()).rejects.toThrow(/respuesta sobre discapacidad/);
+    });
+
+    it('solo exige el tipo de discapacidad cuando la respuesta es afirmativa', async () => {
+      preparar({ perfil: { tiene_discapacidad: true } });
+      await expect(validar()).rejects.toThrow(/tipo de discapacidad/);
+
+      preparar({
+        perfil: { tiene_discapacidad: true, tipo_discapacidad: 'FISICA' },
+      });
+      await expect(validar()).resolves.toBeUndefined();
+    });
+
+    it('exige responder si solicita grado en un segundo programa', async () => {
+      preparar({ segundoPrograma: null });
+      await expect(validar()).rejects.toThrow(
+        /Debe indicar si solicita grado en un segundo programa/,
+      );
+    });
+
+    it('exige los datos del segundo programa solo cuando la respuesta es sí', async () => {
+      preparar({ segundoPrograma: true });
+      await expect(validar()).rejects.toThrow(/segundo programa/);
+
+      preparar({ segundoPrograma: false });
+      await expect(validar()).resolves.toBeUndefined();
+    });
+
+    it('exige la opción de grado del primer programa en pregrado', async () => {
+      preparar({
+        programas: [{ ...base.programas[0], tipo_opcion_grado: null }],
+      });
+      await expect(validar()).rejects.toThrow(/opción de grado del primer programa/);
+    });
+
+    it('no exige opción de grado en posgrado', async () => {
+      preparar({
+        programas: [{ ...base.programas[0], tipo_opcion_grado: null }],
+        documentos: [
+          { tipo_documento: 'identification', orden: 1 },
+          { tipo_documento: 'estampilla_pro_cultura', orden: 1 },
+        ],
+      });
+      await expect(validar('POSGRADO')).resolves.toBeUndefined();
+    });
+
+    it('exige la fecha del examen aunque no conozca el número de registro', async () => {
+      preparar({ pregrado: { fecha_examen_saber_pro: null } });
+      await expect(validar()).rejects.toThrow(/fecha del examen Saber Pro/);
+    });
+
+    it('exige el número de registro solo cuando dice conocerlo', async () => {
+      preparar({
+        pregrado: { conoce_registro_saber_pro: true, numero_registro_saber_pro: ' ' },
+      });
+      await expect(validar()).rejects.toThrow(/número de registro Saber Pro/);
+
+      preparar({
+        pregrado: { conoce_registro_saber_pro: false, numero_registro_saber_pro: null },
+      });
+      await expect(validar()).resolves.toBeUndefined();
+    });
+
+    it.each([
+      ['es_empleado_utb', /es empleado de la UTB/],
+      ['es_hijo_empleado_utb', /hijo o hija de un empleado de la UTB/],
+    ] as const)('exige responder la pregunta %s', async (campo, mensaje) => {
+      preparar({ pregrado: { [campo]: null } });
+      await expect(validar()).rejects.toThrow(mensaje);
+    });
+  });
 });

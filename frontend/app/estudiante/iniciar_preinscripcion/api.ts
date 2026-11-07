@@ -116,7 +116,7 @@ function borradorCompleto(nivel: Nivel, correo: string): BorradorPreinscripcion 
         borrador.pregrado = {
             conoceRegistroSaberPro: false,
             numeroRegistroSaberPro: "",
-            fechaExamenSaberPro: "",
+            fechaExamenSaberPro: "2024-06-01",
             esEmpleadoUtb: false,
             tipoContrato: "",
             esHijoDeEmpleadoUtb: false,

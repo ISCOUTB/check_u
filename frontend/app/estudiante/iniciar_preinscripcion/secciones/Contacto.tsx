@@ -56,6 +56,7 @@ export default function Contacto({ borrador, cambiar, errores, opciones }: Props
                 <Field
                     id={ID_CAMPOS.celular}
                     etiqueta="Celular"
+                    obligatorio
                     type="tel"
                     autoComplete="tel"
                     value={perfil.celular}
@@ -74,6 +75,7 @@ export default function Contacto({ borrador, cambiar, errores, opciones }: Props
                 <Field
                     id={ID_CAMPOS.departamento}
                     etiqueta="Departamento"
+                    obligatorio
                     autoComplete="address-level1"
                     value={perfil.departamento}
                     onChange={(evento) => cambiar(cambioPerfil("departamento", evento.target.value))}
@@ -82,6 +84,7 @@ export default function Contacto({ borrador, cambiar, errores, opciones }: Props
                 <Field
                     id={ID_CAMPOS.ciudad}
                     etiqueta="Ciudad o municipio"
+                    obligatorio
                     autoComplete="address-level2"
                     value={perfil.ciudad}
                     onChange={(evento) => cambiar(cambioPerfil("ciudad", evento.target.value))}
@@ -91,6 +94,7 @@ export default function Contacto({ borrador, cambiar, errores, opciones }: Props
                     id={ID_CAMPOS.direccion}
                     className={styles.ancho}
                     etiqueta="Dirección"
+                    obligatorio
                     autoComplete="street-address"
                     value={perfil.direccion}
                     onChange={(evento) => cambiar(cambioPerfil("direccion", evento.target.value))}
@@ -111,6 +115,7 @@ export default function Contacto({ borrador, cambiar, errores, opciones }: Props
                     className={styles.ancho}
                     leyenda="¿Posee alguna discapacidad?"
                     nombre="tiene-discapacidad"
+                    obligatorio
                     opciones={OPCIONES_SI_NO}
                     valor={aSiNo(perfil.tieneDiscapacidad)}
                     alCambiar={cambiarDiscapacidad}

@@ -7,7 +7,7 @@ import { ID_CAMPOS } from "../validacion";
 import styles from "../iniciar_preinscripcion.module.css";
 import { aSiNo, cambioPregrado, Condicional, deSiNo, OPCIONES_SI_NO, Seccion, type PropsSeccion } from "./comun";
 
-/** Solo pregrado. Todo es opcional: si no tienes los datos a mano, puedes seguir después. */
+/** Solo pregrado. Las preguntas y la fecha del examen son obligatorias. */
 export default function SaberProVinculacion({ borrador, cambiar, errores }: PropsSeccion) {
     const { pregrado } = borrador;
 
@@ -19,16 +19,18 @@ export default function SaberProVinculacion({ borrador, cambiar, errores }: Prop
                     className={styles.ancho}
                     leyenda="¿Conoces tu número de registro?"
                     nombre="conoce-registro-saber-pro"
+                    obligatorio
                     opciones={OPCIONES_SI_NO}
                     valor={aSiNo(pregrado.conoceRegistroSaberPro)}
                     alCambiar={(valor) => cambiar(cambioPregrado("conoceRegistroSaberPro", deSiNo(valor)))}
                     error={errores[ID_CAMPOS.conoceRegistroSaberPro]}
                 />
                 {pregrado.conoceRegistroSaberPro === true && (
-                    <Condicional className={`${styles.ancho} ${styles.campos} ${styles.alineadosAbajo}`}>
+                    <Condicional className={`${styles.ancho} ${styles.campos}`}>
                         <Field
                             id={ID_CAMPOS.numeroRegistroSaberPro}
                             etiqueta="Número de registro"
+                            obligatorio
                             ayuda="Ejemplo: EK202012345678"
                             autoComplete="off"
                             spellCheck={false}
@@ -38,16 +40,18 @@ export default function SaberProVinculacion({ borrador, cambiar, errores }: Prop
                             }
                             error={errores[ID_CAMPOS.numeroRegistroSaberPro]}
                         />
-                        <Field
-                            id={ID_CAMPOS.fechaExamenSaberPro}
-                            etiqueta="Fecha del examen"
-                            type="date"
-                            value={pregrado.fechaExamenSaberPro}
-                            onChange={(evento) => cambiar(cambioPregrado("fechaExamenSaberPro", evento.target.value))}
-                            error={errores[ID_CAMPOS.fechaExamenSaberPro]}
-                        />
                     </Condicional>
                 )}
+                {/* La fecha del examen se pide siempre, aunque no se conozca el número de registro. */}
+                <Field
+                    id={ID_CAMPOS.fechaExamenSaberPro}
+                    etiqueta="Fecha del examen"
+                    obligatorio
+                    type="date"
+                    value={pregrado.fechaExamenSaberPro}
+                    onChange={(evento) => cambiar(cambioPregrado("fechaExamenSaberPro", evento.target.value))}
+                    error={errores[ID_CAMPOS.fechaExamenSaberPro]}
+                />
 
                 <hr className={`${styles.ancho} ${styles.divisor}`} />
 
@@ -56,6 +60,7 @@ export default function SaberProVinculacion({ borrador, cambiar, errores }: Prop
                     className={styles.ancho}
                     leyenda="¿Eres empleado de la UTB?"
                     nombre="es-empleado-utb"
+                    obligatorio
                     opciones={OPCIONES_SI_NO}
                     valor={aSiNo(pregrado.esEmpleadoUtb)}
                     alCambiar={(valor) => cambiar(cambioPregrado("esEmpleadoUtb", deSiNo(valor)))}
@@ -79,6 +84,7 @@ export default function SaberProVinculacion({ borrador, cambiar, errores }: Prop
                     className={styles.ancho}
                     leyenda="¿Eres hijo o hija de un empleado de la UTB?"
                     nombre="es-hijo-de-empleado-utb"
+                    obligatorio
                     opciones={OPCIONES_SI_NO}
                     valor={aSiNo(pregrado.esHijoDeEmpleadoUtb)}
                     alCambiar={(valor) => cambiar(cambioPregrado("esHijoDeEmpleadoUtb", deSiNo(valor)))}

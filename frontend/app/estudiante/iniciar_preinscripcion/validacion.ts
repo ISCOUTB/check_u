@@ -196,26 +196,31 @@ export function faltantes(borrador: BorradorPreinscripcion): CampoFaltante[] {
     'Número de documento',
   );
   exigir(
-    borrador.codigoEstudiantil,
-    ID_CAMPOS.codigoEstudiantil,
-    'academico',
-    'Código estudiantil',
+    borrador.perfil.fechaNacimiento,
+    ID_CAMPOS.fechaNacimiento,
+    'identificacion',
+    'Fecha de nacimiento',
+  );
+  exigir(
+    borrador.perfil.genero,
+    ID_CAMPOS.genero,
+    'identificacion',
+    'Género',
   );
 
-  // El tipo solo se exige cuando la respuesta es afirmativa; los detalles son opcionales.
-  if (borrador.perfil.tieneDiscapacidad === true) {
-    exigir(
-      borrador.perfil.tipoDiscapacidad,
-      ID_CAMPOS.tipoDiscapacidad,
-      'contacto',
-      'Tipo de discapacidad',
-    );
-  }
+  const exigirRespuesta = (
+    respuesta: boolean | null,
+    id: string,
+    seccion: SeccionId,
+    etiqueta: string,
+  ) => {
+    if (respuesta === null) {
+      resultado.push({ id, seccion, etiqueta, mensaje: MENSAJE_OBLIGATORIO });
+    }
+  };
 
-  // El segundo programa solo cuenta si el estudiante respondió que sí.
-  const ordenes: Orden[] = borrador.segundoPrograma === true ? [1, 2] : [1];
-
-  for (const orden of ordenes) {
+  /** Los campos de un programa; la opción de grado solo existe en pregrado. */
+  const exigirPrograma = (orden: Orden) => {
     const solicitud = borrador.programas[orden - 1];
     const sufijo = orden === 2 ? ' (segundo programa)' : '';
 
@@ -230,6 +235,106 @@ export function faltantes(borrador: BorradorPreinscripcion): CampoFaltante[] {
       idCampoPrograma('programa', orden),
       'academico',
       `Programa${sufijo}`,
+    );
+    if (borrador.nivel === 'PREGRADO') {
+      exigir(
+        solicitud?.tipoOpcionGrado,
+        idCampoPrograma('tipoOpcionGrado', orden),
+        'academico',
+        `Opción de grado${sufijo}`,
+      );
+    }
+  };
+
+  exigir(
+    borrador.codigoEstudiantil,
+    ID_CAMPOS.codigoEstudiantil,
+    'academico',
+    'Código estudiantil',
+  );
+  exigirPrograma(1);
+  exigirRespuesta(
+    borrador.segundoPrograma,
+    ID_CAMPOS.segundoPrograma,
+    'academico',
+    '¿Solicitas grado en un segundo programa?',
+  );
+  if (borrador.segundoPrograma === true) exigirPrograma(2);
+
+  exigir(
+    borrador.perfil.celular,
+    ID_CAMPOS.celular,
+    'contacto',
+    'Celular',
+  );
+  exigir(
+    borrador.perfil.departamento,
+    ID_CAMPOS.departamento,
+    'contacto',
+    'Departamento',
+  );
+  exigir(
+    borrador.perfil.ciudad,
+    ID_CAMPOS.ciudad,
+    'contacto',
+    'Ciudad o municipio',
+  );
+  exigir(
+    borrador.perfil.direccion,
+    ID_CAMPOS.direccion,
+    'contacto',
+    'Dirección',
+  );
+  exigirRespuesta(
+    borrador.perfil.tieneDiscapacidad,
+    ID_CAMPOS.tieneDiscapacidad,
+    'contacto',
+    '¿Posee alguna discapacidad?',
+  );
+  // El tipo solo se exige cuando la respuesta es afirmativa; los detalles son opcionales.
+  if (borrador.perfil.tieneDiscapacidad === true) {
+    exigir(
+      borrador.perfil.tipoDiscapacidad,
+      ID_CAMPOS.tipoDiscapacidad,
+      'contacto',
+      'Tipo de discapacidad',
+    );
+  }
+
+  // Saber Pro y vinculación solo se preguntan en pregrado.
+  if (borrador.nivel === 'PREGRADO') {
+    exigirRespuesta(
+      borrador.pregrado.conoceRegistroSaberPro,
+      ID_CAMPOS.conoceRegistroSaberPro,
+      'saber_pro',
+      '¿Conoces tu número de registro?',
+    );
+    if (borrador.pregrado.conoceRegistroSaberPro === true) {
+      exigir(
+        borrador.pregrado.numeroRegistroSaberPro,
+        ID_CAMPOS.numeroRegistroSaberPro,
+        'saber_pro',
+        'Número de registro',
+      );
+    }
+    // La fecha del examen no depende de conocer el número de registro.
+    exigir(
+      borrador.pregrado.fechaExamenSaberPro,
+      ID_CAMPOS.fechaExamenSaberPro,
+      'saber_pro',
+      'Fecha del examen',
+    );
+    exigirRespuesta(
+      borrador.pregrado.esEmpleadoUtb,
+      ID_CAMPOS.esEmpleadoUtb,
+      'saber_pro',
+      '¿Eres empleado de la UTB?',
+    );
+    exigirRespuesta(
+      borrador.pregrado.esHijoDeEmpleadoUtb,
+      ID_CAMPOS.esHijoDeEmpleadoUtb,
+      'saber_pro',
+      '¿Eres hijo o hija de un empleado de la UTB?',
     );
   }
 
@@ -300,9 +405,6 @@ export function progreso(borrador: BorradorPreinscripcion): Progreso {
     documentoCargado(borrador, documento.id),
   ).length;
   const conObligatorios = seccionesConObligatorios(borrador.nivel);
-  // La respuesta afirmativa vuelve obligatorio el tipo de discapacidad en Contacto.
-  if (borrador.perfil.tieneDiscapacidad === true)
-    conObligatorios.add('contacto');
 
   const secciones = seccionesDelNivel(borrador.nivel).map((id) => ({
     id,
