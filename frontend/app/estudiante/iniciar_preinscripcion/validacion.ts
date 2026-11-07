@@ -132,6 +132,8 @@ export function seccionesDelNivel(nivel: Nivel): SeccionId[] {
 
 export const MENSAJE_OBLIGATORIO = 'Completa este campo.';
 export const MENSAJE_DOCUMENTO = 'Carga este documento en PDF.';
+export const MENSAJE_PROGRAMA_REPETIDO =
+  'El segundo programa debe ser diferente al primero.';
 
 export interface CampoFaltante {
   /** ID del elemento en la página. */
@@ -144,6 +146,17 @@ export interface CampoFaltante {
 
 function estaVacio(texto: string | undefined): boolean {
   return (texto ?? '').trim() === '';
+}
+
+/** Compara dos programas ignorando espacios y mayúsculas. */
+function mismoPrograma(
+  primero: string | undefined,
+  segundo: string | undefined,
+): boolean {
+  const normalizar = (texto: string | undefined) =>
+    (texto ?? '').trim().toLocaleLowerCase('es');
+  const a = normalizar(primero);
+  return a !== '' && a === normalizar(segundo);
 }
 
 function documentoCargado(
@@ -259,7 +272,18 @@ export function faltantes(borrador: BorradorPreinscripcion): CampoFaltante[] {
     'academico',
     '¿Solicitas grado en un segundo programa?',
   );
-  if (borrador.segundoPrograma === true) exigirPrograma(2);
+  if (borrador.segundoPrograma === true) {
+    exigirPrograma(2);
+    const [primero, segundo] = borrador.programas;
+    if (mismoPrograma(primero?.programa, segundo?.programa)) {
+      resultado.push({
+        id: idCampoPrograma('programa', 2),
+        seccion: 'academico',
+        etiqueta: 'Programa (segundo programa)',
+        mensaje: MENSAJE_PROGRAMA_REPETIDO,
+      });
+    }
+  }
 
   exigir(
     borrador.perfil.celular,
