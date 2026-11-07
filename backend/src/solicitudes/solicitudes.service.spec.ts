@@ -407,6 +407,32 @@ describe('SolicitudesService', () => {
       await expect(validar()).resolves.toBeUndefined();
     });
 
+    it('rechaza un segundo programa igual al primero', async () => {
+      preparar({
+        segundoPrograma: true,
+        programas: [base.programas[0], { ...base.programas[0], orden: 2 }],
+      });
+      await expect(validar()).rejects.toThrow(
+        /segundo programa debe ser diferente al primer programa/,
+      );
+    });
+
+    it('acepta un segundo programa distinto al primero', async () => {
+      preparar({
+        segundoPrograma: true,
+        programas: [
+          base.programas[0],
+          { ...base.programas[0], orden: 2, programa: 'Ingeniería Industrial' },
+        ],
+        documentos: [
+          ...base.documentos,
+          { tipo_documento: 'academic_evaluation', orden: 2 },
+          { tipo_documento: 'estampilla_pro_cultura', orden: 2 },
+        ],
+      });
+      await expect(validar()).resolves.toBeUndefined();
+    });
+
     it('exige la opción de grado del primer programa en pregrado', async () => {
       preparar({
         programas: [{ ...base.programas[0], tipo_opcion_grado: null }],
