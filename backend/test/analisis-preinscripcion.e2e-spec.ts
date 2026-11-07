@@ -57,7 +57,7 @@ const datos = (nivel = 'PREGRADO', doble = false) => ({
       : []),
   ],
   pregrado: { conoceRegistroSaberPro: false },
-  posgrado: { nivelEstudios: 'PROFESIONAL', tituloObtenido: 'Ingeniero' },
+  posgrado: { nivelEstudios: 'PROFESIONAL', tituloObtenido: 'Ingeniero', esEgresadoPregradoUtb: false },
 });
 function resultado(tipo: string, id = 'T00000001') {
   return {

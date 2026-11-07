@@ -336,6 +336,25 @@ export function faltantes(borrador: BorradorPreinscripcion): CampoFaltante[] {
       'saber_pro',
       '¿Eres hijo o hija de un empleado de la UTB?',
     );
+  } else if (borrador.nivel === 'POSGRADO') {
+    exigir(
+      borrador.posgrado.nivelEstudios,
+      ID_CAMPOS.nivelEstudios,
+      'estudios',
+      'Nivel de estudios alcanzado',
+    );
+    exigir(
+      borrador.posgrado.tituloObtenido,
+      ID_CAMPOS.tituloObtenido,
+      'estudios',
+      'Título obtenido',
+    );
+    exigirRespuesta(
+      borrador.posgrado.esEgresadoPregradoUtb,
+      ID_CAMPOS.esEgresadoPregradoUtb,
+      'estudios',
+      '¿Eres egresado o egresada de un pregrado de la UTB?',
+    );
   }
 
   const documentos = obtenerDocumentosRequeridos(
