@@ -34,12 +34,43 @@ const SELECT_OPCION = `SELECT id_opcion, campo, valor, etiqueta, orden FROM opci
 export class OpcionesService {
   constructor(private readonly db: DatabaseService) {}
 
-  async listar(campo?: string): Promise<OpcionCampo[]> {
+  async listar(campo?: string, nivel?: string): Promise<OpcionCampo[]> {
     if (campo !== undefined) {
       const campoValido = this.validarCampo(campo);
       const result = await this.db.query<OpcionRow>(
         `${SELECT_OPCION} WHERE campo = $1 ORDER BY orden, id_opcion`,
         [campoValido],
+      );
+      return result.rows.map((row) => this.serializar(row));
+    }
+
+    if (nivel !== undefined) {
+      const nivelNormalizado = nivel.toUpperCase();
+      let camposNivel: readonly string[];
+      if (nivelNormalizado === 'PREGRADO') {
+        camposNivel = [
+          'TIPO_DOCUMENTO',
+          'GENERO',
+          'PROGRAMA_PREGRADO',
+          'OPCION_GRADO',
+          'TIPO_DISCAPACIDAD',
+        ];
+      } else if (nivelNormalizado === 'POSGRADO') {
+        camposNivel = [
+          'TIPO_DOCUMENTO',
+          'GENERO',
+          'PROGRAMA_POSGRADO',
+          'TIPO_DISCAPACIDAD',
+        ];
+      } else {
+        throw new BadRequestException('El nivel debe ser PREGRADO o POSGRADO.');
+      }
+
+      const result = await this.db.query<OpcionRow>(
+        `${SELECT_OPCION}
+         WHERE campo = ANY($1::text[])
+         ORDER BY array_position($1::text[], campo), orden, id_opcion`,
+        [camposNivel],
       );
       return result.rows.map((row) => this.serializar(row));
     }
@@ -254,6 +285,9 @@ export class OpcionesService {
   }
 
   private validarCampo(valor: unknown): CampoOpciones {
+    if (valor === 'PROGRAMA') {
+      return 'PROGRAMA_PREGRADO';
+    }
     if (typeof valor !== 'string' || !(CAMPOS_OPCIONES as readonly string[]).includes(valor)) {
       throw new BadRequestException(
         `El campo debe ser uno de: ${CAMPOS_OPCIONES.join(', ')}.`,
