@@ -27,7 +27,17 @@ const DATOS = {
   nombres: 'Estudiante',
   apellidos: 'Prueba',
   codigoEstudiantil: 'T00000001',
-  perfil: { tipoDocumento: 'CC', numeroDocumento: '1000000001' },
+  perfil: {
+    tipoDocumento: 'CC',
+    numeroDocumento: '1000000001',
+    fechaNacimiento: '2000-01-15',
+    genero: 'M',
+    celular: '3001234567',
+    departamento: 'Bolívar',
+    ciudad: 'Cartagena',
+    direccion: 'Calle 1 # 2-3',
+    tieneDiscapacidad: false,
+  },
   segundoPrograma: false,
   programas: [
     {
@@ -37,7 +47,12 @@ const DATOS = {
       tipoOpcionGrado: 'PROYECTO',
     },
   ],
-  pregrado: { conoceRegistroSaberPro: false },
+  pregrado: {
+    conoceRegistroSaberPro: false,
+    fechaExamenSaberPro: '2024-05-20',
+    esEmpleadoUtb: false,
+    esHijoEmpleadoUtb: false,
+  },
 };
 
 describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
