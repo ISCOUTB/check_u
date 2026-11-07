@@ -167,19 +167,32 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
   it('listado y detalle de revisión usan solicitudes reales, protegen roles y respetan el ID histórico', async () => {
     const id = await solicitud();
     const segundo = await solicitud('BORRADOR');
-    await revisar(id, {accion:'comentario', comentario:'Historial completo de la primera solicitud'}).expect(201);
-    const listado = await funcionaria.get('/api/funcionario/solicitudes').expect(200);
+    await revisar(id, {
+      accion: 'comentario',
+      comentario: 'Historial completo de la primera solicitud',
+    }).expect(201);
+    const listado = await funcionaria
+      .get('/api/funcionario/solicitudes')
+      .expect(200);
     expect(listado.headers['cache-control']).toBe('private, no-store');
     // Tarea 42b: el dashboard no muestra borradores.
-    expect(listado.body.map((r: {id: string}) => r.id)).toEqual([String(id)]);
+    expect(listado.body.map((r: { id: string }) => r.id)).toEqual([String(id)]);
     expect(segundo).toBeGreaterThan(id);
-    const detalle = await funcionaria.get(`/api/funcionario/solicitudes/${id}`).expect(200);
+    const detalle = await funcionaria
+      .get(`/api/funcionario/solicitudes/${id}`)
+      .expect(200);
     expect(detalle.body.id).toBe(String(id));
     expect(detalle.body.estadoSolicitud).toBe('EN_PROCESO');
-    expect(detalle.body.revisiones[0].comentario).toBe('Historial completo de la primera solicitud');
+    expect(detalle.body.revisiones[0].comentario).toBe(
+      'Historial completo de la primera solicitud',
+    );
     await funcionaria.get('/api/funcionario/solicitudes/999999').expect(404);
     await funcionaria.get('/api/funcionario/solicitudes/invalido').expect(400);
-    for (const ruta of ['/api/funcionario/solicitudes', `/api/funcionario/solicitudes/${id}`, '/api/funcionario/documentos/1/original']) {
+    for (const ruta of [
+      '/api/funcionario/solicitudes',
+      `/api/funcionario/solicitudes/${id}`,
+      '/api/funcionario/documentos/1/original',
+    ]) {
       await estudiante.get(ruta).expect(403);
       await request(app.getHttpServer()).get(ruta).expect(401);
     }
@@ -187,17 +200,27 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
 
   it('la funcionaria visualiza el PDF real y los resultados actuales, sin exponerlo a otros estudiantes', async () => {
     await enviar().expect(201);
-    const detalle = await funcionaria.get('/api/funcionario/solicitudes/1').expect(200);
+    const detalle = await funcionaria
+      .get('/api/funcionario/solicitudes/1')
+      .expect(200);
     expect(detalle.body.documentos).toHaveLength(5);
     const doc = detalle.body.documentos[0];
     expect(doc.archivoDisponible).toBe(true);
-    const r = await funcionaria.get(`/api/funcionario/documentos/${doc.id}/original`).expect(200);
+    const r = await funcionaria
+      .get(`/api/funcionario/documentos/${doc.id}/original`)
+      .expect(200);
     expect(r.headers['content-type']).toContain('application/pdf');
     expect(r.headers['cache-control']).toBe('private, no-store');
     expect(r.body).toEqual(PDF);
-    await funcionaria.get('/api/funcionario/documentos/999999/original').expect(404);
-    await base.db.exec('UPDATE periodos_grado SET fecha_fin=CURRENT_DATE-17,fecha_inicio=CURRENT_DATE-60');
-    await funcionaria.get(`/api/funcionario/documentos/${doc.id}/original`).expect(410);
+    await funcionaria
+      .get('/api/funcionario/documentos/999999/original')
+      .expect(404);
+    await base.db.exec(
+      'UPDATE periodos_grado SET fecha_fin=CURRENT_DATE-17,fecha_inicio=CURRENT_DATE-60',
+    );
+    await funcionaria
+      .get(`/api/funcionario/documentos/${doc.id}/original`)
+      .expect(410);
   });
 
   it('la migración es repetible y los valores están restringidos', async () => {
@@ -283,7 +306,9 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     'la acción %s registra revisión, aviso y estado juntos',
     async (accion, titulo, tipo, estado) => {
       // Tarea 42a: solo se acepta una solicitud válida.
-      const id = await solicitud(accion === 'aceptada' ? 'VALIDA' : 'EN_PROCESO');
+      const id = await solicitud(
+        accion === 'aceptada' ? 'VALIDA' : 'EN_PROCESO',
+      );
       await revisar(id, { accion }).expect(201);
       const n = (
         await estudiante.get('/api/estudiante/notificaciones').expect(200)
@@ -357,6 +382,43 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     }).expect(400);
     await revisar(1, { accion: 'recarga', documentos: [] }).expect(400);
   });
+
+  it('H-06: solicitar corrección no cambia NO_VALIDA por POR_REVISAR', async () => {
+    await enviar().expect(201);
+    // Fuerza el estado calculado típico tras un análisis con docs no válidos.
+    await base.db.query(
+      `UPDATE documentos SET estado='NO_VALIDO'
+       WHERE id_solicitud=1 AND id_entrega IS NOT NULL`,
+    );
+    await base.db.query(
+      `UPDATE solicitud_grado SET estado='NO_VALIDA' WHERE id_solicitud=1`,
+    );
+
+    const docs = (
+      await base.db.query(
+        `SELECT id_documento FROM documentos
+         WHERE id_solicitud=1 AND id_entrega IS NOT NULL
+         ORDER BY id_documento LIMIT 2`,
+      )
+    ).rows.map((d) => d.id_documento as number);
+
+    await revisar(1, { accion: 'recarga', documentos: docs }).expect(201);
+
+    const estado = (
+      await base.db.query(
+        `SELECT estado FROM solicitud_grado WHERE id_solicitud=1`,
+      )
+    ).rows[0].estado;
+    expect(estado).toBe('NO_VALIDA');
+
+    const n = (
+      await estudiante.get('/api/estudiante/notificaciones')
+    ).body.notificaciones.find(
+      (x: { titulo: string }) => x.titulo === 'Documentos por volver a subir',
+    );
+    expect(n).toBeTruthy();
+  });
+
   it('un rollback elimina también el aviso de la revisión', async () => {
     const id = await solicitud();
     await expect(
@@ -582,33 +644,91 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
             '--in-process-gpu',
           ],
         });
-        const contextoFuncionaria = await browser.newContext({ viewport: {width:1280,height:1000} });
-        await contextoFuncionaria.request.post('http://127.0.0.1:3000/api/auth/login', {
-          data: {username:'rmarriaga@utb.edu.co',password:'12345'},
+        const contextoFuncionaria = await browser.newContext({
+          viewport: { width: 1280, height: 1000 },
         });
+        await contextoFuncionaria.request.post(
+          'http://127.0.0.1:3000/api/auth/login',
+          {
+            data: { username: 'rmarriaga@utb.edu.co', password: '12345' },
+          },
+        );
         const revision = await contextoFuncionaria.newPage();
         await revision.goto('http://127.0.0.1:3004/funcionario/dashboard');
-        await revision.getByRole('link', {name:'Ver solicitud 1',exact:true}).first().click();
-        await revision.getByRole('tab',{name:'Acciones de revisión',exact:true}).click();
-        await revision.getByLabel('Comentario (obligatorio)').fill('Revisa la información del formulario.');
-        await revision.getByRole('button',{name:'Enviar comentario',exact:true}).click();
-        await revision.getByRole('button',{name:'Confirmar acción',exact:true}).click();
-        await revision.getByText('Acción registrada. La notificación del estudiante quedó guardada.',{exact:true}).waitFor();
-        await revision.getByRole('combobox',{name:'Acción',exact:true}).selectOption('recarga');
+        await revision
+          .getByRole('link', { name: 'Ver solicitud 1', exact: true })
+          .first()
+          .click();
+        await revision
+          .getByRole('tab', { name: 'Acciones de revisión', exact: true })
+          .click();
+        await revision
+          .getByLabel('Comentario (obligatorio)')
+          .fill('Revisa la información del formulario.');
+        await revision
+          .getByRole('button', { name: 'Enviar comentario', exact: true })
+          .click();
+        await revision
+          .getByRole('button', { name: 'Confirmar acción', exact: true })
+          .click();
+        await revision
+          .getByText(
+            'Acción registrada. La notificación del estudiante quedó guardada.',
+            { exact: true },
+          )
+          .waitFor();
+        await revision
+          .getByRole('combobox', { name: 'Acción', exact: true })
+          .selectOption('recarga');
         await revision.getByRole('checkbox').first().check();
-        await revision.getByRole('button',{name:'Solicitar corrección',exact:true}).click();
-        await revision.getByRole('button',{name:'Confirmar acción',exact:true}).click();
-        await revision.getByRole('tab',{name:'Historial de revisiones',exact:true}).click();
-        await revision.locator('[role=tabpanel]:visible').getByText('Corrección solicitada',{exact:true}).waitFor();
-        for (const accion of ['aceptada','anulada']) {
+        await revision
+          .getByRole('button', { name: 'Solicitar corrección', exact: true })
+          .click();
+        await revision
+          .getByRole('button', { name: 'Confirmar acción', exact: true })
+          .click();
+        await revision
+          .getByRole('tab', { name: 'Historial de revisiones', exact: true })
+          .click();
+        await revision
+          .locator('[role=tabpanel]:visible')
+          .getByText('Corrección solicitada', { exact: true })
+          .waitFor();
+        for (const accion of ['aceptada', 'anulada']) {
           const id = await solicitud();
-          await revision.goto(`http://127.0.0.1:3004/funcionario/detalle_preinscripcion/${id}`);
-          await revision.getByRole('tab',{name:'Acciones de revisión',exact:true}).click();
-          await revision.getByRole('combobox',{name:'Acción',exact:true}).selectOption(accion);
-          await revision.getByRole('button',{name:accion==='aceptada'?'Aceptar solicitud':'Anular solicitud',exact:true}).click();
-          await revision.getByRole('button',{name:'Confirmar acción',exact:true}).click();
-          await revision.getByRole('tab',{name:'Historial de revisiones',exact:true}).click();
-          await revision.locator('[role=tabpanel]:visible').getByText(accion==='aceptada'?'Solicitud aceptada':'Solicitud anulada',{exact:true}).waitFor();
+          await revision.goto(
+            `http://127.0.0.1:3004/funcionario/detalle_preinscripcion/${id}`,
+          );
+          await revision
+            .getByRole('tab', { name: 'Acciones de revisión', exact: true })
+            .click();
+          await revision
+            .getByRole('combobox', { name: 'Acción', exact: true })
+            .selectOption(accion);
+          await revision
+            .getByRole('button', {
+              name:
+                accion === 'aceptada'
+                  ? 'Aceptar solicitud'
+                  : 'Anular solicitud',
+              exact: true,
+            })
+            .click();
+          await revision
+            .getByRole('button', { name: 'Confirmar acción', exact: true })
+            .click();
+          await revision
+            .getByRole('tab', { name: 'Historial de revisiones', exact: true })
+            .click();
+          await revision
+            .locator('[role=tabpanel]:visible')
+            .getByText(
+              accion === 'aceptada'
+                ? 'Solicitud aceptada'
+                : 'Solicitud anulada',
+              { exact: true },
+            )
+            .waitFor();
         }
         await contextoFuncionaria.close();
         const contexto = await browser.newContext({
@@ -628,7 +748,11 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
         await pagina.goto('http://127.0.0.1:3004/estudiante/home');
         const cuerpo = await (await respuesta).json();
         expect(cuerpo.noLeidas).toBe(10);
-        expect(cuerpo.notificaciones.filter((n: {generado_por:string}) => n.generado_por==='funcionario')).toHaveLength(4);
+        expect(
+          cuerpo.notificaciones.filter(
+            (n: { generado_por: string }) => n.generado_por === 'funcionario',
+          ),
+        ).toHaveLength(4);
         const panel = pagina.getByRole('region', {
           name: 'Notificaciones',
           exact: true,
