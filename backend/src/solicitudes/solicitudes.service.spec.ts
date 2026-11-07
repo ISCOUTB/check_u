@@ -296,6 +296,7 @@ describe('SolicitudesService', () => {
       posgrado: {
         nivel_estudios_alcanzado: 'PREGRADO',
         titulo_obtenido: 'Ingeniero',
+        es_egresado_pregrado_utb: false as boolean | null,
       },
       documentos: [
         { tipo_documento: 'identification', orden: 1 },
@@ -309,6 +310,7 @@ describe('SolicitudesService', () => {
       cambios: {
         perfil?: Partial<typeof base.perfil>;
         pregrado?: Partial<typeof base.pregrado>;
+        posgrado?: Partial<typeof base.posgrado>;
         programas?: typeof base.programas;
         documentos?: typeof base.documentos;
         segundoPrograma?: boolean | null;
@@ -316,11 +318,13 @@ describe('SolicitudesService', () => {
     ) => {
       const perfil = { ...base.perfil, ...cambios.perfil };
       const pregrado = { ...base.pregrado, ...cambios.pregrado };
+      const posgrado = { ...base.posgrado, ...cambios.posgrado };
       const datos = {
         ...base,
         ...cambios,
         perfil,
         pregrado,
+        posgrado,
       };
       mockClient.query.mockImplementation((sql: string) => {
         if (sql.includes('FROM usuarios'))
@@ -449,6 +453,33 @@ describe('SolicitudesService', () => {
         ],
       });
       await expect(validar('POSGRADO')).resolves.toBeUndefined();
+    });
+
+    it.each([
+      ['nivel_estudios_alcanzado', 'nivel de estudios alcanzado'],
+      ['titulo_obtenido', 'título obtenido'],
+    ] as const)('exige %s en posgrado', async (campo, etiqueta) => {
+      preparar({
+        posgrado: { [campo]: '   ' },
+        documentos: [
+          { tipo_documento: 'identification', orden: 1 },
+          { tipo_documento: 'estampilla_pro_cultura', orden: 1 },
+        ],
+      });
+      await expect(validar('POSGRADO')).rejects.toThrow(etiqueta);
+    });
+
+    it('exige responder si es egresado de pregrado de la UTB en posgrado', async () => {
+      preparar({
+        posgrado: { es_egresado_pregrado_utb: null },
+        documentos: [
+          { tipo_documento: 'identification', orden: 1 },
+          { tipo_documento: 'estampilla_pro_cultura', orden: 1 },
+        ],
+      });
+      await expect(validar('POSGRADO')).rejects.toThrow(
+        /responder si es egresado o egresada de pregrado de la UTB/,
+      );
     });
 
     it('exige la fecha del examen aunque no conozca el número de registro', async () => {
