@@ -193,7 +193,7 @@ Ejemplo:
 
 puede representar:
 
-"1043645839"
+"1000000001"
 
 Cuando el número está claramente asociado a D.I. o C.C.,
 puedes eliminar separadores de formato como:
