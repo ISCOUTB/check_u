@@ -133,6 +133,66 @@ test("rechaza duplicados con nombre, estado y ceremonia distintos", async ({
   );
   expect(escrituras()).toBe(0);
 });
+test("rechaza duplicados por nombre aunque cambien las fechas (insensible a mayúsculas, tildes y espacios)", async ({
+  page,
+}) => {
+  const { dialogo, escrituras } = await preparar(page);
+  await llenar(page, {
+    ...VALIDO,
+    nombre: "  grádo   octubre  2026  ",
+    fechaInicio: "2027-01-01",
+    fechaFin: "2027-02-01",
+    fechaGraduacion: "2027-03-01",
+  });
+  await dialogo
+    .getByRole("button", { name: "Registrar periodo", exact: true })
+    .click();
+  await expect(dialogo.getByRole("alert")).toContainText(
+    "Ya existe un periodo con este nombre",
+  );
+  await expect(dialogo.getByLabel("Nombre del periodo")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  await expect(dialogo.getByLabel("Nombre del periodo")).toBeFocused();
+  expect(escrituras()).toBe(0);
+});
+test("editar no permite renombrar hacia el nombre de otro periodo existente", async ({ page }) => {
+  await sesionComo(page, "funcionario");
+  await page.route(`${API}/periodos-grado`, (r) =>
+    r.fulfill({ json: [PERIODO_DEMO, OTRO] }),
+  );
+  let envios = 0;
+  page.on("request", (r) => {
+    if (r.method() === "PATCH") envios++;
+  });
+  await page.goto(DASHBOARD);
+  await page.getByRole("button", { name: "Gestionar periodos" }).click();
+  const dialogo = page.getByRole("dialog", {
+    name: "Gestión de periodos de grado",
+  });
+  await dialogo
+    .getByRole("button", { name: `Editar ${PERIODO_DEMO.nombre}` })
+    .click();
+  await llenar(page, {
+    ...VALIDO,
+    nombre: "  ótro   periodo  ",
+    fechaInicio: "2027-05-01",
+    fechaFin: "2027-06-01",
+    fechaGraduacion: "2027-07-01",
+  });
+  await dialogo
+    .getByRole("button", { name: "Guardar cambios", exact: true })
+    .click();
+  await expect(dialogo.getByRole("alert")).toContainText(
+    "Ya existe un periodo con este nombre",
+  );
+  await expect(dialogo.getByLabel("Nombre del periodo")).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  expect(envios).toBe(0);
+});
 test("editar no permite usar el rango de otro periodo", async ({ page }) => {
   await sesionComo(page, "funcionario");
   await page.route(`${API}/periodos-grado`, (r) =>
