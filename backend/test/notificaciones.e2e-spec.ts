@@ -419,6 +419,33 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     expect(n).toBeTruthy();
   });
 
+  it('H-06: solicitar corrección conserva INCONSISTENTE', async () => {
+    await enviar().expect(201);
+    await base.db.query(
+      `UPDATE documentos SET estado='INCONSISTENTE'
+       WHERE id_solicitud=1 AND id_entrega IS NOT NULL`,
+    );
+    await base.db.query(
+      `UPDATE solicitud_grado SET estado='INCONSISTENTE' WHERE id_solicitud=1`,
+    );
+    const docs = (
+      await base.db.query(
+        `SELECT id_documento FROM documentos
+         WHERE id_solicitud=1 AND id_entrega IS NOT NULL
+         ORDER BY id_documento LIMIT 1`,
+      )
+    ).rows.map((d) => d.id_documento as number);
+
+    await revisar(1, { accion: 'recarga', documentos: docs }).expect(201);
+
+    const estado = (
+      await base.db.query(
+        `SELECT estado FROM solicitud_grado WHERE id_solicitud=1`,
+      )
+    ).rows[0].estado;
+    expect(estado).toBe('INCONSISTENTE');
+  });
+
   it('un rollback elimina también el aviso de la revisión', async () => {
     const id = await solicitud();
     await expect(
