@@ -1,4 +1,5 @@
 import type { OpcionCampo } from "@/app/components/ui/Field";
+import type { Nivel } from "@/app/estudiante/documentos-requeridos";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
@@ -26,11 +27,16 @@ function sinOpciones(): OpcionesFormulario {
 }
 
 /**
- * Carga las opciones configuradas en el panel del funcionario. El orden que devuelve
- * el backend es el que ve el estudiante: no se reordena en el cliente.
+ * Carga las opciones configuradas en el panel del funcionario. Si se especifica el nivel,
+ * consulta y asigna únicamente los programas académicos asociados a su nivel de formación.
+ * El orden que devuelve el backend es el que ve el estudiante: no se reordena en el cliente.
  */
-export async function cargarOpcionesFormulario(signal?: AbortSignal): Promise<OpcionesFormulario> {
-    const respuesta = await fetch(`${API_URL}/opciones-campo`, {
+export async function cargarOpcionesFormulario(
+    nivel?: Nivel,
+    signal?: AbortSignal,
+): Promise<OpcionesFormulario> {
+    const url = nivel ? `${API_URL}/opciones-campo?nivel=${nivel}` : `${API_URL}/opciones-campo`;
+    const respuesta = await fetch(url, {
         credentials: "include",
         cache: "no-store",
         signal,
@@ -44,13 +50,30 @@ export async function cargarOpcionesFormulario(signal?: AbortSignal): Promise<Op
     }
 
     const opciones = sinOpciones();
+    const campoProgramaNivel = nivel === "POSGRADO" ? "PROGRAMA_POSGRADO" : "PROGRAMA_PREGRADO";
+
     for (const fila of datos as Array<{ campo?: unknown; valor?: unknown; etiqueta?: unknown }>) {
-        if (!(CAMPOS_FORMULARIO as readonly string[]).includes(String(fila.campo))) continue;
         if (typeof fila.valor !== "string" || typeof fila.etiqueta !== "string") continue;
-        opciones[fila.campo as CampoFormulario].push({
-            valor: fila.valor,
-            etiqueta: fila.etiqueta,
-        });
+        const campo = String(fila.campo);
+
+        if (campo === "PROGRAMA_PREGRADO" || campo === "PROGRAMA_POSGRADO") {
+            if (!nivel || campo === campoProgramaNivel) {
+                opciones.PROGRAMA.push({
+                    valor: fila.valor,
+                    etiqueta: fila.etiqueta,
+                });
+            }
+        } else if (campo === "PROGRAMA") {
+            opciones.PROGRAMA.push({
+                valor: fila.valor,
+                etiqueta: fila.etiqueta,
+            });
+        } else if ((CAMPOS_FORMULARIO as readonly string[]).includes(campo)) {
+            opciones[campo as CampoFormulario].push({
+                valor: fila.valor,
+                etiqueta: fila.etiqueta,
+            });
+        }
     }
     return opciones;
 }

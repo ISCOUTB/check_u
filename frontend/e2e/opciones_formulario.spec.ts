@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { API, revisarAxe, sesionComo } from "./soporte";
+import { revisarAxe, sesionComo } from "./soporte";
 
 // Tarea 40: panel del funcionario para administrar las opciones del formulario.
 // El backend se simula en soporte.ts (catálogo en memoria).
@@ -92,13 +92,13 @@ test.describe("opciones del formulario", () => {
 
     test("el formulario respeta el orden configurado en el panel", async ({ page }) => {
         await sesionComo(page, "estudiante");
-        await page.route(`${API}/opciones-campo`, (ruta) =>
+        await page.route(/\/opciones-campo(?:\?.*)?$/, (ruta) =>
             ruta.fulfill({
                 status: 200,
                 json: [
                     { id: 2, campo: "TIPO_DOCUMENTO", valor: "PASAPORTE", etiqueta: "Pasaporte", orden: 1 },
                     { id: 1, campo: "TIPO_DOCUMENTO", valor: "CC", etiqueta: "Cédula de ciudadanía", orden: 2 },
-                    { id: 10, campo: "PROGRAMA", valor: "INGENIERIA", etiqueta: "Ingeniería", orden: 1 },
+                    { id: 10, campo: "PROGRAMA_PREGRADO", valor: "INGENIERIA", etiqueta: "Ingeniería", orden: 1 },
                 ],
             }),
         );
@@ -114,6 +114,53 @@ test.describe("opciones del formulario", () => {
             "Selecciona una opción",
             "Ingeniería",
         ]);
+    });
+
+    test("el panel implementa categorías independientes para pregrado y posgrado", async ({ page }) => {
+        await abrirPanel(page);
+        const pregrado = bloque(page, "Programa académico de Pregrado");
+        const posgrado = bloque(page, "Programa académico de Posgrado");
+        await expect(pregrado).toBeVisible();
+        await expect(posgrado).toBeVisible();
+
+        await pregrado.getByLabel("Nueva opción").fill("Ingeniería Aeroespacial");
+        await pregrado.getByRole("button", { name: "Agregar" }).click();
+        await expect(pregrado.getByRole("status")).toHaveText("Se agregó «Ingeniería Aeroespacial».");
+        await expect(pregrado).toContainText("Ingeniería Aeroespacial");
+        await expect(posgrado).not.toContainText("Ingeniería Aeroespacial");
+
+        await posgrado.getByLabel("Nueva opción").fill("Doctorado en Inteligencia Artificial");
+        await posgrado.getByRole("button", { name: "Agregar" }).click();
+        await expect(posgrado.getByRole("status")).toHaveText("Se agregó «Doctorado en Inteligencia Artificial».");
+        await expect(posgrado).toContainText("Doctorado en Inteligencia Artificial");
+        await expect(pregrado).not.toContainText("Doctorado en Inteligencia Artificial");
+    });
+
+    test("los formularios de pregrado y posgrado solo muestran programas de su nivel", async ({ page }) => {
+        await sesionComo(page, "estudiante");
+
+        // Pregrado muestra solo programas de pregrado
+        await page.goto("/estudiante/iniciar_preinscripcion?nivel=PREGRADO");
+        const selectPregrado = page.getByLabel("Programa (obligatorio)");
+        await expect(selectPregrado.locator("option")).toHaveText([
+            "Selecciona una opción",
+            "Programa de ejemplo",
+            "Otro programa de ejemplo",
+            "Ingeniería",
+            "Ingeniería de Sistemas",
+        ]);
+
+        // Posgrado muestra solo programas de posgrado
+        await page.goto("/estudiante/iniciar_preinscripcion?nivel=POSGRADO");
+        const selectPosgrado = page.getByLabel("Programa (obligatorio)");
+        await expect(selectPosgrado.locator("option")).toHaveText([
+            "Selecciona una opción",
+            "Programa de ejemplo",
+            "Otro programa de ejemplo",
+            "Maestría en Ingeniería",
+            "Especialización en Gerencia",
+        ]);
+
     });
 
     test("el panel es accesible y no desborda en móvil", async ({ page }) => {
