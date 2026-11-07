@@ -73,6 +73,7 @@ export default function Identificacion({ borrador, cambiar, errores, opciones }:
                 <Field
                     id={ID_CAMPOS.fechaNacimiento}
                     etiqueta="Fecha de nacimiento"
+                    obligatorio
                     type="date"
                     autoComplete="bday"
                     value={perfil.fechaNacimiento}
@@ -82,6 +83,7 @@ export default function Identificacion({ borrador, cambiar, errores, opciones }:
                 <Field
                     id={ID_CAMPOS.genero}
                     etiqueta="Género"
+                    obligatorio
                     opciones={conValorActual(opciones.GENERO, perfil.genero)}
                     autoComplete="sex"
                     value={perfil.genero}

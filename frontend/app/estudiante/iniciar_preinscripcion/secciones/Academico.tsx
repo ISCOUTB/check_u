@@ -36,6 +36,7 @@ export default function Academico({ borrador, cambiar, errores, opciones }: Prop
                     className={styles.ancho}
                     leyenda="¿Solicitas grado en un segundo programa?"
                     nombre="segundo-programa"
+                    obligatorio
                     opciones={OPCIONES_SI_NO}
                     valor={aSiNo(borrador.segundoPrograma)}
                     alCambiar={(valor) => {
@@ -96,6 +97,7 @@ function CamposPrograma({ orden, borrador, cambiar, errores, opciones }: PropsSe
                 <Field
                     id={idOpcionGrado}
                     etiqueta="Opción de grado"
+                    obligatorio
                     opciones={conValorActual(opciones.OPCION_GRADO, solicitud.tipoOpcionGrado)}
                     value={solicitud.tipoOpcionGrado}
                     onChange={(evento: ChangeEvent<HTMLSelectElement>) =>
