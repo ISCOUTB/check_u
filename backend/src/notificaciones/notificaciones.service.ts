@@ -264,16 +264,19 @@ export class NotificacionesService {
           accion === 'recarga' ? ids : null,
         ],
       );
-      const estado = {
-        aceptada: 'ACEPTADA',
-        anulada: 'CERRADA',
-        recarga: 'POR_REVISAR',
-      }[accion];
-      if (estado)
+      if (accion === 'aceptada') {
         await client.query(
           'UPDATE solicitud_grado SET estado=$2,fecha_actualizacion=CURRENT_TIMESTAMP WHERE id_solicitud=$1',
-          [solicitudId, estado],
+          [solicitudId, 'ACEPTADA'],
         );
+      } else if (accion === 'anulada') {
+        await client.query(
+          'UPDATE solicitud_grado SET estado=$2,fecha_actualizacion=CURRENT_TIMESTAMP WHERE id_solicitud=$1',
+          [solicitudId, 'CERRADA'],
+        );
+      } else if (accion === 'recarga') {
+        await recalcularEstado(client, solicitudId);
+      }
       return { ok: true, idRevision: revision.rows[0].id_revision };
     });
   }
