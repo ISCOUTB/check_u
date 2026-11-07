@@ -174,7 +174,13 @@ export class NotificacionesService {
     return { id: r.rows[0].id, leida: true };
   }
 
-  /** Persistencia mínima de las acciones manuales; el trigger central produce su aviso. */
+  /**
+   * Acciones manuales de la funcionaria sobre una solicitud.
+   * - aceptada / anulada: estados finales ACEPTADA / CERRADA.
+   * - recarga (solicitar corrección): inserta la revisión y notifica, pero el
+   *   estado de la solicitud se obtiene con recalcularEstado (H-06 / Tarea 60).
+   * - comentario: solo registra la revisión; no altera el estado.
+   */
   async registrarRevision(
     funcionarioId: number,
     solicitudId: number,
