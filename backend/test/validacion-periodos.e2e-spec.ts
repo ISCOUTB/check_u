@@ -21,7 +21,12 @@ const migracion = () =>
     new URL('../../db/migrations/009-validacion-periodos.sql', import.meta.url),
     'utf8',
   );
-describe('Tarea 44a: validación HTTP y PostgreSQL', () => {
+const migracion011 = () =>
+  readFile(
+    new URL('../../db/migrations/011-nombre-unico-periodos.sql', import.meta.url),
+    'utf8',
+  );
+describe('Tarea 44a y 61: validación HTTP y PostgreSQL', () => {
   let base: Awaited<ReturnType<typeof crearDbBorrador>>,
     app: INestApplication<App>,
     agente: ReturnType<typeof request.agent>;
@@ -172,7 +177,7 @@ describe('Tarea 44a: validación HTTP y PostgreSQL', () => {
     await agente.post(RUTA).send(DATOS).expect(201);
     const { body: p } = await agente
       .post(RUTA)
-      .send({ ...DATOS, fechaInicio: '2026-10-24' })
+      .send({ ...DATOS, nombre: 'Otro periodo', fechaInicio: '2026-10-24' })
       .expect(201);
     await agente
       .patch(`${RUTA}/${p.id}`)
@@ -182,14 +187,63 @@ describe('Tarea 44a: validación HTTP y PostgreSQL', () => {
       (await agente.get(RUTA)).body.find((x: { id: string }) => x.id === p.id),
     ).toEqual(p);
   });
-  it('admite rangos distintos con el mismo nombre y ceremonia', async () => {
+  it('rechaza crear con el mismo nombre aunque cambien las fechas (insensible a mayúsculas, tildes y espacios)', async () => {
     await agente.post(RUTA).send(DATOS).expect(201);
+    const r = await agente
+      .post(RUTA)
+      .send({
+        ...DATOS,
+        nombre: '  cònvocatòria  ',
+        fechaInicio: '2026-10-24',
+      })
+      .expect(409);
+    expect(r.body.message).toContain('Ya existe un periodo con este nombre');
+    expect(
+      (await base.db.query('SELECT * FROM periodos_grado')).rows,
+    ).toHaveLength(1);
+  });
+  it('el nombre debe ser único también entre periodos cerrados', async () => {
+    await agente.post(RUTA).send({ ...DATOS, estado: 'CERRADO' }).expect(201);
+    const r = await agente
+      .post(RUTA)
+      .send({
+        ...DATOS,
+        nombre: 'CONVOCATORIA',
+        fechaInicio: '2027-01-01',
+        fechaFin: '2027-02-01',
+        fechaGraduacion: '2027-03-01',
+        estado: 'ABIERTO',
+      })
+      .expect(409);
+    expect(r.body.message).toContain('Ya existe un periodo con este nombre');
+  });
+  it('editar un periodo sin cambiar su nombre se acepta; renombrarlo a uno existente se rechaza', async () => {
+    const { body: p1 } = await agente.post(RUTA).send(DATOS).expect(201);
     await agente
       .post(RUTA)
-      .send({ ...DATOS, fechaInicio: '2026-10-24' })
+      .send({
+        ...DATOS,
+        nombre: 'Segundo Periodo',
+        fechaInicio: '2027-01-01',
+        fechaFin: '2027-02-01',
+        fechaGraduacion: '2027-03-01',
+      })
       .expect(201);
+
+    // Editar p1 sin cambiar su nombre se acepta
+    await agente
+      .patch(`${RUTA}/${p1.id}`)
+      .send({ estado: 'CERRADO' })
+      .expect(200);
+
+    // Renombrar p1 hacia el nombre de p2 se rechaza
+    const r = await agente
+      .patch(`${RUTA}/${p1.id}`)
+      .send({ nombre: '  segundo   periodo  ' })
+      .expect(409);
+    expect(r.body.message).toContain('Ya existe un periodo con este nombre');
   });
-  it('una carrera que supera ambas consultas previas solo inserta una convocatoria', async () => {
+  it('una carrera que supera ambas consultas previas solo inserta una convocatoria (fechas)', async () => {
     let liberar!: () => void,
       consultas = 0;
     const ambas = new Promise<void>((r) => {
@@ -202,6 +256,28 @@ describe('Tarea 44a: validación HTTP y PostgreSQL', () => {
     const respuestas = await Promise.all([
       agente.post(RUTA).send(DATOS),
       agente.post(RUTA).send({ ...DATOS, nombre: 'Concurrente' }),
+    ]);
+    expect(respuestas.map((r) => r.status).sort((a, b) => a - b)).toEqual([
+      201, 409,
+    ]);
+    expect(conflictosSql).toBe(1);
+    expect(
+      (await base.db.query('SELECT * FROM periodos_grado')).rows,
+    ).toHaveLength(1);
+  });
+  it('una carrera concurrente con el mismo nombre y distintas fechas solo inserta uno', async () => {
+    let liberar!: () => void,
+      consultas = 0;
+    const ambas = new Promise<void>((r) => {
+      liberar = r;
+    });
+    barrera = async () => {
+      if (++consultas === 2) liberar();
+      await ambas;
+    };
+    const respuestas = await Promise.all([
+      agente.post(RUTA).send(DATOS),
+      agente.post(RUTA).send({ ...DATOS, fechaInicio: '2026-10-24' }),
     ]);
     expect(respuestas.map((r) => r.status).sort((a, b) => a - b)).toEqual([
       201, 409,
@@ -230,9 +306,11 @@ describe('Tarea 44a: validación HTTP y PostgreSQL', () => {
     await agente.post(RUTA).send(DATOS).expect(201);
     await base.db.exec(await migracion());
     await base.db.exec(await migracion());
+    await base.db.exec(await migracion011());
+    await base.db.exec(await migracion011());
     expect((await agente.get(RUTA)).body).toHaveLength(1);
   });
-  it('detecta duplicados heredados sin borrarlos', async () => {
+  it('detecta duplicados heredados sin borrarlos (fechas)', async () => {
     const db = await PGlite.create();
     try {
       await db.exec(
@@ -255,5 +333,33 @@ describe('Tarea 44a: validación HTTP y PostgreSQL', () => {
     } finally {
       await db.close();
     }
-  });
+  }, 30000);
+  it(
+    'detecta duplicados heredados sin borrarlos (nombre en migración 011)',
+    async () => {
+      const db = await PGlite.create();
+      try {
+        await db.exec(
+          "CREATE TABLE periodos_grado(id integer,nombre varchar(120)); INSERT INTO periodos_grado VALUES(1,'Grados 2027-1'),(2,'  grados   2027-1  ')",
+        );
+        await expect(db.exec(await migracion011())).rejects.toThrow(
+          'Hay periodos con el mismo nombre normalizado',
+        );
+        await db.exec('ROLLBACK');
+        expect(
+          (await db.query('SELECT * FROM periodos_grado')).rows,
+        ).toHaveLength(2);
+        await db.exec('DELETE FROM periodos_grado WHERE id=2');
+        await db.exec(await migracion011());
+        await expect(
+          db.exec(
+            "INSERT INTO periodos_grado VALUES(3,'  GRÁDOS  2027-1 ')",
+          ),
+        ).rejects.toMatchObject({ code: '23505' });
+      } finally {
+        await db.close();
+      }
+    },
+    30000,
+  );
 });
