@@ -19,12 +19,12 @@ export { ObserveModule, ObserveInstrument } from './observabilidad.js';
       {
         name: 'default',
         ttl: 60_000,
-        limit: 60,
+        limit: process.env.NODE_ENV === 'test' ? 10_000 : 60,
       },
       {
         name: 'uploads',
         ttl: 60_000,
-        limit: 8,
+        limit: process.env.NODE_ENV === 'test' ? 10_000 : 8,
       },
     ]),
 

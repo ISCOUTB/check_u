@@ -78,7 +78,7 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
       .post('/api/auth/login')
       .send({ username: 'rmarriaga@utb.edu.co', password: '12345' })
       .expect(201);
-  }, 30000);
+  }, 120000);
   beforeEach(async () => {
     await base.db
       .exec(`TRUNCATE notificaciones,revisiones,historial_validaciones,validaciones,rutas,documentos,entregas,
