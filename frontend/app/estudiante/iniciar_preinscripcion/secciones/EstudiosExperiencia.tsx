@@ -12,7 +12,7 @@ const CARGOS: { orden: Orden; titulo: string }[] = [
     { orden: 2, titulo: "Cargo anterior" },
 ];
 
-/** Solo posgrado. Todo es opcional. */
+/** Solo posgrado. Los estudios alcanzados son obligatorios; la experiencia laboral es opcional. */
 export default function EstudiosExperiencia({ borrador, cambiar, errores }: PropsSeccion) {
     const { posgrado } = borrador;
 
@@ -22,6 +22,7 @@ export default function EstudiosExperiencia({ borrador, cambiar, errores }: Prop
                 <Field
                     id={ID_CAMPOS.nivelEstudios}
                     etiqueta="Nivel de estudios alcanzado"
+                    obligatorio
                     opciones={NIVELES_ESTUDIO}
                     value={posgrado.nivelEstudios}
                     onChange={(evento) => cambiar(cambioPosgrado("nivelEstudios", evento.target.value))}
@@ -30,6 +31,7 @@ export default function EstudiosExperiencia({ borrador, cambiar, errores }: Prop
                 <Field
                     id={ID_CAMPOS.tituloObtenido}
                     etiqueta="Título obtenido"
+                    obligatorio
                     value={posgrado.tituloObtenido}
                     onChange={(evento) => cambiar(cambioPosgrado("tituloObtenido", evento.target.value))}
                     error={errores[ID_CAMPOS.tituloObtenido]}
@@ -39,6 +41,7 @@ export default function EstudiosExperiencia({ borrador, cambiar, errores }: Prop
                     className={styles.ancho}
                     leyenda="¿Eres egresado o egresada de un pregrado de la UTB?"
                     nombre="es-egresado-pregrado-utb"
+                    obligatorio
                     opciones={OPCIONES_SI_NO}
                     valor={aSiNo(posgrado.esEgresadoPregradoUtb)}
                     alCambiar={(valor) => cambiar(cambioPosgrado("esEgresadoPregradoUtb", deSiNo(valor)))}
