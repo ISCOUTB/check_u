@@ -15,6 +15,7 @@ import {
   dentroDelPlazoCorreccion,
   fechaCorteCorreccion,
 } from '../periodos/asignacion-periodo.js';
+import { recalcularEstado } from '../solicitudes/recalcular-estado.js';
 
 export type TipoNotificacion = 'success' | 'warning' | 'error' | 'info';
 export type ActorNotificacion = 'system' | 'motor' | 'funcionario';
@@ -45,7 +46,8 @@ export class NotificacionesService {
 
   async solicitudesFuncionaria() {
     // Tarea 42b: sin borradores; la fecha que filtra el dashboard es la del primer envío, en Bogotá.
-    const r = await this.db.query(`SELECT s.id_solicitud::text AS id,s.id_periodo AS "periodId",
+    const r = await this.db
+      .query(`SELECT s.id_solicitud::text AS id,s.id_periodo AS "periodId",
       s.tipo_solicitud AS nivel,s.estado, s.fecha_creacion AS "fechaRegistro",
       u.nombres||' '||u.apellidos AS estudiante,
       (e.fecha_entrega AT TIME ZONE 'America/Bogota')::date::text AS "fechaEnvio",
@@ -58,14 +60,20 @@ export class NotificacionesService {
   }
 
   async detalleFuncionaria(id: number) {
-    const r = await this.db.query('SELECT id_estudiante FROM solicitud_grado WHERE id_solicitud=$1', [id]);
+    const r = await this.db.query(
+      'SELECT id_estudiante FROM solicitud_grado WHERE id_solicitud=$1',
+      [id],
+    );
     if (!r.rows.length) throw new NotFoundException('Solicitud no disponible.');
     const detalle = await detalleAnalisis(this.db, r.rows[0].id_estudiante, id);
-    const revisiones = await this.db.query(`SELECT r.id_revision::text AS id,r.resultado,r.comentario,
+    const revisiones = await this.db.query(
+      `SELECT r.id_revision::text AS id,r.resultado,r.comentario,
       r.documentos_ids AS documentos,r.fecha_revision AS fecha,u.nombres||' '||u.apellidos AS funcionario
       FROM revisiones r JOIN usuarios u ON u.id_usuario=r.id_funcionario
-      WHERE r.id_solicitud=$1 ORDER BY r.fecha_revision DESC,r.id_revision DESC`, [id]);
-    return {...detalle, revisiones: revisiones.rows};
+      WHERE r.id_solicitud=$1 ORDER BY r.fecha_revision DESC,r.id_revision DESC`,
+      [id],
+    );
+    return { ...detalle, revisiones: revisiones.rows };
   }
 
   async crear(client: PoolClient, n: NuevaNotificacion) {
