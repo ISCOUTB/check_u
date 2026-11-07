@@ -103,9 +103,17 @@ async function llenarObligatoriosPosgrado(page: Page): Promise<void> {
     await page.getByLabel("Apellidos (obligatorio)").fill("Prueba");
     await page.getByLabel("Tipo de documento (obligatorio)").selectOption({ label: "Cédula de ciudadanía" });
     await page.getByLabel("Número de documento (obligatorio)").fill("1234567890");
+    await page.getByLabel("Fecha de nacimiento (obligatorio)").fill("2000-01-01");
+    await page.getByLabel("Género (obligatorio)").selectOption({ label: "Otro" });
     await page.getByLabel("Código estudiantil (obligatorio)").fill("T00012345");
     await responder(page, "Modalidad (obligatorio)", "Presencial");
     await page.getByLabel("Programa (obligatorio)").selectOption({ label: "Programa de ejemplo" });
+    await responder(page, "¿Solicitas grado en un segundo programa?", "No");
+    await page.getByLabel("Celular (obligatorio)").fill("3000000000");
+    await page.getByLabel("Departamento (obligatorio)").fill("Bolívar");
+    await page.getByLabel("Ciudad o municipio (obligatorio)").fill("Cartagena");
+    await page.getByLabel("Dirección (obligatorio)").fill("Calle de ejemplo 1");
+    await responder(page, "¿Posee alguna discapacidad?", "No");
     for (const id of ["identification", "estampilla_pro_cultura"])
         await page.locator(`#documento-${id}`).setInputFiles(pdf(`${id}.pdf`));
 }
@@ -155,7 +163,7 @@ test.describe("iniciar preinscripción", () => {
         await expect(page.getByRole("heading", { name: "Estudios y experiencia" })).toHaveCount(0);
 
         await expect(indice(page).getByRole("link")).toHaveCount(5);
-        await expect(resumen(page, "Te faltan 2 secciones y 4 documentos")).toBeVisible();
+        await expect(resumen(page, "Te faltan 4 secciones y 4 documentos")).toBeVisible();
         await expect(indice(page).getByRole("link", { name: /Documentos/ })).toContainText(
             "0 de 4 documentos cargados",
         );
@@ -170,7 +178,7 @@ test.describe("iniciar preinscripción", () => {
         await expect(page.locator("#campo-empresa-2")).toBeVisible();
         // Posgrado no pide opción de grado.
         await expect(page.locator("#campo-opcion-grado-1")).toHaveCount(0);
-        await expect(resumen(page, "Te faltan 2 secciones y 2 documentos")).toBeVisible();
+        await expect(resumen(page, "Te faltan 3 secciones y 2 documentos")).toBeVisible();
     });
 
     test("segundo programa: al marcar Sí aparecen programa 2, modalidad 2 y opción de grado 2", async ({ page }) => {
@@ -238,18 +246,18 @@ test.describe("iniciar preinscripción", () => {
         await expect(page.locator("#campo-detalles-asistencia")).toHaveCount(0);
     });
 
-    test("registro y fecha Saber Pro solo si los conoce", async ({ page }) => {
+    test("la fecha del examen Saber Pro se pide siempre y el registro solo si lo conoce", async ({ page }) => {
         await abrir(page, PREGRADO);
         const registro = page.locator("#campo-numero-registro-saber-pro");
         const fecha = page.locator("#campo-fecha-examen-saber-pro");
         await expect(registro).toHaveCount(0);
-        await expect(fecha).toHaveCount(0);
+        await expect(fecha).toBeVisible();
         await responder(page, "¿Conoces tu número de registro?", "Sí");
         await expect(registro).toBeVisible();
         await expect(fecha).toBeVisible();
         await responder(page, "¿Conoces tu número de registro?", "No");
         await expect(registro).toHaveCount(0);
-        await expect(fecha).toHaveCount(0);
+        await expect(fecha).toBeVisible();
     });
 
     test("escribir puntos en el número de documento no los deja y avisa", async ({ page }) => {
@@ -285,35 +293,41 @@ test.describe("iniciar preinscripción", () => {
     test("el índice marca Identificación como Completa al llenar sus obligatorios", async ({ page }) => {
         await abrir(page, PREGRADO);
         const enlace = indice(page).getByRole("link", { name: /Identificación/ });
-        await expect(enlace).toContainText("Faltan 4 campos");
+        await expect(enlace).toContainText("Faltan 6 campos");
 
         await page.getByLabel("Nombres (obligatorio)").fill("Ana");
         await page.getByLabel("Apellidos (obligatorio)").fill("Prueba");
         await page.getByLabel("Tipo de documento (obligatorio)").selectOption({ label: "Cédula de ciudadanía" });
-        await expect(enlace).toContainText("Falta 1 campo");
+        await expect(enlace).toContainText("Faltan 3 campos");
         await page.getByLabel("Número de documento (obligatorio)").fill("1234567890");
+        await page.getByLabel("Fecha de nacimiento (obligatorio)").fill("2000-01-01");
+        await page.getByLabel("Género (obligatorio)").selectOption({ label: "Otro" });
 
         await expect(enlace).toContainText("Completa");
-        await expect(resumen(page, "Te faltan 1 sección y 4 documentos")).toBeVisible();
+        await expect(resumen(page, "Te faltan 3 secciones y 4 documentos")).toBeVisible();
     });
 
-    test("las secciones sin obligatorios dicen Opcional, sin la marca de completa", async ({ page }) => {
+    test("las secciones con obligatorios marcan sus faltantes y solo Estudios es opcional en posgrado", async ({
+        page,
+    }) => {
         await abrir(page, PREGRADO);
         for (const titulo of ["Contacto y residencia", "Saber Pro y vinculación con la UTB"]) {
             const enlace = indice(page).getByRole("link", { name: new RegExp(titulo) });
-            await expect(enlace).toContainText("Opcional");
-            await expect(enlace).not.toContainText("Completa");
-            await expect(enlace.locator("svg")).toHaveCount(0);
+            await expect(enlace).not.toContainText("Opcional");
+            await expect(enlace).toContainText(/Faltan? \d+ campos?/);
         }
 
         await page.goto(POSGRADO);
         await page.locator('main#contenido:not([aria-busy="true"])').waitFor();
-        for (const titulo of ["Contacto y residencia", "Estudios y experiencia"]) {
+        for (const titulo of ["Contacto y residencia"]) {
             const enlace = indice(page).getByRole("link", { name: new RegExp(titulo) });
-            await expect(enlace).toContainText("Opcional");
-            await expect(enlace).not.toContainText("Completa");
-            await expect(enlace.locator("svg")).toHaveCount(0);
+            await expect(enlace).not.toContainText("Opcional");
+            await expect(enlace).toContainText(/Faltan? \d+ campos?/);
         }
+        const estudios = indice(page).getByRole("link", { name: /Estudios y experiencia/ });
+        await expect(estudios).toContainText("Opcional");
+        await expect(estudios).not.toContainText("Completa");
+        await expect(estudios.locator("svg")).toHaveCount(0);
     });
 
     test("movimiento según el spec: solo las marcas del índice cambian en 150 ms, con ease-out", async ({ page }) => {
@@ -333,7 +347,7 @@ test.describe("iniciar preinscripción", () => {
         expect((await transicion(opcion)).duracion).toBe("0s");
 
         // Las marcas de completitud: 150 ms y var(--ease-out) en cada propiedad.
-        for (const marca of [enlace.locator("> span").first(), enlace.getByText("Faltan 4 campos")]) {
+        for (const marca of [enlace.locator("> span").first(), enlace.getByText("Faltan 6 campos")]) {
             const { duracion, curva } = await transicion(marca);
             expect(duracion.split(", ").every((valor) => valor === "0.15s"), duracion).toBe(true);
             const curvas = curva.split(/,\s(?=[a-z])/); // "cubic-bezier(…), cubic-bezier(…)"
@@ -371,7 +385,7 @@ test.describe("iniciar preinscripción", () => {
     test("en celular el índice es un botón que despliega las secciones", async ({ page }) => {
         await page.setViewportSize({ width: 360, height: 800 });
         await abrir(page, PREGRADO);
-        const boton = indice(page).getByRole("button", { name: /Te faltan 2 secciones y 4 documentos/ });
+        const boton = indice(page).getByRole("button", { name: /Te faltan 4 secciones y 4 documentos/ });
         await expect(boton).toHaveAttribute("aria-expanded", "false");
         await expect(indice(page).getByRole("link")).toHaveCount(0);
 
@@ -429,17 +443,33 @@ test.describe("iniciar preinscripción", () => {
             "#campo-apellidos",
             "#campo-tipo-documento",
             "#campo-numero-documento",
+            "#campo-fecha-nacimiento",
+            "#campo-genero",
             "#campo-codigo-estudiantil",
             "#campo-programa-1",
+            "#campo-opcion-grado-1",
+            "#campo-celular",
+            "#campo-departamento",
+            "#campo-ciudad",
+            "#campo-direccion",
+            "#campo-fecha-examen-saber-pro",
         ]) {
             await expect(page.locator(id)).toHaveAttribute("aria-required", "true");
             await expect(page.locator(id)).toHaveAccessibleName(/\(obligatorio\)$/);
         }
-        await expect(page.getByRole("radiogroup", { name: "Modalidad (obligatorio)" })).toHaveAttribute(
-            "aria-required",
-            "true",
-        );
-        for (const id of ["#campo-celular", "#campo-direccion", "#campo-fecha-nacimiento", "#campo-opcion-grado-1"])
+        for (const pregunta of [
+            "Modalidad (obligatorio)",
+            "¿Solicitas grado en un segundo programa? (obligatorio)",
+            "¿Posee alguna discapacidad? (obligatorio)",
+            "¿Conoces tu número de registro? (obligatorio)",
+            "¿Eres empleado de la UTB? (obligatorio)",
+            "¿Eres hijo o hija de un empleado de la UTB? (obligatorio)",
+        ])
+            await expect(page.getByRole("radiogroup", { name: pregunta })).toHaveAttribute(
+                "aria-required",
+                "true",
+            );
+        for (const id of ["#campo-correo", "#campo-telefono-fijo"])
             await expect(page.locator(id)).not.toHaveAttribute("aria-required", "true");
         await expect(page.locator("form")).toHaveAttribute("novalidate", "");
     });
@@ -529,7 +559,7 @@ test.describe("iniciar preinscripción", () => {
 
         await segunda.setInputFiles({ name: "estampilla2.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4 prueba") });
         await expect(contador(page)).toHaveText("1 de 6 documentos cargados");
-        await expect(resumen(page, "Te faltan 2 secciones y 5 documentos")).toBeVisible();
+        await expect(resumen(page, "Te faltan 4 secciones y 5 documentos")).toBeVisible();
     });
 
     test("el mismo archivo rechazado dos veces se vuelve a anunciar", async ({ page }) => {
@@ -572,7 +602,7 @@ test.describe("iniciar preinscripción", () => {
         await expect(indice(page).getByRole("link", { name: /Documentos/ })).toContainText(
             "1 de 4 documentos cargados",
         );
-        await expect(resumen(page, "Te faltan 2 secciones y 3 documentos")).toBeVisible();
+        await expect(resumen(page, "Te faltan 4 secciones y 3 documentos")).toBeVisible();
 
         await cedula.getByRole("button", { name: /^Quitar/ }).click();
         await expect(cedula).not.toContainText("cedula.pdf");
@@ -592,7 +622,7 @@ test.describe("iniciar preinscripción", () => {
         await expect(evaluacion).toHaveAccessibleName(/^Evaluación de Grado \(Banner\) \(segundo programa\) \(obligatorio\)/);
         await expect(segunda).toHaveAccessibleName(/^Estampilla Pro-Cultura \(segundo programa\) \(obligatorio\)/);
         await expect(contador(page)).toHaveText("0 de 6 documentos cargados");
-        await expect(resumen(page, "Te faltan 2 secciones y 6 documentos")).toBeVisible();
+        await expect(resumen(page, "Te faltan 4 secciones y 6 documentos")).toBeVisible();
 
         await responder(page, "¿Solicitas grado en un segundo programa?", "No");
         await expect(evaluacion).toHaveCount(0);
@@ -610,8 +640,8 @@ test.describe("iniciar preinscripción", () => {
         await expect(resumenEnvio).toBeVisible();
         await expect(resumenEnvio).toBeFocused();
         await expect(dialogoEnvio(page)).toHaveCount(0);
-        // Un enlace por faltante: 7 campos y 4 documentos (Paz y Salvo se consulta con Biblioteca).
-        await expect(resumenEnvio.getByRole("link")).toHaveCount(11);
+        // Un enlace por faltante: 20 campos y 4 documentos (Paz y Salvo se consulta con Biblioteca).
+        await expect(resumenEnvio.getByRole("link")).toHaveCount(24);
 
         // Cada campo marca su error.
         const nombres = page.locator("#campo-nombres");

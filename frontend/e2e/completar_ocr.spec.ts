@@ -78,9 +78,17 @@ test('el primer envío confirma el resultado antes de redirigir', async ({ page 
   await page.getByLabel('Apellidos (obligatorio)').fill('Prueba');
   await page.getByLabel('Tipo de documento (obligatorio)').selectOption({label:'Cédula de ciudadanía'});
   await page.getByLabel('Número de documento (obligatorio)').fill('1234567890');
+  await page.getByLabel('Fecha de nacimiento (obligatorio)').fill('2000-01-01');
+  await page.getByLabel('Género (obligatorio)').selectOption({label:'Otro'});
   await page.getByLabel('Código estudiantil (obligatorio)').fill('T00012345');
   await page.getByRole('radiogroup', {name:'Modalidad (obligatorio)'}).getByRole('radio',{name:'Presencial'}).check();
   await page.getByLabel('Programa (obligatorio)').selectOption({label:'Programa de ejemplo'});
+  await page.getByRole('radiogroup', {name:'¿Solicitas grado en un segundo programa?'}).getByRole('radio',{name:'No'}).check();
+  await page.getByLabel('Celular (obligatorio)').fill('3000000000');
+  await page.getByLabel('Departamento (obligatorio)').fill('Bolívar');
+  await page.getByLabel('Ciudad o municipio (obligatorio)').fill('Cartagena');
+  await page.getByLabel('Dirección (obligatorio)').fill('Calle de ejemplo 1');
+  await page.getByRole('radiogroup', {name:'¿Posee alguna discapacidad?'}).getByRole('radio',{name:'No'}).check();
   for (const id of ['identification','estampilla_pro_cultura']) { // Tarea 50: Paz y Salvo no se sube
     await page.locator(`#documento-${id}`).setInputFiles({name:`${id}.pdf`,mimeType:'application/pdf',buffer:Buffer.from(PDF)});
   }

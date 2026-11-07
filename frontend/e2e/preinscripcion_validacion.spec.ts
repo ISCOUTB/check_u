@@ -29,9 +29,33 @@ function completo(nivel: Nivel): BorradorPreinscripcion {
     borrador.codigoEstudiantil = "T00000001";
     borrador.perfil.tipoDocumento = "CC";
     borrador.perfil.numeroDocumento = "1234567890";
+    borrador.perfil.fechaNacimiento = "2000-01-01";
+    borrador.perfil.genero = "OTRO";
+    borrador.perfil.celular = "3000000000";
+    borrador.perfil.departamento = "Bolívar";
+    borrador.perfil.ciudad = "Cartagena";
+    borrador.perfil.direccion = "Calle de ejemplo 1";
+    borrador.perfil.tieneDiscapacidad = false;
     borrador.segundoPrograma = false;
     borrador.programas[0].programa = "Programa de ejemplo";
     borrador.programas[0].modalidad = "PRESENCIAL";
+    if (nivel === "PREGRADO") {
+        borrador.programas[0].tipoOpcionGrado = "TRABAJO_DE_GRADO";
+        borrador.pregrado = {
+            conoceRegistroSaberPro: false,
+            numeroRegistroSaberPro: "",
+            fechaExamenSaberPro: "2024-06-01",
+            esEmpleadoUtb: false,
+            tipoContrato: "",
+            esHijoDeEmpleadoUtb: false,
+        };
+    } else {
+        borrador.posgrado = {
+            nivelEstudios: "PROFESIONAL",
+            tituloObtenido: "Título de ejemplo",
+            esEgresadoPregradoUtb: true,
+        };
+    }
     for (const { id } of documentosRequeridos(nivel, false)) cargar(borrador, id);
     return borrador;
 }
@@ -44,6 +68,7 @@ function conSegundoPrograma(borrador: BorradorPreinscripcion): void {
     borrador.segundoPrograma = true;
     borrador.programas[1].programa = "Otro programa de ejemplo";
     borrador.programas[1].modalidad = "VIRTUAL";
+    if (borrador.nivel === "PREGRADO") borrador.programas[1].tipoOpcionGrado = "TRABAJO_DE_GRADO";
 }
 
 const ids = (borrador: BorradorPreinscripcion) => faltantes(borrador).map((faltante) => faltante.id);
@@ -119,9 +144,22 @@ test("un borrador vacío de pregrado falta lo obligatorio y los 4 documentos, pe
         ID_CAMPOS.apellidos,
         ID_CAMPOS.tipoDocumento,
         ID_CAMPOS.numeroDocumento,
+        ID_CAMPOS.fechaNacimiento,
+        ID_CAMPOS.genero,
         ID_CAMPOS.codigoEstudiantil,
         idCampoPrograma("modalidad", 1),
         idCampoPrograma("programa", 1),
+        idCampoPrograma("tipoOpcionGrado", 1),
+        ID_CAMPOS.segundoPrograma,
+        ID_CAMPOS.celular,
+        ID_CAMPOS.departamento,
+        ID_CAMPOS.ciudad,
+        ID_CAMPOS.direccion,
+        ID_CAMPOS.tieneDiscapacidad,
+        ID_CAMPOS.conoceRegistroSaberPro,
+        ID_CAMPOS.fechaExamenSaberPro,
+        ID_CAMPOS.esEmpleadoUtb,
+        ID_CAMPOS.esHijoDeEmpleadoUtb,
         "documento-identification",
         "documento-academic_evaluation",
         "documento-estampilla_pro_cultura",
@@ -217,8 +255,11 @@ test("un texto de solo espacios cuenta como vacío", () => {
 
 test("lo opcional no se exige", () => {
     const borrador = completo("POSGRADO");
-    // Sin teléfonos, dirección, estudios, experiencia ni opción de grado.
-    expect(borrador.perfil.celular).toBe("");
+    // Sin teléfono fijo, estudios, experiencia ni opción de grado.
+    const vacio = borradorVacio("POSGRADO", CORREO);
+    borrador.posgrado = vacio.posgrado;
+    borrador.experiencia = vacio.experiencia;
+    expect(borrador.perfil.telefonoFijo).toBe("");
     expect(borrador.posgrado.nivelEstudios).toBe("");
     expect(borrador.experiencia[0].empresa).toBe("");
     expect(faltantes(borrador)).toEqual([]);
@@ -250,16 +291,18 @@ test("el tipo de discapacidad solo se exige cuando la respuesta es Sí", () => {
     expect(progreso(borrador).listo).toBe(true);
 });
 
-test("al responder No o dejar sin responder no se exige el tipo y Contacto es opcional", () => {
-    for (const respuesta of [false, null]) {
-        const borrador = completo("PREGRADO");
-        borrador.perfil.tieneDiscapacidad = respuesta;
-        borrador.perfil.tipoDiscapacidad = "";
-        borrador.perfil.detallesAsistencia = "";
+test("al responder No no se exige el tipo y la pregunta de discapacidad sigue siendo obligatoria", () => {
+    const borrador = completo("PREGRADO");
+    borrador.perfil.tieneDiscapacidad = false;
+    borrador.perfil.tipoDiscapacidad = "";
+    borrador.perfil.detallesAsistencia = "";
 
-        expect(faltantes(borrador)).toEqual([]);
-        expect(progreso(borrador).secciones.find((seccion) => seccion.id === "contacto")?.opcional).toBe(true);
-    }
+    expect(faltantes(borrador)).toEqual([]);
+    expect(progreso(borrador).secciones.find((seccion) => seccion.id === "contacto")?.opcional).toBe(false);
+
+    // Dejarla sin responder sí es un faltante.
+    borrador.perfil.tieneDiscapacidad = null;
+    expect(ids(borrador)).toEqual([ID_CAMPOS.tieneDiscapacidad]);
 });
 
 test("la fecha se guarda tal cual", () => {
@@ -289,14 +332,14 @@ test("progreso de un borrador vacío de pregrado", () => {
     const resultado = progreso(borradorVacio("PREGRADO", CORREO));
 
     expect(resultado.secciones).toEqual([
-        { id: "identificacion", titulo: "Identificación", faltan: 4, opcional: false },
-        { id: "contacto", titulo: "Contacto y residencia", faltan: 0, opcional: true },
-        { id: "academico", titulo: "Información académica", faltan: 3, opcional: false },
-        { id: "saber_pro", titulo: "Saber Pro y vinculación con la UTB", faltan: 0, opcional: true },
+        { id: "identificacion", titulo: "Identificación", faltan: 6, opcional: false },
+        { id: "contacto", titulo: "Contacto y residencia", faltan: 5, opcional: false },
+        { id: "academico", titulo: "Información académica", faltan: 5, opcional: false },
+        { id: "saber_pro", titulo: "Saber Pro y vinculación con la UTB", faltan: 4, opcional: false },
         { id: "documentos", titulo: "Documentos", faltan: 4, opcional: false },
     ]);
     expect(resultado.documentos).toEqual({ cargados: 0, requeridos: 4 });
-    expect(resultado.seccionesPendientes).toBe(2);
+    expect(resultado.seccionesPendientes).toBe(4);
     expect(resultado.documentosPendientes).toBe(4);
     expect(resultado.listo).toBe(false);
 });
@@ -314,14 +357,14 @@ test("las secciones sin obligatorios son opcionales en cada nivel; Documentos nu
 
     expect(opcionales(borradorVacio("PREGRADO", CORREO))).toEqual({
         identificacion: false,
-        contacto: true,
+        contacto: false,
         academico: false,
-        saber_pro: true,
+        saber_pro: false,
         documentos: false,
     });
     expect(opcionales(borradorVacio("POSGRADO", CORREO))).toEqual({
         identificacion: false,
-        contacto: true,
+        contacto: false,
         academico: false,
         estudios: true,
         documentos: false,
@@ -337,12 +380,14 @@ test("progreso cuenta los documentos cargados y las secciones que se completan",
     borrador.apellidos = "Prueba";
     borrador.perfil.tipoDocumento = "CC";
     borrador.perfil.numeroDocumento = "1234567890";
+    borrador.perfil.fechaNacimiento = "2000-01-01";
+    borrador.perfil.genero = "OTRO";
     cargar(borrador, "identification");
     cargar(borrador, "saber_pro");
     const resultado = progreso(borrador);
 
     expect(resultado.secciones.find((seccion) => seccion.id === "identificacion")?.faltan).toBe(0);
-    expect(resultado.seccionesPendientes).toBe(1);
+    expect(resultado.seccionesPendientes).toBe(3);
     expect(resultado.documentos).toEqual({ cargados: 2, requeridos: 4 });
     expect(resultado.documentosPendientes).toBe(2);
     expect(resultado.listo).toBe(false);
