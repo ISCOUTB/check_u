@@ -123,25 +123,52 @@ export async function abrirFormulario(page: Page, nivel: "pregrado" | "posgrado"
     await expect(page.getByLabel("Nombres (obligatorio)")).toBeVisible();
 }
 
-/** Llena los campos obligatorios con los datos del estudiante de prueba. */
+/** Responde una pregunta de Sí o No del formulario. */
+async function responder(page: Page, pregunta: string, respuesta: "Sí" | "No"): Promise<void> {
+    await page.getByRole("radiogroup", { name: pregunta }).getByRole("radio", { name: respuesta }).check();
+}
+
+/**
+ * Llena los campos obligatorios con los datos del estudiante de prueba.
+ * `estudios: false` deja vacíos el nivel de estudios y el título de posgrado (hallazgo H-01).
+ */
 export async function llenarDatos(
     page: Page,
-    { doble = false, nivel = "pregrado" }: { doble?: boolean; nivel?: "pregrado" | "posgrado" } = {},
+    {
+        doble = false,
+        nivel = "pregrado",
+        estudios = true,
+    }: { doble?: boolean; nivel?: "pregrado" | "posgrado"; estudios?: boolean } = {},
 ): Promise<void> {
     await page.getByLabel("Nombres (obligatorio)").fill(NOMBRES);
     await page.getByLabel("Apellidos (obligatorio)").fill(APELLIDOS);
     await page.getByLabel("Tipo de documento (obligatorio)").selectOption({ label: "Cédula de ciudadanía" });
     await page.getByLabel("Número de documento (obligatorio)").fill(DOCUMENTO);
+    await page.getByLabel("Fecha de nacimiento (obligatorio)").fill("2000-01-01");
+    await page.getByLabel("Género (obligatorio)").selectOption({ label: "Otro" });
+    await page.getByLabel("Celular (obligatorio)").fill("3000000000");
+    await page.getByLabel("Departamento (obligatorio)").fill("Bolívar");
+    await page.getByLabel("Ciudad o municipio (obligatorio)").fill("Cartagena");
+    await page.getByLabel("Dirección (obligatorio)").fill("Calle de ejemplo 1");
+    await responder(page, "¿Posee alguna discapacidad?", "No");
     await page.getByLabel("Código estudiantil (obligatorio)").fill("T00000001");
     await page.locator("#campo-modalidad-1").check();
     await page.locator("#campo-programa-1").selectOption({ index: 1 });
+    if (nivel === "pregrado") await page.locator("#campo-opcion-grado-1").selectOption({ index: 1 });
+    await responder(page, "¿Solicitas grado en un segundo programa?", doble ? "Sí" : "No");
     if (doble) {
-        await page.locator("#campo-segundo-programa").check();
         await page.locator("#campo-modalidad-2").check();
         await page.locator("#campo-programa-2").selectOption({ index: 2 });
+        if (nivel === "pregrado") await page.locator("#campo-opcion-grado-2").selectOption({ index: 1 });
     }
-    // Hallazgo H-02: el formulario los marca como opcionales, pero el backend los exige en posgrado.
-    if (nivel === "posgrado") {
+    if (nivel === "pregrado") {
+        await responder(page, "¿Conoces tu número de registro?", "No");
+        await page.getByLabel("Fecha del examen (obligatorio)").fill("2024-06-01");
+        await responder(page, "¿Eres empleado de la UTB?", "No");
+        await responder(page, "¿Eres hijo o hija de un empleado de la UTB?", "No");
+    }
+    // Hallazgo H-01: el formulario los marca como opcionales, pero el backend los exige en posgrado.
+    if (nivel === "posgrado" && estudios) {
         await page.locator("#campo-nivel-estudios").selectOption({ index: 1 });
         await page.locator("#campo-titulo-obtenido").fill("Ingeniero de prueba");
     }

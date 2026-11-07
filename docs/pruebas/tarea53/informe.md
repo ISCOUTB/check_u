@@ -9,6 +9,10 @@ Se ejecutaron los **14 escenarios**: **7 exitosos** y **7 fallidos**. En los fal
 el flujo principal funciona y falla alguna comprobación concreta; el más incompleto es el 13.
 Quedan registrados **13 hallazgos**: 3 de severidad alta, 4 media, 1 por aclarar y 5 baja.
 
+**Repetición del 07/11/2026** sobre `main` en `7c5738c`, con las pruebas al día con los campos de la Tarea 54:
+24 pruebas, 15 en verde y 9 en rojo. Las rojas son las de la tabla del
+[README](../../../frontend/e2e-flujo/README.md), y **H-01 sigue presente**. Las capturas son las del 06/11.
+
 | # | Escenario | Resultado | Motor | Hallazgos |
 |---|---|---|---|---|
 | 1 | Preinscripción de pregrado | ✅ Exitoso | Real y controlado | H-11, H-13 |
@@ -72,7 +76,7 @@ Quedan registrados **13 hallazgos**: 3 de severidad alta, 4 media, 1 por aclarar
 - **Esperado:** si el formulario dice «Todo listo para enviar», el envío se acepta; o el formulario marca esos campos como obligatorios.
 - **Observado:** «Estudios y experiencia» aparece como *Opcional* y el índice dice «Todo listo para enviar», pero el backend responde «Debe completar nivel de estudios y título obtenido».
 - **Impacto:** ningún estudiante de posgrado puede enviar sin descubrir el error al final.
-- **Causa:** el backend los exige (`backend/src/solicitudes/solicitudes.service.ts:778`) y `validacion.ts` del formulario no.
+- **Causa:** el backend los exige (`backend/src/solicitudes/solicitudes.service.ts:854`) y `validacion.ts` del formulario no.
 - **Recomendación:** marcarlos obligatorios en el formulario de posgrado, o quitar la exigencia del backend.
 - **Evidencia:** [02-x](capturas/02-x-posgrado-rechazado-con-todo-listo.png). Prueba: E2.0.
 
