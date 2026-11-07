@@ -78,10 +78,10 @@ test.describe("Escenario 2: preinscripción de posgrado", () => {
     test.beforeEach(reiniciar);
 
     test("E2.0 los campos que el formulario marca como opcionales no deben impedir el envío", async ({ page }) => {
-        // Hallazgo H-02. Sin nivel de estudios ni título, el formulario dice «Todo listo para enviar».
+        // Hallazgo H-01. Sin nivel de estudios ni título, el formulario dice «Todo listo para enviar».
         await entrar(page, ESTUDIANTE);
         await abrirFormulario(page, "posgrado");
-        await llenarDatos(page);
+        await llenarDatos(page, { nivel: "posgrado", estudios: false });
         await adjuntarTodos(page);
         await expect(page.getByText("Todo listo para enviar").filter({ visible: true }).first()).toBeVisible();
         await page.getByRole("button", { name: "Enviar preinscripción" }).click();
@@ -98,7 +98,7 @@ test.describe("Escenario 2: preinscripción de posgrado", () => {
         await expect(page.getByRole("heading", { level: 1 })).toHaveText("Preinscripción de grado · Posgrado");
         await llenarDatos(page, { nivel: "posgrado" });
         await captura(page, "02-a-formulario-posgrado-un-programa");
-        // Hallazgo H-01 del informe: el formulario no pide la Evaluación de Banner en posgrado.
+        // Hallazgo H-08 del informe: el formulario no pide la Evaluación de Banner en posgrado.
         expect.soft(await documentosPedidos(page)).toEqual(["identification", "academic_evaluation", "estampilla_pro_cultura"]);
         await adjuntarTodos(page);
         await enviar(page, async (p) => {
