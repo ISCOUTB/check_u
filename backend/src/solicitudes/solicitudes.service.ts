@@ -523,10 +523,9 @@ export class SolicitudesService {
           [id],
         );
         const preg = { ...previo.rows[0], ...datos.pregrado };
-        if (preg.conoceRegistroSaberPro !== true) {
+        // La fecha del examen es independiente de conocer el número de registro: no se descarta.
+        if (preg.conoceRegistroSaberPro !== true)
           preg.numeroRegistroSaberPro = '';
-          preg.fechaExamenSaberPro = '';
-        }
         if (preg.esEmpleadoUtb !== true) preg.tipoContrato = '';
         await this.guardarCampos(
           client,
@@ -689,10 +688,21 @@ export class SolicitudesService {
 
     // Validar perfil_estudiante
     const resPerfil = await client.query<{
-      tipo_documento_identidad: string;
-      numero_documento: string;
+      tipo_documento_identidad: string | null;
+      numero_documento: string | null;
+      fecha_nacimiento: string | null;
+      genero: string | null;
+      telefono_celular: string | null;
+      departamento_residencia: string | null;
+      ciudad_residencia: string | null;
+      direccion_residencia: string | null;
+      tiene_discapacidad: boolean | null;
+      tipo_discapacidad: string | null;
     }>(
-      `SELECT tipo_documento_identidad, numero_documento
+      `SELECT tipo_documento_identidad, numero_documento,
+              fecha_nacimiento::text AS fecha_nacimiento, genero,
+              telefono_celular, departamento_residencia, ciudad_residencia,
+              direccion_residencia, tiene_discapacidad, tipo_discapacidad
        FROM perfil_estudiante
        WHERE id_usuario = $1;`,
       [idEstudiante],
@@ -708,12 +718,44 @@ export class SolicitudesService {
         'Perfil de estudiante incompleto o número de documento inválido',
       );
     }
+    const faltantesPerfil = [
+      ['fecha de nacimiento', perfil.fecha_nacimiento],
+      ['género', perfil.genero],
+      ['número de celular', perfil.telefono_celular],
+      ['departamento', perfil.departamento_residencia],
+      ['ciudad o municipio', perfil.ciudad_residencia],
+      ['dirección de residencia', perfil.direccion_residencia],
+    ]
+      .filter(([, valor]) => !valor || !String(valor).trim())
+      .map(([etiqueta]) => etiqueta);
+    if (perfil.tiene_discapacidad === null)
+      faltantesPerfil.push('respuesta sobre discapacidad');
+    if (perfil.tiene_discapacidad === true && !perfil.tipo_discapacidad?.trim())
+      faltantesPerfil.push('tipo de discapacidad');
+    if (faltantesPerfil.length > 0) {
+      throw new BadRequestException(
+        `Perfil de estudiante incompleto: falta ${faltantesPerfil.join(', ')}`,
+      );
+    }
 
     // Validar solicitud_programa
+    const resSolicitud = await client.query<{
+      segundo_programa: boolean | null;
+    }>(
+      `SELECT segundo_programa FROM solicitud_grado WHERE id_solicitud = $1;`,
+      [idSolicitud],
+    );
+    const segundoPrograma = resSolicitud.rows[0]?.segundo_programa;
+    if (segundoPrograma === null || segundoPrograma === undefined) {
+      throw new BadRequestException(
+        'Debe indicar si solicita grado en un segundo programa',
+      );
+    }
+
     const resPrograma = await client.query<{
       orden: number;
-      programa: string;
-      modalidad: string;
+      programa: string | null;
+      modalidad: string | null;
       tipo_opcion_grado: string | null;
     }>(
       `SELECT orden, programa, modalidad, tipo_opcion_grado
@@ -722,19 +764,41 @@ export class SolicitudesService {
        ORDER BY orden ASC;`,
       [idSolicitud],
     );
+    const programaCompleto = (programa: (typeof resPrograma.rows)[number]) =>
+      !!programa?.programa?.trim() &&
+      !!programa.modalidad?.trim() &&
+      (tipoSolicitud !== 'PREGRADO' || !!programa.tipo_opcion_grado?.trim());
+
     const prog1 = resPrograma.rows.find((p) => p.orden === 1);
-    if (!prog1 || !prog1.programa?.trim() || !prog1.modalidad?.trim()) {
+    if (!prog1 || !programaCompleto(prog1)) {
       throw new BadRequestException(
-        'Información académica incompleta: falta programa principal o modalidad',
+        tipoSolicitud === 'PREGRADO'
+          ? 'Información académica incompleta: falta programa, modalidad u opción de grado del primer programa'
+          : 'Información académica incompleta: falta programa o modalidad del primer programa',
       );
+    }
+    if (segundoPrograma) {
+      const prog2 = resPrograma.rows.find((p) => p.orden === 2);
+      if (!prog2 || !programaCompleto(prog2)) {
+        throw new BadRequestException(
+          tipoSolicitud === 'PREGRADO'
+            ? 'Información académica incompleta: falta programa, modalidad u opción de grado del segundo programa'
+            : 'Información académica incompleta: falta programa o modalidad del segundo programa',
+        );
+      }
     }
 
     if (tipoSolicitud === 'PREGRADO') {
       const resPreg = await client.query<{
         conoce_registro_saber_pro: boolean | null;
         numero_registro_saber_pro: string | null;
+        fecha_examen_saber_pro: string | null;
+        es_empleado_utb: boolean | null;
+        es_hijo_empleado_utb: boolean | null;
       }>(
-        `SELECT conoce_registro_saber_pro, numero_registro_saber_pro
+        `SELECT conoce_registro_saber_pro, numero_registro_saber_pro,
+                fecha_examen_saber_pro::text AS fecha_examen_saber_pro,
+                es_empleado_utb, es_hijo_empleado_utb
          FROM informacion_pregrado
          WHERE id_solicitud = $1;`,
         [idSolicitud],
@@ -745,13 +809,25 @@ export class SolicitudesService {
         );
       }
       const preg = resPreg.rows[0];
+      const faltantesPregrado: string[] = [];
+      if (preg.conoce_registro_saber_pro === null)
+        faltantesPregrado.push('responder si conoce el número de registro');
       if (
         preg.conoce_registro_saber_pro === true &&
         (!preg.numero_registro_saber_pro ||
           !preg.numero_registro_saber_pro.trim())
-      ) {
+      )
+        faltantesPregrado.push('número de registro Saber Pro');
+      // La fecha del examen se exige siempre, aunque no conozca el registro.
+      if (!preg.fecha_examen_saber_pro?.trim())
+        faltantesPregrado.push('fecha del examen Saber Pro');
+      if (preg.es_empleado_utb === null)
+        faltantesPregrado.push('responder si es empleado de la UTB');
+      if (preg.es_hijo_empleado_utb === null)
+        faltantesPregrado.push('responder si es hijo o hija de un empleado de la UTB');
+      if (faltantesPregrado.length > 0) {
         throw new BadRequestException(
-          'Debe registrar el número de registro Saber Pro',
+          `Información de pregrado incompleta: falta ${faltantesPregrado.join(', ')}`,
         );
       }
     } else if (tipoSolicitud === 'POSGRADO') {
