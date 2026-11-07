@@ -106,4 +106,43 @@ describe('OpcionesService', () => {
     const opciones = await service.listar('GENERO');
     expect(opciones.map((opcion) => opcion.valor)).toEqual(['F', 'NO_DICE']);
   });
+
+  it('administra de manera independiente programas de pregrado y posgrado', async () => {
+    const pre = await service.crear({
+      campo: 'PROGRAMA_PREGRADO',
+      etiqueta: 'Ingeniería de Sistemas',
+    });
+    const pos = await service.crear({
+      campo: 'PROGRAMA_POSGRADO',
+      etiqueta: 'Maestría en Ingeniería',
+    });
+
+    expect(pre.campo).toBe('PROGRAMA_PREGRADO');
+    expect(pos.campo).toBe('PROGRAMA_POSGRADO');
+
+    const listaPre = await service.listar('PROGRAMA_PREGRADO');
+    const listaPos = await service.listar('PROGRAMA_POSGRADO');
+
+    expect(listaPre.map((o) => o.etiqueta)).toEqual(['Ingeniería de Sistemas']);
+    expect(listaPos.map((o) => o.etiqueta)).toEqual(['Maestría en Ingeniería']);
+  });
+
+  it('filtra opciones por nivel académico (PREGRADO / POSGRADO)', async () => {
+    await service.crear({ campo: 'TIPO_DOCUMENTO', etiqueta: 'Cédula de ciudadanía' });
+    await service.crear({ campo: 'PROGRAMA_PREGRADO', etiqueta: 'Ingeniería Civil' });
+    await service.crear({ campo: 'PROGRAMA_POSGRADO', etiqueta: 'Doctorado en Ingeniería' });
+    await service.crear({ campo: 'OPCION_GRADO', etiqueta: 'Práctica' });
+
+    const opcionesPre = await service.listar(undefined, 'PREGRADO');
+    const camposPre = opcionesPre.map((o) => o.campo);
+    expect(camposPre).toContain('PROGRAMA_PREGRADO');
+    expect(camposPre).not.toContain('PROGRAMA_POSGRADO');
+    expect(camposPre).toContain('OPCION_GRADO');
+
+    const opcionesPos = await service.listar(undefined, 'POSGRADO');
+    const camposPos = opcionesPos.map((o) => o.campo);
+    expect(camposPos).toContain('PROGRAMA_POSGRADO');
+    expect(camposPos).not.toContain('PROGRAMA_PREGRADO');
+    expect(camposPos).not.toContain('OPCION_GRADO');
+  });
 });
