@@ -38,6 +38,11 @@ const ENLACES: Record<
       icono: 'lista',
     },
     {
+      texto: 'Registrar estudiantes',
+      href: '/funcionario/registrar_estudiantes',
+      icono: 'lista',
+    },
+    {
       texto: 'Opciones del formulario',
       href: '/funcionario/opciones',
       icono: 'ajustes',
