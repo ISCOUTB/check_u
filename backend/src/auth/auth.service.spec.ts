@@ -1,6 +1,8 @@
 import { UnauthorizedException } from '@nestjs/common';
+import type { DatabaseService } from '../database/database.service.js';
 import { AuthService } from './auth.service.js';
 
+// La contraseña del estudiante siempre viene de AUTH_ESTUDIANTE_PASSWORD.
 const TREINTA_MINUTOS = 30 * 60 * 1000;
 
 function obligatorio(nombre: string): string {
@@ -36,6 +38,7 @@ describe('AuthService', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
   it('con credenciales válidas crea una sesión y no devuelve la contraseña', () => {
@@ -74,7 +77,7 @@ describe('AuthService', () => {
     });
   });
 
-  it('la sesión dura 30 minutos', () => {
+  it('la sesión dura 30 minutos', async () => {
     vi.useFakeTimers();
     const { sessionId } = service.login(estudianteUser, estudiantePass);
 
@@ -99,5 +102,80 @@ describe('AuthService', () => {
 
   it('logout sin sesión no falla', () => {
     expect(() => service.logout(undefined)).not.toThrow();
+  });
+
+  it('rechaza un AUTH_INIT desconocido en lugar de adivinar el origen', async () => {
+    vi.stubEnv('AUTH_INIT', 'LDAP');
+
+    await expect(
+      service.login('lizapata@utb.edu.co', '12345'),
+    ).rejects.toThrow(/AUTH_INIT debe ser ENV o DB/);
+  });
+
+  describe('con AUTH_INIT=DB', () => {
+    beforeEach(() => {
+      vi.stubEnv('AUTH_INIT', 'DB');
+      vi.stubEnv('AUTH_ESTUDIANTE_PASSWORD', 'compartida');
+    });
+
+    it('obtiene la información del estudiante de la base de datos y usa la contraseña del entorno', async () => {
+      db.query.mockResolvedValue({
+        rows: [
+          {
+            id_usuario: 7,
+            nombres: 'Lisandro',
+            apellidos: 'Zapata',
+            correo: 'lizapata@utb.edu.co',
+          },
+        ],
+      });
+
+      const { user } = await service.login(
+        'ESTUDIANTE.DB@utb.edu.co',
+        'compartida',
+      );
+
+      expect(user).toEqual({
+        id: 7,
+        username: 'lizapata@utb.edu.co',
+        name: 'Lisandro Zapata',
+        role: 'estudiante',
+      });
+      expect(db.query).toHaveBeenCalledWith(
+        expect.stringContaining("rol = 'ESTUDIANTE'"),
+        ['ESTUDIANTE.DB@utb.edu.co'],
+      );
+    });
+
+    it('no consulta la base de datos para el funcionario', async () => {
+      await service.login('rmarriaga@utb.edu.co', '12345');
+
+      expect(db.query).not.toHaveBeenCalled();
+    });
+
+    it('rechaza la contraseña de la base de datos: solo vale AUTH_ESTUDIANTE_PASSWORD', async () => {
+      db.query.mockResolvedValue({
+        rows: [
+          {
+            id_usuario: 7,
+            nombres: 'Lisandro',
+            apellidos: 'Zapata',
+            correo: 'lizapata@utb.edu.co',
+          },
+        ],
+      });
+
+      await expect(
+        service.login('lizapata@utb.edu.co', 'otra'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('responde 401 si el estudiante no existe en la base de datos', async () => {
+      db.query.mockResolvedValue({ rows: [] });
+
+      await expect(
+        service.login('nadie@utb.edu.co', 'compartida'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
   });
 });
