@@ -31,6 +31,8 @@ test.describe("Escenario 1: preinscripción de pregrado", () => {
             await captura(p, "01-c-progreso-analisis", false);
         });
         await captura(page, "01-d-resultado-tras-enviar");
+        await expect(page.locator("section[aria-label='Datos del estudiante']")).toContainText("Ingeniería de Sistemas y Computación");
+        await expect(page.locator("section[aria-label='Datos del estudiante']")).not.toContainText("INGENIERIA_DE_SISTEMAS_Y_COMPUTACION");
 
         const id = Number(sql("SELECT max(id_solicitud) FROM solicitud_grado")[0]);
         const docs = documentosEnBd(id);
@@ -53,6 +55,10 @@ test.describe("Escenario 1: preinscripción de pregrado", () => {
         await captura(page, "01-f-formulario-pregrado-dos-programas");
         await enviar(page);
         await captura(page, "01-g-resultado-dos-programas");
+        await expect(page.locator("section[aria-label='Datos del estudiante']")).toContainText("Ingeniería de Sistemas y Computación");
+        await expect(page.locator("section[aria-label='Datos del estudiante']")).toContainText("Ingeniería Industrial");
+        await expect(page.locator("section[aria-label='Datos del estudiante']")).not.toContainText("INGENIERIA_DE_SISTEMAS_Y_COMPUTACION");
+        await expect(page.locator("section[aria-label='Datos del estudiante']")).not.toContainText("INGENIERIA_INDUSTRIAL");
         const id = Number(sql("SELECT max(id_solicitud) FROM solicitud_grado")[0]);
         expect(Object.keys(documentosEnBd(id)).sort()).toEqual([...PREGRADO_DOS, "paz_y_salvo_bib"].sort());
         expect(sql(`SELECT count(*) FROM solicitud_programa WHERE id_solicitud=${id}`)[0]).toBe("2");

@@ -7,6 +7,7 @@ import {
 import { observacionesDocumento } from './observaciones-documento.js';
 import { ESTADOS_CANCELABLES } from './recalcular-estado.js';
 import type { DatabaseService } from '../database/database.service.js';
+import { formatearPrograma } from '../opciones/opciones.types.js';
 
 export async function detalleAnalisis(
   db: DatabaseService,
@@ -39,9 +40,31 @@ export async function detalleAnalisis(
         : null;
     // Conservar el perfil al cancelar aunque el estudiante lo cambie en otro periodo.
     if (cancelacion) s = { ...s, ...cancelacion.informacion_estudiante };
-    const programas = await client.query(
-      'SELECT * FROM solicitud_programa WHERE id_solicitud = $1 ORDER BY orden',
-      [s.id_solicitud],
+    const campoPrograma =
+      s.tipo_solicitud === 'POSGRADO'
+        ? 'PROGRAMA_POSGRADO'
+        : 'PROGRAMA_PREGRADO';
+    const programas = await client.query<{
+      id_solicitud: number;
+      orden: number;
+      programa: string;
+      modalidad: string;
+      tipo_opcion_grado: string | null;
+      etiqueta: string | null;
+    }>(
+      `SELECT sp.*,
+              (
+                SELECT oc.etiqueta
+                FROM opciones_campo oc
+                WHERE (oc.campo = $2 OR oc.campo = 'PROGRAMA')
+                  AND oc.valor = sp.programa
+                ORDER BY CASE WHEN oc.campo = $2 THEN 0 ELSE 1 END, oc.id_opcion
+                LIMIT 1
+              ) AS etiqueta
+       FROM solicitud_programa sp
+       WHERE sp.id_solicitud = $1
+       ORDER BY sp.orden`,
+      [s.id_solicitud, campoPrograma],
     );
     const especificos = await client.query(
       s.tipo_solicitud === 'PREGRADO'
@@ -139,6 +162,10 @@ export async function detalleAnalisis(
         : typeof v === 'string'
           ? v.slice(0, 10)
           : '';
+
+    const prog1 = formatearPrograma(p.programa, p.etiqueta);
+    const prog2 = formatearPrograma(p2.programa, p2.etiqueta);
+
     const informacion = {
       nombres: s.nombres,
       apellidos: s.apellidos,
@@ -153,11 +180,11 @@ export async function detalleAnalisis(
       departamento: s.departamento_residencia ?? '',
       ciudad: s.ciudad_residencia ?? '',
       direccion: s.direccion_residencia ?? '',
-      programa: p.programa ?? '',
+      programa: prog1,
       modalidad: p.modalidad ?? '',
       tipoOpcionGrado: p.tipo_opcion_grado ?? '',
       tieneSegundoPrograma: Boolean(p2.programa),
-      segundoPrograma: p2.programa ?? '',
+      segundoPrograma: prog2,
       modalidadSegundoPrograma: p2.modalidad ?? '',
       tipoOpcionGradoSegundo: p2.tipo_opcion_grado ?? '',
       conoceRegistroSaberPro: extra.conoce_registro_saber_pro ?? false,
@@ -207,7 +234,8 @@ export async function detalleAnalisis(
         tipoDocumento: informacion.tipoDocumento,
         numeroDocumento: informacion.numeroDocumento,
         fechaNacimiento: informacion.fechaNacimiento,
-        programa: informacion.programa,
+        programa: p2.programa && prog2 ? `${prog1} · ${prog2}` : prog1,
+        segundoPrograma: prog2 || undefined,
         facultad: '',
         nivel: s.tipo_solicitud,
         correo: s.correo,

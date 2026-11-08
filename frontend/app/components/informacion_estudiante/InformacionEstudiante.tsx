@@ -204,7 +204,7 @@ export default function InformacionEstudiante({
 
                 // Resto de campos → input
                 const valorInput = obtenerValorParaInput(bruto, campo.formato);
-                const valorVisible = campo.etiquetas?.[valorInput] ?? valorInput;
+                const valorVisible = campo.formatear ? campo.formatear(valorInput) : (campo.etiquetas?.[valorInput] ?? valorInput);
                 const tipoInput = campo.formato === 'fecha' ? 'date' : 'text';
 
                 return (
