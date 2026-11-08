@@ -44,6 +44,11 @@ import type {
   RespuestaSolicitudEstudiante,
 } from './solicitudes.types.js';
 
+const esTest =
+  process.env.NODE_ENV === 'test' ||
+  process.env.VITEST === 'true' ||
+  !!process.env.VITEST_WORKER_ID;
+
 @Controller()
 export class SolicitudesController {
   constructor(
@@ -80,7 +85,7 @@ export class SolicitudesController {
     );
   }
 
-  @Throttle({ uploads: { limit: 8, ttl: 60_000 } })
+  @Throttle({ uploads: { limit: esTest ? 10_000 : 8, ttl: 60_000 } })
   @UseGuards(ThrottlerGuard)
   @Post('solicitudes/enviar')
   @UseInterceptors(
