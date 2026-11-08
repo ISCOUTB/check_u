@@ -9,6 +9,11 @@ Se ejecutaron los **14 escenarios**: **7 exitosos** y **7 fallidos**. En los fal
 el flujo principal funciona y falla alguna comprobación concreta; el más incompleto es el 13.
 Quedan registrados **13 hallazgos**: 3 de severidad alta, 4 media, 1 por aclarar y 5 baja.
 
+**Repetición del 08/11/2026** sobre `main` en `7f52231`, con las pruebas al día con los campos de la Tarea 54:
+24 pruebas, 17 en verde y 7 en rojo. Las rojas son las de la tabla del
+[README](../../../frontend/e2e-flujo/README.md). **H-01 quedó corregido por #162 y H-07 por #163.** El resto de
+este informe y las capturas describen la ejecución del 06/11.
+
 | # | Escenario | Resultado | Motor | Hallazgos |
 |---|---|---|---|---|
 | 1 | Preinscripción de pregrado | ✅ Exitoso | Real y controlado | H-11, H-13 |
@@ -52,13 +57,13 @@ Quedan registrados **13 hallazgos**: 3 de severidad alta, 4 media, 1 por aclarar
 
 | ID | Severidad | Resumen | Escenario |
 |---|---|---|---|
-| H-01 | Alta | Posgrado: el formulario dice «Todo listo», pero el envío se rechaza | 2 |
+| H-01 | Alta | Posgrado: el formulario dice «Todo listo», pero el envío se rechaza (corregido en #162) | 2 |
 | H-02 | Alta | El historial solo muestra las acciones de la funcionaria | 8, 13 |
 | H-03 | Alta | Una solicitud aceptada se le muestra al estudiante «en curso» | 12 |
 | H-04 | Media | El motivo de la anulación no llega al estudiante | 14 |
 | H-05 | Media | El estudiante no puede leer completo un comentario | 12 |
 | H-06 | Media | «Solicitar corrección» pisa el estado calculado | 12 |
-| H-07 | Media | Se pueden crear dos periodos con el mismo nombre | 10 |
+| H-07 | Media | Se pueden crear dos periodos con el mismo nombre (corregido en #163) | 10 |
 | H-08 | Por aclarar | Documentos de posgrado: la #133 y las reglas del proyecto no coinciden | 2 |
 | H-09 | Baja | Los filtros no se pueden usar sin periodo ni sin nivel | 11 |
 | H-10 | Baja | El estudiante ve «Inválida» y la funcionaria «No válida» | 5 |
@@ -68,6 +73,7 @@ Quedan registrados **13 hallazgos**: 3 de severidad alta, 4 media, 1 por aclarar
 
 ### H-01. Posgrado: el formulario dice «Todo listo», pero el envío se rechaza (alta)
 
+- **Estado (08/11/2026):** corregido por #162; el formulario ya exige estos campos.
 - **Pasos:** en posgrado, llenar solo lo marcado como obligatorio, adjuntar los documentos y enviar.
 - **Esperado:** si el formulario dice «Todo listo para enviar», el envío se acepta; o el formulario marca esos campos como obligatorios.
 - **Observado:** «Estudios y experiencia» aparece como *Opcional* y el índice dice «Todo listo para enviar», pero el backend responde «Debe completar nivel de estudios y título obtenido».
@@ -135,6 +141,7 @@ Quedan registrados **13 hallazgos**: 3 de severidad alta, 4 media, 1 por aclarar
 
 ### H-07. Se pueden crear dos periodos con el mismo nombre (media)
 
+- **Estado (08/11/2026):** corregido por #163.
 - **Pasos:** crear «Grados 2027-1» y luego otro con el mismo nombre y otras fechas.
 - **Esperado (#133, escenario 10):** evitar periodos duplicados.
 - **Observado:** solo se rechaza el duplicado de las mismas fechas de recepción. Con el mismo nombre se crea un segundo periodo.
@@ -269,7 +276,7 @@ Registra comentarios, acciones de la funcionaria y anulaciones. Faltan creación
 
 ## Recomendaciones
 
-1. **Antes de la próxima entrega:** H-01, que impide enviar en posgrado sin un error al final, y H-03, que oculta la aceptación.
+1. **Antes de la próxima entrega:** H-03, que oculta la aceptación.
 2. **Aclarar con el equipo:** H-08 (documentos de posgrado) y H-06 (si el cambio de estado es intencional).
-3. **Luego:** H-02 (historial completo), H-04 y H-05 (que la información llegue al estudiante) y H-07.
+3. **Luego:** H-02 (historial completo), H-04 y H-05 (que la información llegue al estudiante).
 4. **Repetir con documentos reales:** cuando exista un juego completo válido, probar los escenarios 4, 6 y 7 con el motor real, en local y sin subir esos documentos ni sus capturas.
