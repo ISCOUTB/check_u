@@ -367,19 +367,33 @@ function DetalleSolicitud({id}: {id: string}) {
         </div>
     );
 
+    const eventos = detalle?.historial ?? detalle?.revisiones.map(r => ({ tipo: 'revision' as const, ...r })) ?? [];
     const historial = detalle && (
         <div className={styles.seccion}>
             <div className={styles.seccionEncabezado}>
                 <h2>Historial de revisiones</h2>
-                <p>Decisiones y comentarios registrados sobre esta preinscripción.</p>
+                <p>Decisiones, comentarios y cancelaciones de esta preinscripción.</p>
             </div>
-            {!detalle.revisiones.length && <p>No hay revisiones registradas.</p>}
-            <ul className={styles.historial}>{detalle.revisiones.map(r => <li key={r.id}>
-                <strong>{RESULTADOS[r.resultado] ?? 'Revisión'}</strong>
-                <p>{r.funcionario} · {new Date(r.fecha).toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</p>
-                {r.comentario && <p>{r.comentario}</p>}
-                {!!r.documentos?.length && <p>Documentos: {r.documentos.map(idDoc => detalle.documentos.find(d => Number(d.id) === idDoc)?.nombre ?? `Documento ${idDoc}`).join(', ')}</p>}
-            </li>)}</ul>
+            {!eventos.length && <p>No hay revisiones registradas.</p>}
+            <ul className={styles.historial}>{eventos.map(evento => {
+                const fecha = <time dateTime={evento.fecha}>{new Date(evento.fecha).toLocaleString('es-CO', { timeZone: 'America/Bogota' })}</time>;
+                if (evento.tipo === 'cancelacion') return (
+                    <li key={`cancelacion-${evento.id}`}>
+                        <strong>Solicitud cancelada por el estudiante</strong>
+                        <p>{evento.estudiante ? <>{evento.estudiante} · </> : null}{fecha}</p>
+                        <p>Estado anterior: <strong>{ESTADOS[evento.estadoAnterior] ?? evento.estadoAnterior}</strong></p>
+                        <p>Estado final: <strong>{ESTADOS[evento.estadoNuevo]}</strong></p>
+                    </li>
+                );
+                return (
+                    <li key={`revision-${evento.id}`}>
+                        <strong>{RESULTADOS[evento.resultado] ?? 'Revisión'}</strong>
+                        <p>{evento.funcionario} · {fecha}</p>
+                        {evento.comentario && <p>{evento.comentario}</p>}
+                        {!!evento.documentos?.length && <p>Documentos: {evento.documentos.map(idDoc => detalle.documentos.find(d => Number(d.id) === idDoc)?.nombre ?? `Documento ${idDoc}`).join(', ')}</p>}
+                    </li>
+                );
+            })}</ul>
         </div>
     );
 

@@ -40,7 +40,7 @@ const ENLACES: Record<
     {
       texto: 'Registrar estudiantes',
       href: '/funcionario/registrar_estudiantes',
-      icono: 'lista',
+      icono: 'persona',
     },
     {
       texto: 'Opciones del formulario',

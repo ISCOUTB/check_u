@@ -7,7 +7,13 @@ export interface Revision {
     id: string; resultado: string; comentario: string | null;
     documentos: number[] | null; fecha: string; funcionario: string;
 }
-export type DetalleFuncionaria = SolicitudDetalle & { revisiones: Revision[] };
+type EventoHistorial = (Revision & { tipo: 'revision' }) | {
+    tipo: 'cancelacion'; id: string; fecha: string; estudiante: string;
+    estadoAnterior: string; estadoNuevo: 'CANCELADA';
+};
+export type DetalleFuncionaria = SolicitudDetalle & {
+    revisiones: Revision[]; historial?: EventoHistorial[];
+};
 export type ResumenFuncionaria = SolicitudResumen & { etiqueta: string };
 
 /** Las consultas tienen un límite; las mutaciones no se reintentan automáticamente. */
