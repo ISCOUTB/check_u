@@ -1,4 +1,5 @@
 import type { DatosInformacionEstudiante, FormatoCampo, NivelAcademico } from "./types";
+import { formatearPrograma } from "@/app/lib/programas";
 
 export interface DefinicionCampo {
   clave: keyof DatosInformacionEstudiante;
@@ -6,6 +7,8 @@ export interface DefinicionCampo {
   formato: FormatoCampo;
   /** Traduce el valor almacenado a una etiqueta legible. */
   etiquetas?: Record<string, string>;
+  /** Formatea el valor para su presentación legible. */
+  formatear?: (valor: string) => string;
   /** Si no se define, el campo se muestra siempre dentro del grupo */
   visibleSi?: (datos: DatosInformacionEstudiante) => boolean;
 }
@@ -81,7 +84,7 @@ const academicaPregrado: DefinicionGrupo = {
   campos: [
     { clave: "codigoEstudiantil", etiqueta: "Código estudiantil", formato: "texto" },
     { clave: "modalidad", etiqueta: "Modalidad de estudio del programa", formato: "texto" },
-    { clave: "programa", etiqueta: "Programa para el que solicita grado", formato: "texto" },
+    { clave: "programa", etiqueta: "Programa para el que solicita grado", formato: "texto", formatear: formatearPrograma },
     { clave: "tipoOpcionGrado", etiqueta: "Tipo de opción de grado realizada", formato: "texto" },
   ],
 };
@@ -92,7 +95,7 @@ const segundoPrograma: DefinicionGrupo = {
   visibleSi: (d) => Boolean(d.tieneSegundoPrograma),
   campos: [
     { clave: "modalidadSegundoPrograma", etiqueta: "Modalidad de estudio del segundo programa", formato: "texto" },
-    { clave: "segundoPrograma", etiqueta: "Segundo programa para el que solicita grado", formato: "texto" },
+    { clave: "segundoPrograma", etiqueta: "Segundo programa para el que solicita grado", formato: "texto", formatear: formatearPrograma },
     { clave: "tipoOpcionGradoSegundo", etiqueta: "Tipo de opción de grado del segundo programa", formato: "texto" },
   ],
 };
@@ -141,11 +144,12 @@ const academicaPosgrado: DefinicionGrupo = {
   campos: [
     { clave: "codigoEstudiantil", etiqueta: "Código estudiantil", formato: "texto" },
     { clave: "modalidad", etiqueta: "Modalidad de estudio del programa", formato: "texto" },
-    { clave: "programa", etiqueta: "Programa para el que solicita grado", formato: "texto" },
+    { clave: "programa", etiqueta: "Programa para el que solicita grado", formato: "texto", formatear: formatearPrograma },
     {
       clave: "segundoPrograma",
       etiqueta: "Segundo programa para el que solicita grado",
       formato: "texto",
+      formatear: formatearPrograma,
       visibleSi: (d) => Boolean(d.tieneSegundoPrograma),
     },
     { clave: "nivelEstudiosAlcanzado", etiqueta: "Nivel de estudios alcanzado actualmente", formato: "texto" },

@@ -77,6 +77,7 @@ export interface InformacionEstudiante {
   numeroDocumento: string;
   fechaNacimiento: string;
   programa: string;
+  segundoPrograma?: string;
   facultad: string;
   nivel: NivelAcademico;
   correo: string;

@@ -34,6 +34,7 @@ import type {
 } from './types';
 
 import { InformacionEstudiante } from '@/app/components/informacion_estudiante';
+import { formatearEncabezadoProgramas } from '@/app/lib/programas';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos de sesión importantes
@@ -557,7 +558,7 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
               <h2>{estudiante.nombre}</h2>
               <span className={styles.nivelBadge}>{estudiante.nivel}</span>
             </div>
-            <p className={styles.programa}>{estudiante.programa}</p>
+            <p className={styles.programa}>{formatearEncabezadoProgramas(estudiante.programa, estudiante.segundoPrograma)}</p>
             <p className={styles.meta}>
               {estudiante.tipoDocumento}: {estudiante.numeroDocumento} ·{' '}
               {estudiante.correo} · {estudiante.telefono}

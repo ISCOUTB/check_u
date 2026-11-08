@@ -11,6 +11,7 @@ import PageHeader from '@/app/components/ui/PageHeader';
 import StatusBadge from '@/app/components/ui/StatusBadge';
 import Tabs from '@/app/components/ui/Tabs';
 import { InformacionEstudiante } from '@/app/components/informacion_estudiante';
+import { formatearEncabezadoProgramas } from '@/app/lib/programas';
 import PeriodoInscripcion from '@/app/estudiante/iniciar_preinscripcion/PeriodoInscripcion';
 import { useSesion } from '@/app/lib/useSesion';
 import { etiquetaPropiedad, valorVisible } from '@/app/estudiante/preinscripcion/etiquetas';
@@ -404,7 +405,7 @@ function DetalleSolicitud({id}: {id: string}) {
                             <h2 id="nombre-estudiante">{detalle.estudiante.nombre}</h2>
                             <span className={styles.nivel}>{detalle.estudiante.nivel}</span>
                         </div>
-                        <p className={styles.programa}>{detalle.estudiante.programa}</p>
+                        <p className={styles.programa}>{formatearEncabezadoProgramas(detalle.estudiante.programa, detalle.estudiante.segundoPrograma)}</p>
                         <dl className={styles.meta}>
                             <div><dt>Código</dt><dd>{detalle.estudiante.codigo}</dd></div>
                             <div><dt>{detalle.estudiante.tipoDocumento}</dt><dd>{detalle.estudiante.numeroDocumento}</dd></div>
