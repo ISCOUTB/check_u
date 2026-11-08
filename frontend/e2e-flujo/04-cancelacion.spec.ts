@@ -45,6 +45,16 @@ test.describe("Escenario 8: cancelación por el estudiante", () => {
         // La funcionaria también debe poder consultar el historial de una solicitud cancelada (escenario 13).
         await abrirDetalle(funcionaria, id, "Historial");
         await captura(funcionaria, "08-f-historial-funcionaria");
-        await expect.soft(funcionaria.getByRole("tabpanel"), "El historial debe registrar la cancelación.").toContainText(/cancel/i);
+        const panel = funcionaria.getByRole("tabpanel");
+        await expect(panel).toContainText("Solicitud cancelada por el estudiante");
+        await expect(panel).toContainText("Estudiante Prueba");
+        await expect(panel).toContainText("Estado anterior: No válida");
+        await expect(panel).toContainText("Estado final: Cancelada");
+        const [fecha] = sql(`SELECT to_char(fecha_cancelacion AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+            FROM cancelaciones_preinscripcion WHERE id_solicitud=${id}`);
+        const horaBogota = new Date(fecha).toLocaleString("es-CO", { timeZone: "America/Bogota" });
+        await expect(panel.locator("time")).toHaveAttribute("datetime", fecha);
+        await expect(panel.locator("time")).toHaveText(horaBogota.replace(/\s+/g, " "));
+        await expect(panel.getByText("No hay revisiones registradas.")).toHaveCount(0);
     });
 });
