@@ -131,7 +131,9 @@ services:
 
         EXPOSE 5001
 
-        CMD ["python", "modules/api/app.py"]
+        # Produccion: Gunicorn, igual que modules/api/Dockerfile.
+        ENV FLASK_DEBUG=0
+        CMD ["gunicorn", "-b", "0.0.0.0:5001", "-w", "2", "--timeout", "120", "modules.api.app:app"]
 
     restart: unless-stopped
     expose:
