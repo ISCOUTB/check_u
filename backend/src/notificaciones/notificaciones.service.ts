@@ -66,14 +66,64 @@ export class NotificacionesService {
     );
     if (!r.rows.length) throw new NotFoundException('Solicitud no disponible.');
     const detalle = await detalleAnalisis(this.db, r.rows[0].id_estudiante, id);
-    const revisiones = await this.db.query(
-      `SELECT r.id_revision::text AS id,r.resultado,r.comentario,
-      r.documentos_ids AS documentos,r.fecha_revision AS fecha,u.nombres||' '||u.apellidos AS funcionario
-      FROM revisiones r JOIN usuarios u ON u.id_usuario=r.id_funcionario
-      WHERE r.id_solicitud=$1 ORDER BY r.fecha_revision DESC,r.id_revision DESC`,
+    const eventos = await this.db.query<
+      | {
+          tipo: 'revision';
+          id: number;
+          fecha: Date;
+          responsable: string;
+          resultado: string;
+          comentario: string | null;
+          documentos: number[] | null;
+        }
+      | {
+          tipo: 'cancelacion';
+          id: number;
+          fecha: Date;
+          responsable: string;
+          estadoAnterior: string;
+        }
+    >(
+      `SELECT 'revision' AS tipo, r.id_revision AS id, r.fecha_revision AS fecha,
+              u.nombres || ' ' || u.apellidos AS responsable, r.resultado, r.comentario,
+              r.documentos_ids AS documentos, NULL::text AS "estadoAnterior"
+       FROM revisiones r JOIN usuarios u ON u.id_usuario = r.id_funcionario
+       WHERE r.id_solicitud = $1
+       UNION ALL
+       SELECT 'cancelacion', c.id_solicitud, c.fecha_cancelacion,
+              concat_ws(' ', c.informacion_estudiante->>'nombres', c.informacion_estudiante->>'apellidos'),
+              NULL, NULL, NULL, c.estado_anterior
+       FROM cancelaciones_preinscripcion c
+       WHERE c.id_solicitud = $1
+       ORDER BY fecha DESC, tipo ASC, id DESC`,
       [id],
     );
-    return { ...detalle, revisiones: revisiones.rows };
+    const historial = eventos.rows.map((evento) => {
+      const { tipo, fecha, responsable } = evento;
+      if (tipo === 'cancelacion') {
+        return {
+          tipo,
+          id: String(evento.id),
+          fecha,
+          estudiante: responsable,
+          estadoAnterior: evento.estadoAnterior,
+          estadoNuevo: 'CANCELADA' as const,
+        };
+      }
+      const revision = {
+        id: String(evento.id),
+        fecha,
+        funcionario: responsable,
+        resultado: evento.resultado,
+        comentario: evento.comentario,
+        documentos: evento.documentos,
+      };
+      return { tipo, ...revision };
+    });
+    const revisiones = historial
+      .filter((evento) => evento.tipo === 'revision')
+      .map(({ tipo: _tipo, ...revision }) => revision);
+    return { ...detalle, revisiones, historial };
   }
 
   async crear(client: PoolClient, n: NuevaNotificacion) {
