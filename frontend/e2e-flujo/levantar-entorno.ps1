@@ -57,7 +57,7 @@ $backend = @"
 `$env:DB_HOST='127.0.0.1'; `$env:DB_PORT='5443'; `$env:DB_USER='checku'; `$env:DB_PASSWORD='checku_t53_pruebas'; `$env:DB_NAME='checku_local'
 `$env:MOTOR_URL='http://127.0.0.1:5014'; `$env:MOTOR_TIMEOUT_MS='120000'
 `$env:AUTH_ESTUDIANTE_USERNAME='estudiante@ejemplo.edu.co'; `$env:AUTH_ESTUDIANTE_PASSWORD='flujo-estudiante'; `$env:AUTH_ESTUDIANTE_NAME='Estudiante Prueba'
-`$env:AUTH_FUNCIONARIO_USERNAME='funcionaria@ejemplo.edu.co'; `$env:AUTH_FUNCIONARIO_PASSWORD='flujo-funcionaria'; `$env:AUTH_FUNCIONARIO_NAME='Funcionaria Prueba'
+`$env:AUTH_FUNCIONARIO_USERNAME='funcionaria@ejemplo.edu.co'; `$env:AUTH_FUNCIONARIO_PASSWORD='flujo-funcionaria'; `$env:AUTH_FUNCIONARIO_NAME='Funcionaria Prueba'; `$env:AUTH_INIT='ENV'
 npm run start:dev
 "@
 Start-Process powershell -WorkingDirectory (Join-Path $raiz 'backend') -ArgumentList '-NoExit', '-Command', $backend

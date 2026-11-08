@@ -22,7 +22,8 @@ npx playwright test -c playwright.flujo.config.ts
 ```
 
 Para un solo archivo: `npx playwright test -c playwright.flujo.config.ts e2e-flujo/02`. Las capturas se
-sobrescriben en `docs/pruebas/tarea53/capturas/`.
+sobrescriben en `docs/pruebas/tarea53/capturas/`. La suite completa tarda unos 7 minutos: el backend admite 8 envíos
+por minuto y, al llegar a ese límite, la prueba espera y reintenta.
 
 Para apagar, cierra las tres ventanas que se abrieron y ejecuta:
 
@@ -42,11 +43,9 @@ Una prueba en rojo corresponde a un hallazgo del informe, y se pondrá en verde 
 
 | Prueba | Hallazgo |
 |---|---|
-| E2.0 | H-01 |
 | E2.1 | H-08 |
 | E5.1 | H-10 |
 | E8, E13 | H-02 |
-| E10 | H-07 |
 | E11 | H-09 |
 | E12 | H-03, H-05, H-06 |
 | E14 | H-04 |

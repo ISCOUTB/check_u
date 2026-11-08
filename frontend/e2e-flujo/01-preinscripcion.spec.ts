@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
     abrirFormulario, adjuntarTodos, alma, captura, documentosEnBd, documentosPedidos, enviar, entrar, ESTUDIANTE,
-    estadoSolicitud, llenarDatos, motor, reiniciar, sql,
+    estadoSolicitud, llenarDatos, llenarEstudios, motor, reiniciar, sql,
 } from "./soporte";
 
 // Escenarios 1 y 2 de la #133: preinscripción de pregrado y de posgrado, con uno y dos programas.
@@ -77,19 +77,26 @@ test.describe("Escenario 1: preinscripción de pregrado", () => {
 test.describe("Escenario 2: preinscripción de posgrado", () => {
     test.beforeEach(reiniciar);
 
-    test("E2.0 los campos que el formulario marca como opcionales no deben impedir el envío", async ({ page }) => {
-        // Hallazgo H-01. Sin nivel de estudios ni título, el formulario dice «Todo listo para enviar».
+    test("E2.0 sin los datos de estudios no queda listo ni deja enviar; con ellos, sí", async ({ page }) => {
+        // H-01, corregido por #162: antes decía «Todo listo para enviar» y el backend rechazaba el envío.
         await entrar(page, ESTUDIANTE);
         await abrirFormulario(page, "posgrado");
         await llenarDatos(page, { nivel: "posgrado", estudios: false });
         await adjuntarTodos(page);
-        await expect(page.getByText("Todo listo para enviar").filter({ visible: true }).first()).toBeVisible();
+        const listo = page.getByText("Todo listo para enviar").filter({ visible: true });
+        await expect(listo).toHaveCount(0);
+
         await page.getByRole("button", { name: "Enviar preinscripción" }).click();
-        await page.getByRole("dialog", { name: "Revisa tu información antes de enviar" }).getByRole("button", { name: /enviar/i }).last().click();
-        const rechazo = page.getByRole("alert").filter({ hasText: "No se pudo enviar" });
-        await expect(rechazo.or(page.getByRole("heading", { name: /Detalle de mi preinscripción/ })).first()).toBeVisible({ timeout: 120_000 });
-        await captura(page, "02-x-posgrado-rechazado-con-todo-listo", false);
-        expect.soft(await rechazo.count(), "El envío no debe rechazarse cuando el formulario dice «Todo listo para enviar».").toBe(0);
+        const pendientes = page.getByRole("alert").filter({ hasText: "Revisa estos campos antes de enviar" });
+        await expect(pendientes).toContainText("Nivel de estudios alcanzado");
+        await expect(pendientes).toContainText("Título obtenido");
+        await expect(pendientes).toContainText("egresado o egresada");
+        await expect(page.getByRole("dialog", { name: "Revisa tu información antes de enviar" })).toHaveCount(0);
+
+        await llenarEstudios(page);
+        await expect(listo.first()).toBeVisible();
+        await enviar(page);
+        expect(sql("SELECT titulo_obtenido FROM informacion_posgrado")).toEqual(["Ingeniero de prueba"]);
     });
 
     test("E2.1 un programa: la #133 pide Cédula, Evaluación de Banner y Estampilla", async ({ page }) => {

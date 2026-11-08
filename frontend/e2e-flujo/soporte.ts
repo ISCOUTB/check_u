@@ -130,7 +130,7 @@ async function responder(page: Page, pregunta: string, respuesta: "Sí" | "No"):
 
 /**
  * Llena los campos obligatorios con los datos del estudiante de prueba.
- * `estudios: false` deja vacíos el nivel de estudios y el título de posgrado (hallazgo H-01).
+ * `estudios: false` deja vacía la parte obligatoria de Estudios en posgrado.
  */
 export async function llenarDatos(
     page: Page,
@@ -167,11 +167,14 @@ export async function llenarDatos(
         await responder(page, "¿Eres empleado de la UTB?", "No");
         await responder(page, "¿Eres hijo o hija de un empleado de la UTB?", "No");
     }
-    // Hallazgo H-01: el formulario los marca como opcionales, pero el backend los exige en posgrado.
-    if (nivel === "posgrado" && estudios) {
-        await page.locator("#campo-nivel-estudios").selectOption({ index: 1 });
-        await page.locator("#campo-titulo-obtenido").fill("Ingeniero de prueba");
-    }
+    if (nivel === "posgrado" && estudios) await llenarEstudios(page);
+}
+
+/** Llena lo obligatorio de Estudios en posgrado. */
+export async function llenarEstudios(page: Page): Promise<void> {
+    await page.locator("#campo-nivel-estudios").selectOption({ index: 1 });
+    await page.locator("#campo-titulo-obtenido").fill("Ingeniero de prueba");
+    await responder(page, "¿Eres egresado o egresada de un pregrado de la UTB?", "No");
 }
 
 /** Claves de documento que el formulario está pidiendo (lo que ve el estudiante). */
@@ -188,17 +191,23 @@ export async function adjuntarTodos(page: Page, nombre: (clave: string) => strin
 
 /** Envía y espera a que termine el análisis; `alProgreso` recibe la página mientras se analiza. */
 export async function enviar(page: Page, alProgreso?: (page: Page) => Promise<void>): Promise<void> {
-    await page.getByRole("button", { name: "Enviar preinscripción" }).click();
     const dialogo = page.getByRole("dialog", { name: "Revisa tu información antes de enviar" });
-    await expect(dialogo).toBeVisible();
-    await dialogo.getByRole("button", { name: /enviar/i }).last().click();
-    if (alProgreso) await alProgreso(page);
     // Si el envío se rechaza, falla enseguida con el mensaje de la pantalla en vez de esperar el límite.
     const rechazo = page.getByRole("alert").filter({ hasText: "No se pudo enviar" });
-    await expect
-        .poll(async () => (await rechazo.count()) > 0 || !page.url().includes("iniciar_preinscripcion"), { timeout: 200_000 })
-        .toBe(true);
-    if (await rechazo.count()) throw new Error(`Envío rechazado: ${(await rechazo.first().innerText()).replace(/\s+/g, " ")}`);
+    for (let intento = 0; ; intento++) {
+        await page.getByRole("button", { name: "Enviar preinscripción" }).click();
+        await expect(dialogo).toBeVisible();
+        await dialogo.getByRole("button", { name: /enviar/i }).last().click();
+        if (alProgreso) await alProgreso(page);
+        await expect
+            .poll(async () => (await rechazo.count()) > 0 || !page.url().includes("iniciar_preinscripcion"), { timeout: 200_000 })
+            .toBe(true);
+        if (!(await rechazo.count())) break;
+        const motivo = (await rechazo.first().innerText()).replace(/\s+/g, " ");
+        // El backend admite 8 envíos por minuto por IP (#167) y la suite los hace más rápido.
+        if (!motivo.includes("Too Many Requests") || intento === 2) throw new Error(`Envío rechazado: ${motivo}`);
+        await page.waitForTimeout(65_000);
+    }
     await page.waitForLoadState("networkidle");
 }
 
