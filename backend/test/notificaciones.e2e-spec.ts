@@ -51,7 +51,7 @@ const DATOS = {
     conoceRegistroSaberPro: false,
     fechaExamenSaberPro: '2024-05-20',
     esEmpleadoUtb: false,
-    esHijoEmpleadoUtb: false,
+    esHijoDeEmpleadoUtb: false,
   },
 };
 

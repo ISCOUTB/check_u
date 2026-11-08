@@ -13,19 +13,16 @@ import { ThrottlerModule } from '@nestjs/throttler';
 
 export { ObserveModule, ObserveInstrument } from './observabilidad.js';
 
+const esTest =
+  process.env.NODE_ENV === 'test' ||
+  process.env.VITEST === 'true' ||
+  !!process.env.VITEST_WORKER_ID;
+
 @Module({
   imports: [
     ThrottlerModule.forRoot([
-      {
-        name: 'default',
-        ttl: 60_000,
-        limit: process.env.NODE_ENV === 'test' ? 10_000 : 60,
-      },
-      {
-        name: 'uploads',
-        ttl: 60_000,
-        limit: process.env.NODE_ENV === 'test' ? 10_000 : 8,
-      },
+      { name: 'default', ttl: 60_000, limit: esTest ? 10_000 : 60 },
+      { name: 'uploads', ttl: 60_000, limit: esTest ? 10_000 : 8 },
     ]),
 
     // Observe solo se activa con OBSERVE_APP_KEY y OBSERVE_APP_SECRET (ver observabilidad.ts).
