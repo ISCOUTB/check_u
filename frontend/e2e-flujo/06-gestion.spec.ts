@@ -90,6 +90,8 @@ test.describe("Escenario 13: historial", () => {
         await abrirDetalle(funcionaria, id, "Historial");
         const panel = funcionaria.getByRole("tabpanel");
         await captura(funcionaria, "13-a-historial-funcionaria");
+        await expect(funcionaria.locator("section[aria-labelledby='nombre-estudiante']")).toContainText("Ingeniería de Sistemas y Computación");
+        await expect(funcionaria.locator("section[aria-labelledby='nombre-estudiante']")).not.toContainText("INGENIERIA_DE_SISTEMAS_Y_COMPUTACION");
 
         // Lo que la #133 pide ver en el historial.
         await expect.soft(panel, "Acciones de la funcionaria").toContainText("Solicitud anulada");
