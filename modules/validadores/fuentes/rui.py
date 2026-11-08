@@ -8,9 +8,12 @@ Pendiente: consultar.py envía siempre el tipo de documento "3", un supuesto sin
 DNP.
 """
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
+
+_log = logging.getLogger(__name__)
 
 Estado = Literal["encontrado", "sin_registro", "sin_respuesta"]
 
@@ -31,7 +34,9 @@ def consultar_rui(numero: str, *, consulta: Callable[[dict], dict] | None = None
         exito = respuesta["success"]
         nombre = (respuesta.get("data") or {}).get("nombre_completo") or None
     except Exception as error:  # red caída, JSON inválido, formato distinto: la fuente no respondió
-        return RespuestaRui("sin_respuesta", None, f"No se pudo consultar el RUI ({type(error).__name__}).")
+        # El detalle va al log del motor; el mensaje llega al cliente.
+        _log.warning("No se pudo consultar el RUI: %s: %s", type(error).__name__, error)
+        return RespuestaRui("sin_respuesta", None, "No se pudo consultar el RUI.")
 
     if exito is True and nombre:
         return RespuestaRui("encontrado", nombre, "El RUI encontró a la persona.")
