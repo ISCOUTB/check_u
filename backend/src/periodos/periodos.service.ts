@@ -35,6 +35,15 @@ interface DatosPeriodo {
   estado?: EstadoPeriodo;
 }
 
+export function normalizarNombrePeriodo(nombre: string): string {
+  return nombre
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
 @Injectable()
 export class PeriodosService {
   constructor(private readonly db: DatabaseService) {}
@@ -61,7 +70,7 @@ export class PeriodosService {
 
   async crear(input: DatosPeriodo): Promise<PeriodoGrado> {
     const values = this.validar(input);
-    await this.comprobarDuplicado(values[1], values[2]);
+    await this.comprobarDuplicado(values[0], values[1], values[2]);
     try {
       const result = await this.db.query<PeriodoRow>(
         `INSERT INTO periodos_grado
@@ -106,7 +115,7 @@ export class PeriodosService {
           : input.fechaGraduacion,
       estado: input.estado === undefined ? rowActual.estado : input.estado,
     });
-    await this.comprobarDuplicado(values[1], values[2], id);
+    await this.comprobarDuplicado(values[0], values[1], values[2], id);
     try {
       const result = await this.db.query<PeriodoRow>(
         `UPDATE periodos_grado
@@ -125,19 +134,39 @@ export class PeriodosService {
     }
   }
 
+  normalizarNombre(nombre: string): string {
+    return normalizarNombrePeriodo(nombre);
+  }
+
   private async comprobarDuplicado(
+    nombre: string,
     inicio: string,
     fin: string,
     id?: string,
   ): Promise<void> {
-    const existente = await this.db.query(
+    const existenteFechas = await this.db.query(
       `SELECT id FROM periodos_grado WHERE fecha_inicio=$1 AND fecha_fin=$2 AND ($3::uuid IS NULL OR id<>$3::uuid) LIMIT 1`,
       [inicio, fin, id ?? null],
     );
-    if (existente.rows.length)
+    if (existenteFechas.rows.length) {
       throw new ConflictException(
         'Ya existe un periodo con estas fechas de recepción. Edita el periodo registrado o selecciona otro rango.',
       );
+    }
+
+    const norm = this.normalizarNombre(nombre);
+    const existenteNombre = await this.db.query(
+      `SELECT id FROM periodos_grado
+       WHERE btrim(regexp_replace(translate(lower(nombre), 'áéíóúüñ', 'aeiouun'), '\\s+', ' ', 'g')) = $1
+         AND ($2::uuid IS NULL OR id <> $2::uuid)
+       LIMIT 1`,
+      [norm, id ?? null],
+    );
+    if (existenteNombre.rows.length) {
+      throw new ConflictException(
+        'Ya existe un periodo con este nombre. Escribe un nombre diferente o edita el periodo registrado.',
+      );
+    }
   }
 
   private procesarError(error: unknown): never {
@@ -148,12 +177,18 @@ export class PeriodosService {
       causa !== null &&
       'code' in causa &&
       causa.code === '23505' &&
-      'constraint' in causa &&
-      causa.constraint === 'uq_periodos_grado_recepcion'
+      'constraint' in causa
     ) {
-      throw new ConflictException(
-        'Ya existe un periodo con estas fechas de recepción. Edita el periodo registrado o selecciona otro rango.',
-      );
+      if (causa.constraint === 'uq_periodos_grado_recepcion') {
+        throw new ConflictException(
+          'Ya existe un periodo con estas fechas de recepción. Edita el periodo registrado o selecciona otro rango.',
+        );
+      }
+      if (causa.constraint === 'uq_periodos_grado_nombre') {
+        throw new ConflictException(
+          'Ya existe un periodo con este nombre. Escribe un nombre diferente o edita el periodo registrado.',
+        );
+      }
     }
     throw error;
   }

@@ -10,11 +10,25 @@ import { OpcionesModule } from './opciones/opciones.module.js';
 import { PeriodosModule } from './periodos/periodos.module.js';
 import { modulosDeObservabilidad } from './observabilidad.js';
 import { SolicitudesModule } from './solicitudes/solicitudes.module.js';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 export { ObserveModule, ObserveInstrument } from './observabilidad.js';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60_000,
+        limit: 60,
+      },
+      {
+        name: 'uploads',
+        ttl: 60_000,
+        limit: 8,
+      },
+    ]),
+
     // Observe solo se activa con OBSERVE_APP_KEY y OBSERVE_APP_SECRET (ver observabilidad.ts).
     ...modulosDeObservabilidad(),
     AuthModule,

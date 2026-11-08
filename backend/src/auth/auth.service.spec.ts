@@ -5,20 +5,35 @@ import { AuthService } from './auth.service.js';
 // La contraseña del estudiante siempre viene de AUTH_ESTUDIANTE_PASSWORD.
 const TREINTA_MINUTOS = 30 * 60 * 1000;
 
+function obligatorio(nombre: string): string {
+  const valor = process.env[nombre]?.trim();
+  if (!valor) {
+    throw new Error(
+      `Falta ${nombre} para los tests de AuthService. Defínela en backend/.env`,
+    );
+  }
+  return valor;
+}
+
 describe('AuthService', () => {
   let service: AuthService;
-  let db: { query: ReturnType<typeof vi.fn> };
+  let estudianteUser: string;
+  let estudiantePass: string;
+  let estudianteName: string;
+  let funcionarioUser: string;
+  let funcionarioPass: string;
+  let funcionarioName: string;
 
   beforeEach(() => {
-    vi.stubEnv('AUTH_INIT', 'ENV');
-    vi.stubEnv('AUTH_ESTUDIANTE_USERNAME', 'lizapata@utb.edu.co');
-    vi.stubEnv('AUTH_ESTUDIANTE_PASSWORD', '12345');
-    vi.stubEnv('AUTH_ESTUDIANTE_NAME', 'Lisandro Zapata');
-    vi.stubEnv('AUTH_FUNCIONARIO_USERNAME', 'rmarriaga@utb.edu.co');
-    vi.stubEnv('AUTH_FUNCIONARIO_PASSWORD', '12345');
-    vi.stubEnv('AUTH_FUNCIONARIO_NAME', 'Rosana Marriaga');
-    db = { query: vi.fn() };
-    service = new AuthService(db as unknown as DatabaseService);
+    estudianteUser = obligatorio('AUTH_ESTUDIANTE_USERNAME');
+    estudiantePass = obligatorio('AUTH_ESTUDIANTE_PASSWORD');
+    estudianteName = process.env.AUTH_ESTUDIANTE_NAME?.trim() || 'Estudiante';
+    funcionarioUser = obligatorio('AUTH_FUNCIONARIO_USERNAME');
+    funcionarioPass = obligatorio('AUTH_FUNCIONARIO_PASSWORD');
+    funcionarioName =
+      process.env.AUTH_FUNCIONARIO_NAME?.trim() || 'Funcionario';
+
+    service = new AuthService();
   });
 
   afterEach(() => {
@@ -26,54 +41,45 @@ describe('AuthService', () => {
     vi.unstubAllEnvs();
   });
 
-  it('con credenciales válidas crea una sesión y no devuelve la contraseña', async () => {
-    const { sessionId, user } = await service.login(
-      'rmarriaga@utb.edu.co',
-      '12345',
-    );
+  it('con credenciales válidas crea una sesión y no devuelve la contraseña', () => {
+    const { sessionId, user } = service.login(funcionarioUser, funcionarioPass);
 
     expect(sessionId).toMatch(/^[0-9a-f]{64}$/);
     expect(user).toEqual({
       id: 2,
-      username: 'rmarriaga@utb.edu.co',
-      name: 'Rosana Marriaga',
+      username: funcionarioUser,
+      name: funcionarioName,
       role: 'funcionario',
     });
     expect(user).not.toHaveProperty('password');
   });
 
-  it('con contraseña incorrecta responde 401', async () => {
-    await expect(
-      service.login('rmarriaga@utb.edu.co', 'otra'),
-    ).rejects.toThrow(UnauthorizedException);
-  });
-
-  it('con un usuario que no existe responde 401', async () => {
-    await expect(
-      service.login('nadie@utb.edu.co', '12345'),
-    ).rejects.toThrow(UnauthorizedException);
-  });
-
-  it('getUser devuelve el usuario de una sesión vigente', async () => {
-    const { sessionId } = await service.login(
-      'lizapata@utb.edu.co',
-      '12345',
+  it('con contraseña incorrecta responde 401', () => {
+    expect(() => service.login(funcionarioUser, 'otra')).toThrow(
+      UnauthorizedException,
     );
+  });
+
+  it('con un usuario que no existe responde 401', () => {
+    expect(() =>
+      service.login('nadie@ejemplo.edu.co', funcionarioPass),
+    ).toThrow(UnauthorizedException);
+  });
+
+  it('getUser devuelve el usuario de una sesión vigente', () => {
+    const { sessionId } = service.login(estudianteUser, estudiantePass);
 
     expect(service.getUser(sessionId)).toEqual({
       id: 1,
-      username: 'lizapata@utb.edu.co',
-      name: 'Lisandro Zapata',
+      username: estudianteUser,
+      name: estudianteName,
       role: 'estudiante',
     });
   });
 
   it('la sesión dura 30 minutos', async () => {
     vi.useFakeTimers();
-    const { sessionId } = await service.login(
-      'lizapata@utb.edu.co',
-      '12345',
-    );
+    const { sessionId } = service.login(estudianteUser, estudiantePass);
 
     vi.advanceTimersByTime(TREINTA_MINUTOS - 1);
     expect(service.getUser(sessionId)).not.toBeNull();
@@ -86,11 +92,8 @@ describe('AuthService', () => {
     expect(service.getUser('no-existe')).toBeNull();
   });
 
-  it('logout borra la sesión', async () => {
-    const { sessionId } = await service.login(
-      'lizapata@utb.edu.co',
-      '12345',
-    );
+  it('logout borra la sesión', () => {
+    const { sessionId } = service.login(estudianteUser, estudiantePass);
 
     service.logout(sessionId);
 

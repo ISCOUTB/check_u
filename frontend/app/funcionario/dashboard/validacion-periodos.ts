@@ -17,9 +17,19 @@ function fechaValida(fecha: string): boolean {
     Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === fecha
   );
 }
+
+export function normalizarNombre(nombre: string): string {
+  return nombre
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 export function validarPeriodo(
   datos: DatosPeriodo,
-  periodos: { id: string; fechaInicio: string; fechaFin: string }[],
+  periodos: { id: string; nombre?: string; fechaInicio: string; fechaFin: string }[],
   idEditando?: string,
 ): ErrorPeriodo | null {
   if (!datos.nombre.trim() || datos.nombre.trim().length > 120)
@@ -61,6 +71,20 @@ export function validarPeriodo(
       campo: "fechaInicio",
       mensaje:
         "Ya existe un periodo con estas fechas de recepción. Edita el periodo registrado o selecciona otro rango.",
+    };
+  const norm = normalizarNombre(datos.nombre);
+  if (
+    periodos.some(
+      (p) =>
+        p.id !== idEditando &&
+        p.nombre &&
+        normalizarNombre(p.nombre) === norm,
+    )
+  )
+    return {
+      campo: "nombre",
+      mensaje:
+        "Ya existe un periodo con este nombre. Escribe un nombre diferente o edita el periodo registrado.",
     };
   return null;
 }
