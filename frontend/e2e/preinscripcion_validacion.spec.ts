@@ -4,6 +4,7 @@ import { cargarPreinscripcion } from "@/app/estudiante/iniciar_preinscripcion/ap
 import { borradorVacio, type BorradorPreinscripcion } from "@/app/estudiante/iniciar_preinscripcion/tipos";
 import {
     ID_CAMPOS,
+    MENSAJE_PROGRAMA_REPETIDO,
     SECCIONES,
     faltantes,
     idCampoExperiencia,
@@ -224,6 +225,30 @@ test("en posgrado el segundo programa pide sus campos pero no una segunda estamp
     expect(resultado).not.toContain("documento-estampilla_pro_cultura-2");
 });
 
+test("el segundo programa no puede ser igual al primero", () => {
+    const borrador = completo("PREGRADO");
+    conSegundoPrograma(borrador);
+    cargar(borrador, "academic_evaluation-2");
+    cargar(borrador, "estampilla_pro_cultura-2");
+    borrador.programas[1].programa = borrador.programas[0].programa;
+
+    expect(faltantes(borrador)).toEqual([
+        {
+            id: idCampoPrograma("programa", 2),
+            seccion: "academico",
+            etiqueta: "Programa (segundo programa)",
+            mensaje: MENSAJE_PROGRAMA_REPETIDO,
+        },
+    ]);
+
+    // La comparación ignora mayúsculas y espacios.
+    borrador.programas[1].programa = `  ${borrador.programas[0].programa.toUpperCase()}  `;
+    expect(ids(borrador)).toEqual([idCampoPrograma("programa", 2)]);
+
+    borrador.programas[1].programa = "Otro programa de ejemplo";
+    expect(faltantes(borrador)).toEqual([]);
+});
+
 test("sin segundo programa (no o sin responder) el segundo programa no cuenta aunque esté vacío", () => {
     for (const respuesta of [false, null]) {
         const borrador = borradorVacio("PREGRADO", CORREO);
@@ -255,14 +280,34 @@ test("un texto de solo espacios cuenta como vacío", () => {
 
 test("lo opcional no se exige", () => {
     const borrador = completo("POSGRADO");
-    // Sin teléfono fijo, estudios, experiencia ni opción de grado.
+    // Sin teléfono fijo ni experiencia laboral; la opción de grado no existe en posgrado.
     const vacio = borradorVacio("POSGRADO", CORREO);
-    borrador.posgrado = vacio.posgrado;
+    borrador.perfil.telefonoFijo = "";
     borrador.experiencia = vacio.experiencia;
     expect(borrador.perfil.telefonoFijo).toBe("");
-    expect(borrador.posgrado.nivelEstudios).toBe("");
     expect(borrador.experiencia[0].empresa).toBe("");
     expect(faltantes(borrador)).toEqual([]);
+});
+
+test("posgrado exige nivel de estudios, título obtenido y respuesta de egresado", () => {
+    const borrador = completo("POSGRADO");
+    borrador.posgrado = {
+        nivelEstudios: "",
+        tituloObtenido: "",
+        esEgresadoPregradoUtb: null,
+    };
+    expect(ids(borrador)).toEqual([
+        ID_CAMPOS.nivelEstudios,
+        ID_CAMPOS.tituloObtenido,
+        ID_CAMPOS.esEgresadoPregradoUtb,
+    ]);
+    const pendiente = progreso(borrador);
+    expect(pendiente.secciones.find((s) => s.id === "estudios")).toMatchObject({
+        faltan: 3,
+        opcional: false,
+    });
+    expect(pendiente.seccionesPendientes).toBe(1);
+    expect(pendiente.listo).toBe(false);
 });
 
 test("el tipo de discapacidad solo se exige cuando la respuesta es Sí", () => {
@@ -366,7 +411,7 @@ test("las secciones sin obligatorios son opcionales en cada nivel; Documentos nu
         identificacion: false,
         contacto: false,
         academico: false,
-        estudios: true,
+        estudios: false,
         documentos: false,
     });
     // Que sea opcional depende del nivel, no de lo que se haya llenado.

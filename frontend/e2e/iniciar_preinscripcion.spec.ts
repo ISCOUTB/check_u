@@ -114,6 +114,9 @@ async function llenarObligatoriosPosgrado(page: Page): Promise<void> {
     await page.getByLabel("Ciudad o municipio (obligatorio)").fill("Cartagena");
     await page.getByLabel("Dirección (obligatorio)").fill("Calle de ejemplo 1");
     await responder(page, "¿Posee alguna discapacidad?", "No");
+    await page.getByLabel("Nivel de estudios alcanzado (obligatorio)").selectOption({ label: "Profesional" });
+    await page.getByLabel("Título obtenido (obligatorio)").fill("Ingeniero");
+    await responder(page, "¿Eres egresado o egresada de un pregrado de la UTB?", "No");
     for (const id of ["identification", "estampilla_pro_cultura"])
         await page.locator(`#documento-${id}`).setInputFiles(pdf(`${id}.pdf`));
 }
@@ -178,7 +181,7 @@ test.describe("iniciar preinscripción", () => {
         await expect(page.locator("#campo-empresa-2")).toBeVisible();
         // Posgrado no pide opción de grado.
         await expect(page.locator("#campo-opcion-grado-1")).toHaveCount(0);
-        await expect(resumen(page, "Te faltan 3 secciones y 2 documentos")).toBeVisible();
+        await expect(resumen(page, "Te faltan 4 secciones y 2 documentos")).toBeVisible();
     });
 
     test("segundo programa: al marcar Sí aparecen programa 2, modalidad 2 y opción de grado 2", async ({ page }) => {
@@ -307,7 +310,7 @@ test.describe("iniciar preinscripción", () => {
         await expect(resumen(page, "Te faltan 3 secciones y 4 documentos")).toBeVisible();
     });
 
-    test("las secciones con obligatorios marcan sus faltantes y solo Estudios es opcional en posgrado", async ({
+    test("las secciones con obligatorios marcan sus faltantes también en posgrado", async ({
         page,
     }) => {
         await abrir(page, PREGRADO);
@@ -319,15 +322,11 @@ test.describe("iniciar preinscripción", () => {
 
         await page.goto(POSGRADO);
         await page.locator('main#contenido:not([aria-busy="true"])').waitFor();
-        for (const titulo of ["Contacto y residencia"]) {
+        for (const titulo of ["Contacto y residencia", "Estudios y experiencia"]) {
             const enlace = indice(page).getByRole("link", { name: new RegExp(titulo) });
             await expect(enlace).not.toContainText("Opcional");
             await expect(enlace).toContainText(/Faltan? \d+ campos?/);
         }
-        const estudios = indice(page).getByRole("link", { name: /Estudios y experiencia/ });
-        await expect(estudios).toContainText("Opcional");
-        await expect(estudios).not.toContainText("Completa");
-        await expect(estudios.locator("svg")).toHaveCount(0);
     });
 
     test("movimiento según el spec: solo las marcas del índice cambian en 150 ms, con ease-out", async ({ page }) => {

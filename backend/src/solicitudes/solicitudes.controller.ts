@@ -28,7 +28,9 @@ import {
   Post,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from '../auth/auth.service.js';
 import { readSessionId } from '../auth/session.js';
@@ -78,6 +80,8 @@ export class SolicitudesController {
     );
   }
 
+  @Throttle({ uploads: { limit: 8, ttl: 60_000 } })
+  @UseGuards(ThrottlerGuard)
   @Post('solicitudes/enviar')
   @UseInterceptors(
     FilesInterceptor('documentos', MAXIMO_DOCUMENTOS, {

@@ -54,9 +54,13 @@ export class OpcionesController {
   }
 
   @Get()
-  listar(@Req() req: Request, @Query('campo') campo?: string) {
+  listar(
+    @Req() req: Request,
+    @Query('campo') campo?: string,
+    @Query('nivel') nivel?: string,
+  ) {
     this.usuario(req);
-    return this.opciones.listar(campo);
+    return this.opciones.listar(campo, nivel);
   }
 
   @Post()

@@ -105,7 +105,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
         // Las opciones de los selectores vienen del panel del funcionario, no de listas fijas.
         Promise.all([
             cargarPreinscripcion(nivelPedido, usuario.username, escenarioDesde(escenario)),
-            cargarOpcionesFormulario(),
+            cargarOpcionesFormulario(nivelPedido),
         ])
             .then(([resultado, opcionesCargadas]) => {
                 if (!vigente) return;

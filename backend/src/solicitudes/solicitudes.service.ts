@@ -786,6 +786,13 @@ export class SolicitudesService {
             : 'Información académica incompleta: falta programa o modalidad del segundo programa',
         );
       }
+      const programa1 = prog1.programa?.trim().toLocaleLowerCase('es');
+      const programa2 = prog2.programa?.trim().toLocaleLowerCase('es');
+      if (programa1 && programa1 === programa2) {
+        throw new BadRequestException(
+          'El segundo programa debe ser diferente al primer programa',
+        );
+      }
     }
 
     if (tipoSolicitud === 'PREGRADO') {
@@ -834,8 +841,9 @@ export class SolicitudesService {
       const resPos = await client.query<{
         nivel_estudios_alcanzado: string | null;
         titulo_obtenido: string | null;
+        es_egresado_pregrado_utb: boolean | null;
       }>(
-        `SELECT nivel_estudios_alcanzado, titulo_obtenido
+        `SELECT nivel_estudios_alcanzado, titulo_obtenido, es_egresado_pregrado_utb
          FROM informacion_posgrado
          WHERE id_solicitud = $1;`,
         [idSolicitud],
@@ -846,12 +854,18 @@ export class SolicitudesService {
         );
       }
       const pos = resPos.rows[0];
-      if (
-        !pos.nivel_estudios_alcanzado?.trim() ||
-        !pos.titulo_obtenido?.trim()
-      ) {
+      const faltantesPosgrado: string[] = [];
+      if (!pos.nivel_estudios_alcanzado?.trim())
+        faltantesPosgrado.push('nivel de estudios alcanzado');
+      if (!pos.titulo_obtenido?.trim())
+        faltantesPosgrado.push('título obtenido');
+      if (pos.es_egresado_pregrado_utb === null)
+        faltantesPosgrado.push(
+          'responder si es egresado o egresada de pregrado de la UTB',
+        );
+      if (faltantesPosgrado.length > 0) {
         throw new BadRequestException(
-          'Debe completar nivel de estudios y título obtenido',
+          `Información de posgrado incompleta: falta ${faltantesPosgrado.join(', ')}`,
         );
       }
     }

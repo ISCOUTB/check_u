@@ -162,9 +162,9 @@ test.describe("Escenario 10: administración de periodos", () => {
         // Duplicado de nombre con otras fechas (se documenta qué hace).
         await formulario(page, { nombre: "Grados 2027-1", inicio: "2027-09-01", fin: "2027-10-01", graduacion: "2027-11-01" });
         await page.getByRole("button", { name: "Registrar periodo" }).click();
-        await page.waitForTimeout(800);
+        await expect(mensaje(page)).toContainText("Ya existe un periodo");
         await captura(page, "10-e-nombre-duplicado");
-        expect.soft(sql("SELECT count(*) FROM periodos_grado WHERE nombre='Grados 2027-1'")[0], "No debe haber dos periodos con el mismo nombre.").toBe("1");
+        expect(sql("SELECT count(*) FROM periodos_grado WHERE nombre='Grados 2027-1'")[0], "No debe haber dos periodos con el mismo nombre.").toBe("1");
 
         // Editar y cerrar: el cambio se refleja en la lista y en la BD.
         const lista = page.getByRole("list", { name: "Periodos de grado registrados" });
