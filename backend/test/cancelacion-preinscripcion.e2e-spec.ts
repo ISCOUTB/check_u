@@ -215,6 +215,55 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
       datos[tabla] = (await base.db.query(`SELECT * FROM ${tabla}`)).rows;
     return datos;
   }
+  it('H-02: combina la cancelación y las revisiones en orden sin cambiar el contrato anterior', async () => {
+    const id = await crear('NO_VALIDA');
+    const ruta = `/api/funcionario/solicitudes/${id}`;
+    const consultar = () => funcionaria.get(ruta).expect(200);
+    expect((await consultar()).body.historial).toEqual([]);
+    await funcionaria
+      .post(`${ruta}/revisiones`)
+      .send({
+        accion: 'comentario',
+        comentario: 'Comentario antes de cancelar.',
+      })
+      .expect(201);
+
+    await cancelar(id).expect(201);
+    const {
+      rows: [registro],
+    } = await base.db.query(
+      'SELECT fecha_cancelacion FROM cancelaciones_preinscripcion WHERE id_solicitud=$1',
+      [id],
+    );
+    await funcionaria
+      .post(`${ruta}/revisiones`)
+      .send({
+        accion: 'comentario',
+        comentario: 'Comentario posterior a la cancelación.',
+      })
+      .expect(201);
+
+    const { historial, revisiones } = (await consultar()).body;
+    expect(historial).toEqual([
+      { tipo: 'revision', ...revisiones[0] },
+      {
+        tipo: 'cancelacion',
+        id: String(id),
+        fecha: new Date(registro.fecha_cancelacion).toISOString(),
+        estudiante: 'Lisandro Zapata',
+        estadoAnterior: 'NO_VALIDA',
+        estadoNuevo: 'CANCELADA',
+      },
+      { tipo: 'revision', ...revisiones[1] },
+    ]);
+    expect(
+      revisiones.map((revision: { comentario: string }) => revision.comentario),
+    ).toEqual([
+      'Comentario posterior a la cancelación.',
+      'Comentario antes de cancelar.',
+    ]);
+    await estudiante.get(ruta).expect(403);
+  });
   it('la migración se puede repetir y conserva el estado cancelado y su auditoría', async () => {
     await crear();
     await cancelar().expect(201);
