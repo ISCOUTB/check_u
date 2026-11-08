@@ -79,6 +79,32 @@ test.describe("Escenario 12: revisión y gestión", () => {
 test.describe("Escenario 13: historial", () => {
     test.beforeEach(reiniciar);
 
+    test("E13 H-02 muestra la cancelación junto con las revisiones en orden", async ({ page, browser }) => {
+        await motor("controlado", { ...TODO_VALIDO, saber_pro: "invalid" });
+        await entrar(page, ESTUDIANTE);
+        const id = await preinscribir(page);
+        const funcionaria = await sesion(browser, FUNCIONARIA);
+        const panel = funcionaria.getByRole("tabpanel");
+
+        await abrirDetalle(funcionaria, id, "Historial");
+        await expect(panel).toContainText("No hay revisiones registradas.");
+        await accionRevision(funcionaria, id, "comentario", "Comentario anterior a la cancelación.");
+
+        await abrirPreinscripcion(page, id);
+        await page.getByRole("button", { name: "Cancelar preinscripción", exact: true }).click();
+        await page.getByRole("dialog").getByRole("button", { name: "Confirmar cancelación", exact: true }).click();
+        await expect.poll(() => estadoSolicitud(id)).toBe("CANCELADA");
+
+        await abrirDetalle(funcionaria, id, "Historial");
+        const eventos = panel.getByRole("listitem");
+        await expect(eventos).toHaveCount(2);
+        await expect(eventos.nth(0)).toContainText("Solicitud cancelada por el estudiante");
+        await expect(eventos.nth(0)).toContainText("Estado anterior: No válida");
+        await expect(eventos.nth(0)).toContainText("Estado final: Cancelada");
+        await expect(eventos.nth(1)).toContainText("Comentario anterior a la cancelación.");
+        await captura(funcionaria, "13-b-historial-con-cancelacion");
+    });
+
     test("E13 el historial registra los eventos relevantes", async ({ page, browser }) => {
         await motor("controlado", { ...TODO_VALIDO, saber_pro: "invalid" });
         await entrar(page, ESTUDIANTE);
