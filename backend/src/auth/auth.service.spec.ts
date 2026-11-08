@@ -1,22 +1,36 @@
 import { UnauthorizedException } from '@nestjs/common';
+import type { DatabaseService } from '../database/database.service.js';
 import { AuthService } from './auth.service.js';
 
-// Usa los usuarios de prueba fijos de AuthService (se reemplazan en la Tarea 13).
+// La contraseña del estudiante siempre viene de AUTH_ESTUDIANTE_PASSWORD.
 const TREINTA_MINUTOS = 30 * 60 * 1000;
 
 describe('AuthService', () => {
   let service: AuthService;
+  let db: { query: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    service = new AuthService();
+    vi.stubEnv('AUTH_INIT', 'ENV');
+    vi.stubEnv('AUTH_ESTUDIANTE_USERNAME', 'lizapata@utb.edu.co');
+    vi.stubEnv('AUTH_ESTUDIANTE_PASSWORD', '12345');
+    vi.stubEnv('AUTH_ESTUDIANTE_NAME', 'Lisandro Zapata');
+    vi.stubEnv('AUTH_FUNCIONARIO_USERNAME', 'rmarriaga@utb.edu.co');
+    vi.stubEnv('AUTH_FUNCIONARIO_PASSWORD', '12345');
+    vi.stubEnv('AUTH_FUNCIONARIO_NAME', 'Rosana Marriaga');
+    db = { query: vi.fn() };
+    service = new AuthService(db as unknown as DatabaseService);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
-  it('con credenciales válidas crea una sesión y no devuelve la contraseña', () => {
-    const { sessionId, user } = service.login('rmarriaga@utb.edu.co', '12345');
+  it('con credenciales válidas crea una sesión y no devuelve la contraseña', async () => {
+    const { sessionId, user } = await service.login(
+      'rmarriaga@utb.edu.co',
+      '12345',
+    );
 
     expect(sessionId).toMatch(/^[0-9a-f]{64}$/);
     expect(user).toEqual({
@@ -28,16 +42,23 @@ describe('AuthService', () => {
     expect(user).not.toHaveProperty('password');
   });
 
-  it('con contraseña incorrecta responde 401', () => {
-    expect(() => service.login('rmarriaga@utb.edu.co', 'otra')).toThrow(UnauthorizedException);
+  it('con contraseña incorrecta responde 401', async () => {
+    await expect(
+      service.login('rmarriaga@utb.edu.co', 'otra'),
+    ).rejects.toThrow(UnauthorizedException);
   });
 
-  it('con un usuario que no existe responde 401', () => {
-    expect(() => service.login('nadie@utb.edu.co', '12345')).toThrow(UnauthorizedException);
+  it('con un usuario que no existe responde 401', async () => {
+    await expect(
+      service.login('nadie@utb.edu.co', '12345'),
+    ).rejects.toThrow(UnauthorizedException);
   });
 
-  it('getUser devuelve el usuario de una sesión vigente', () => {
-    const { sessionId } = service.login('lizapata@utb.edu.co', '12345');
+  it('getUser devuelve el usuario de una sesión vigente', async () => {
+    const { sessionId } = await service.login(
+      'lizapata@utb.edu.co',
+      '12345',
+    );
 
     expect(service.getUser(sessionId)).toEqual({
       id: 1,
@@ -47,9 +68,12 @@ describe('AuthService', () => {
     });
   });
 
-  it('la sesión dura 30 minutos', () => {
+  it('la sesión dura 30 minutos', async () => {
     vi.useFakeTimers();
-    const { sessionId } = service.login('lizapata@utb.edu.co', '12345');
+    const { sessionId } = await service.login(
+      'lizapata@utb.edu.co',
+      '12345',
+    );
 
     vi.advanceTimersByTime(TREINTA_MINUTOS - 1);
     expect(service.getUser(sessionId)).not.toBeNull();
@@ -62,8 +86,11 @@ describe('AuthService', () => {
     expect(service.getUser('no-existe')).toBeNull();
   });
 
-  it('logout borra la sesión', () => {
-    const { sessionId } = service.login('lizapata@utb.edu.co', '12345');
+  it('logout borra la sesión', async () => {
+    const { sessionId } = await service.login(
+      'lizapata@utb.edu.co',
+      '12345',
+    );
 
     service.logout(sessionId);
 
@@ -72,5 +99,80 @@ describe('AuthService', () => {
 
   it('logout sin sesión no falla', () => {
     expect(() => service.logout(undefined)).not.toThrow();
+  });
+
+  it('rechaza un AUTH_INIT desconocido en lugar de adivinar el origen', async () => {
+    vi.stubEnv('AUTH_INIT', 'LDAP');
+
+    await expect(
+      service.login('lizapata@utb.edu.co', '12345'),
+    ).rejects.toThrow(/AUTH_INIT debe ser ENV o DB/);
+  });
+
+  describe('con AUTH_INIT=DB', () => {
+    beforeEach(() => {
+      vi.stubEnv('AUTH_INIT', 'DB');
+      vi.stubEnv('AUTH_ESTUDIANTE_PASSWORD', 'compartida');
+    });
+
+    it('obtiene la información del estudiante de la base de datos y usa la contraseña del entorno', async () => {
+      db.query.mockResolvedValue({
+        rows: [
+          {
+            id_usuario: 7,
+            nombres: 'Lisandro',
+            apellidos: 'Zapata',
+            correo: 'lizapata@utb.edu.co',
+          },
+        ],
+      });
+
+      const { user } = await service.login(
+        'ESTUDIANTE.DB@utb.edu.co',
+        'compartida',
+      );
+
+      expect(user).toEqual({
+        id: 7,
+        username: 'lizapata@utb.edu.co',
+        name: 'Lisandro Zapata',
+        role: 'estudiante',
+      });
+      expect(db.query).toHaveBeenCalledWith(
+        expect.stringContaining("rol = 'ESTUDIANTE'"),
+        ['ESTUDIANTE.DB@utb.edu.co'],
+      );
+    });
+
+    it('no consulta la base de datos para el funcionario', async () => {
+      await service.login('rmarriaga@utb.edu.co', '12345');
+
+      expect(db.query).not.toHaveBeenCalled();
+    });
+
+    it('rechaza la contraseña de la base de datos: solo vale AUTH_ESTUDIANTE_PASSWORD', async () => {
+      db.query.mockResolvedValue({
+        rows: [
+          {
+            id_usuario: 7,
+            nombres: 'Lisandro',
+            apellidos: 'Zapata',
+            correo: 'lizapata@utb.edu.co',
+          },
+        ],
+      });
+
+      await expect(
+        service.login('lizapata@utb.edu.co', 'otra'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('responde 401 si el estudiante no existe en la base de datos', async () => {
+      db.query.mockResolvedValue({ rows: [] });
+
+      await expect(
+        service.login('nadie@utb.edu.co', 'compartida'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
   });
 });
