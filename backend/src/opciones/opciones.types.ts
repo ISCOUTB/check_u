@@ -66,3 +66,33 @@ export function normalizarValorOpcion(texto: string): string {
     .toUpperCase()
     .slice(0, 80);
 }
+
+/**
+ * Convierte un código interno a una versión legible (sin guiones bajos y con
+ * mayúsculas y minúsculas), usada cuando el código no existe en el catálogo.
+ */
+export function legibilizarCodigo(codigo: string): string {
+  if (!codigo) return '';
+  const conectores = new Set(['de', 'del', 'y', 'e', 'en', 'el', 'la', 'los', 'las', 'a', 'o', 'u']);
+  const partes = codigo.trim().split(/[_\s]+/);
+  return partes
+    .map((parte, index) => {
+      const lower = parte.toLowerCase();
+      if (index > 0 && conectores.has(lower)) {
+        return lower;
+      }
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(' ');
+}
+
+/**
+ * Devuelve el nombre legible de un programa académico:
+ * 1. La etiqueta del catálogo si está disponible.
+ * 2. Una versión legible del código (sin guiones bajos y en mayúsculas/minúsculas) si no está en el catálogo.
+ */
+export function formatearPrograma(codigo?: string | null, etiqueta?: string | null): string {
+  if (!codigo && !etiqueta) return '';
+  if (etiqueta && etiqueta.trim()) return etiqueta.trim();
+  return legibilizarCodigo(codigo ?? '');
+}
