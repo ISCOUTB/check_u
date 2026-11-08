@@ -20,6 +20,7 @@ const VACIO: DatosEstudiante = {
   nombres: "",
   apellidos: "",
   codigo_estudiantil: "",
+  correo: "",
   rol: "ESTUDIANTE",
 };
 
@@ -46,7 +47,10 @@ export default function RegistrarEstudiantes() {
     setErrorIndividual("");
     setRegistrado(null);
     try {
-      const estudiante = await registrarEstudiante(datos);
+      const estudiante = await registrarEstudiante({
+        ...datos,
+        correo: datos.correo.trim().toLowerCase(),
+      });
       setRegistrado(estudiante);
       setDatos(VACIO);
     } catch (error) {
@@ -121,7 +125,7 @@ export default function RegistrarEstudiantes() {
       <main id="contenido" tabIndex={-1} className={styles.pagina}>
         <PageHeader
           titulo="Registrar estudiantes"
-          descripcion="Registra estudiantes individualmente o importa un archivo CSV. Cada estudiante recibe el rol Estudiante."
+          descripcion="Registra estudiantes individualmente o importa un archivo CSV. Cada estudiante requiere su correo electrónico; el código estudiantil es opcional."
           ruta={[
             { texto: "Inicio", href: "/funcionario/dashboard" },
             { texto: "Registrar estudiantes" },
@@ -163,7 +167,6 @@ export default function RegistrarEstudiantes() {
               <label className={styles.campo}>
                 Código estudiantil
                 <input
-                  required
                   maxLength={50}
                   autoComplete="off"
                   autoCapitalize="characters"
@@ -181,8 +184,27 @@ export default function RegistrarEstudiantes() {
                 />
               </label>
               <p id="ayuda-codigo" className={styles.ayuda}>
-                Hasta 50 letras o números. También admite guion y guion bajo.
+                Opcional. Hasta 50 letras o números. También admite guion y guion bajo.
                 Los códigos se guardan en mayúsculas.
+              </p>
+              <label className={styles.campo}>
+                Correo electrónico
+                <input
+                  required
+                  type="email"
+                  maxLength={150}
+                  autoComplete="email"
+                  spellCheck={false}
+                  aria-describedby="ayuda-correo"
+                  value={datos.correo}
+                  disabled={Boolean(ocupado)}
+                  onChange={(evento) =>
+                    setDatos({ ...datos, correo: evento.target.value })
+                  }
+                />
+              </label>
+              <p id="ayuda-correo" className={styles.ayuda}>
+                Obligatorio. Se guarda en minúsculas y sin espacios externos.
               </p>
               <label className={styles.campo}>
                 Rol
@@ -204,24 +226,45 @@ export default function RegistrarEstudiantes() {
               {registrado && (
                 <p role="status" className={styles.aviso}>
                   Estudiante registrado correctamente. {registrado.nombres}{" "}
-                  {registrado.apellidos} · Código{" "}
-                  {registrado.codigo_estudiantil} · Rol Estudiante.
+                  {registrado.apellidos}
+                  {registrado.codigo_estudiantil
+                    ? ` · Código ${registrado.codigo_estudiantil}`
+                    : " · Sin código estudiantil"}
+                  {` · Correo ${registrado.correo}`} · Rol Estudiante.
                 </p>
               )}
             </form>
           </Card>
           <Card titulo="Importación de estudiantes por CSV">
             <p className={styles.ayuda}>
-              Guarda el archivo en UTF-8 y separa las columnas con punto y coma.
+              Guarda el archivo en UTF-8 y separa las columnas con punto y coma (;).
               Admite hasta 1000 estudiantes y 64 KiB por archivo.
             </p>
             <p className={styles.estructura}>
-              nombres;apellidos;codigo_estudiantil;rol
+              nombres;apellidos;codigo_estudiantil;correo;rol
             </p>
-            <p className={styles.ayuda}>
-              El valor de la columna rol debe ser ESTUDIANTE. El resultado
-              indicará el motivo de las filas rechazadas.
-            </p>
+            <div className={styles.infoCsv}>
+              <p className={styles.ayuda}>
+                <strong>Estructura requerida:</strong>
+              </p>
+              <ul className={styles.listaAyuda}>
+                <li>
+                  <strong>nombres y apellidos:</strong> obligatorios (hasta 100 caracteres).
+                </li>
+                <li>
+                  <strong>codigo_estudiantil:</strong> opcional (hasta 50 caracteres alfanuméricos, guiones o guiones bajos). Si se ingresa, se guarda en mayúsculas y debe ser único. Puede dejarse la columna vacía (por ejemplo: <code>;;</code>).
+                </li>
+                <li>
+                  <strong>correo:</strong> obligatorio (hasta 150 caracteres). Debe tener un formato válido y ser único en el sistema; se guarda en minúsculas.
+                </li>
+                <li>
+                  <strong>rol:</strong> obligatorio, su valor debe ser <code>ESTUDIANTE</code>.
+                </li>
+              </ul>
+              <p className={styles.ayuda}>
+                El resultado de la importación indicará el detalle de estudiantes registrados y el motivo de las filas rechazadas.
+              </p>
+            </div>
             <a
               className={styles.enlace}
               href="/plantillas/estudiantes.csv"
@@ -245,11 +288,23 @@ export default function RegistrarEstudiantes() {
                   aria-describedby="archivo-seleccionado"
                 />
               </label>
-              <p id="archivo-seleccionado" className={styles.ayuda}>
-                {archivo
-                  ? `Archivo seleccionado: ${archivo.name}`
-                  : "Selecciona un archivo para importar."}
-              </p>
+              <div
+                id="archivo-seleccionado"
+                className={archivo ? styles.archivoInfoActivo : styles.ayuda}
+              >
+                {archivo ? (
+                  <>
+                    <span className={styles.archivoNombre}>
+                      Archivo seleccionado: {archivo.name}
+                    </span>
+                    <span className={styles.archivoTamano}>
+                      ({(archivo.size / 1024).toFixed(1)} KiB)
+                    </span>
+                  </>
+                ) : (
+                  "Selecciona un archivo para importar."
+                )}
+              </div>
               <Button
                 type="submit"
                 disabled={Boolean(ocupado)}
@@ -293,6 +348,7 @@ export default function RegistrarEstudiantes() {
                     <th scope="col">Línea</th>
                     <th scope="col">Estudiante</th>
                     <th scope="col">Código estudiantil</th>
+                    <th scope="col">Correo electrónico</th>
                     <th scope="col">Resultado</th>
                     <th scope="col">Detalle</th>
                   </tr>
@@ -307,6 +363,7 @@ export default function RegistrarEstudiantes() {
                           .join(" ") || "Sin nombre"}
                       </td>
                       <td>{fila.codigo_estudiantil || "Sin código"}</td>
+                      <td>{fila.correo || "Sin correo"}</td>
                       <td>
                         {fila.estado === "registrado" ? "Registrado" : "Error"}
                       </td>

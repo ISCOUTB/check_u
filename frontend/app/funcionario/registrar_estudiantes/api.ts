@@ -2,16 +2,23 @@ export interface DatosEstudiante {
   nombres: string;
   apellidos: string;
   codigo_estudiantil: string;
+  correo: string;
   rol: "ESTUDIANTE";
 }
-export interface EstudianteRegistrado extends DatosEstudiante {
+export interface EstudianteRegistrado {
   id_usuario: number;
+  nombres: string;
+  apellidos: string;
+  codigo_estudiantil: string | null;
+  correo: string;
+  rol: "ESTUDIANTE";
 }
 export interface ResultadoFila {
   linea: number;
   nombres: string;
   apellidos: string;
-  codigo_estudiantil: string;
+  codigo_estudiantil: string | null;
+  correo: string;
   estado: "registrado" | "error";
   mensaje: string;
 }
@@ -70,7 +77,11 @@ export async function registrarEstudiante(
 ): Promise<EstudianteRegistrado> {
   const respuesta = await enviar("", {
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(datos),
+    body: JSON.stringify({
+      ...datos,
+      codigo_estudiantil: datos.codigo_estudiantil.trim() || undefined,
+      correo: datos.correo.trim().toLowerCase(),
+    }),
   });
   const estudiante = respuesta as EstudianteRegistrado | null;
   if (
@@ -78,8 +89,13 @@ export async function registrarEstudiante(
     !Number.isSafeInteger(estudiante.id_usuario) ||
     estudiante.id_usuario <= 0 ||
     estudiante.rol !== "ESTUDIANTE" ||
-    !["nombres", "apellidos", "codigo_estudiantil"].every(
+    !["nombres", "apellidos"].every(
       (campo) => typeof estudiante[campo as keyof DatosEstudiante] === "string",
+    ) ||
+    typeof estudiante.correo !== "string" ||
+    !(
+      estudiante.codigo_estudiantil === null ||
+      typeof estudiante.codigo_estudiantil === "string"
     )
   ) {
     throw new Error(
@@ -109,8 +125,16 @@ export async function importarEstudiantes(
         !fila ||
         !Number.isSafeInteger(fila.linea) ||
         fila.linea < 1 ||
-        !["nombres", "apellidos", "codigo_estudiantil", "mensaje"].every(
+        !["nombres", "apellidos", "mensaje"].every(
           (campo) => typeof fila[campo as keyof ResultadoFila] === "string",
+        ) ||
+        !(
+          fila.correo === null ||
+          typeof fila.correo === "string"
+        ) ||
+        !(
+          fila.codigo_estudiantil === null ||
+          typeof fila.codigo_estudiantil === "string"
         ) ||
         !["registrado", "error"].includes(fila.estado),
     ) ||

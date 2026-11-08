@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { API, revisarAxe, sesionComo } from "./soporte";
 
 const RUTA = "/funcionario/registrar_estudiantes";
-const CABECERA = "nombres;apellidos;codigo_estudiantil;rol";
-const CSV = `${CABECERA}\nAna;Muñoz;T55;ESTUDIANTE\nLuis;Rojas;T55;ESTUDIANTE\n`;
+const CABECERA = "nombres;apellidos;codigo_estudiantil;correo;rol";
+const CSV = `${CABECERA}\nAna;Muñoz;T55;ana@example.com;ESTUDIANTE\nLuis;Rojas;T55;;ESTUDIANTE\n`;
 const RESULTADO = {
   total: 2,
   registrados: 1,
@@ -14,6 +14,7 @@ const RESULTADO = {
       nombres: "Ana",
       apellidos: "Muñoz",
       codigo_estudiantil: "T55",
+      correo: "ana@example.com",
       estado: "registrado",
       mensaje: "Estudiante registrado correctamente.",
     },
@@ -22,6 +23,7 @@ const RESULTADO = {
       nombres: "Luis",
       apellidos: "Rojas",
       codigo_estudiantil: "T55",
+      correo: null,
       estado: "error",
       mensaje: "El código estudiantil se repite en este archivo.",
     },
@@ -31,6 +33,9 @@ async function formulario(page: Page) {
   await page.getByLabel("Nombres", { exact: true }).fill("Ana");
   await page.getByLabel("Apellidos", { exact: true }).fill("Muñoz");
   await page.getByLabel("Código estudiantil", { exact: true }).fill("t55");
+  await page
+    .getByLabel("Correo electrónico", { exact: true })
+    .fill("Ana.Perez@Example.COM");
 }
 async function archivo(
   page: Page,
@@ -87,6 +92,7 @@ test("registra con rol fijo y muestra la confirmación del servidor", async ({
       nombres: "Ana",
       apellidos: "Muñoz",
       codigo_estudiantil: "t55",
+      correo: "ana.perez@example.com",
       rol: "ESTUDIANTE",
     });
     await r.fulfill({
@@ -96,6 +102,7 @@ test("registra con rol fijo y muestra la confirmación del servidor", async ({
         nombres: "Ana",
         apellidos: "Muñoz",
         codigo_estudiantil: "T55",
+        correo: "ana.perez@example.com",
         rol: "ESTUDIANTE",
       },
     });
@@ -114,6 +121,9 @@ test("registra con rol fijo y muestra la confirmación del servidor", async ({
     .click();
   await expect(page.getByRole("status")).toContainText(
     "Ana Muñoz · Código T55",
+  );
+  await expect(page.getByRole("status")).toContainText(
+    "Correo ana.perez@example.com",
   );
   await expect(page.getByLabel("Nombres", { exact: true })).toHaveValue("");
 });
@@ -174,6 +184,7 @@ test("bloquea ambos formularios mientras se confirma el registro", async ({
         nombres: "Ana",
         apellidos: "Muñoz",
         codigo_estudiantil: "T55",
+        correo: "ana.perez@example.com",
         rol: "ESTUDIANTE",
       },
     });
@@ -292,7 +303,7 @@ test("una respuesta CSV incompleta no muestra un éxito falso", async ({
     "respuesta de la importación no es válida",
   );
 });
-test("la plantilla descargable contiene las cuatro columnas correctas", async ({
+test("la plantilla descargable contiene las columnas correctas", async ({
   page,
 }) => {
   await sesionComo(page, "funcionario");
