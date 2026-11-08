@@ -13,11 +13,12 @@ import { DatabaseService } from '../src/database/database.service.js';
 import { crearDbBorrador } from './soporte/db-borrador.js';
 
 const RUTA = '/api/funcionario/estudiantes';
-const CABECERA = 'nombres;apellidos;codigo_estudiantil;rol\n';
+const CABECERA = 'nombres;apellidos;codigo_estudiantil;correo;rol\n';
 const DATOS = {
   nombres: 'María Elena',
   apellidos: 'Pérez Gómez',
   codigo_estudiantil: 'T00550001',
+  correo: 'maria.perez@example.test',
   rol: 'ESTUDIANTE',
 };
 
@@ -114,7 +115,7 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
     ).rows;
   }
 
-  it('registra datos reales en usuarios, normaliza el código y permite correo pendiente', async () => {
+  it('registra datos reales en usuarios, normaliza el código y guarda el correo obligatorio', async () => {
     const r = await funcionaria
       .post(RUTA)
       .send({
@@ -132,9 +133,19 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
       apellidos: DATOS.apellidos,
       codigo_estudiante: DATOS.codigo_estudiantil,
       rol: 'ESTUDIANTE',
-      correo: null,
+      correo: 'maria.perez@example.test',
       activo: true,
     });
+  });
+  it('permite registrar estudiante sin código estudiantil', async () => {
+    const r = await funcionaria
+      .post(RUTA)
+      .send({ ...DATOS, codigo_estudiantil: '' })
+      .expect(201);
+    expect(r.body.codigo_estudiantil).toBeNull();
+    const usuarios = await usuariosNuevos();
+    expect(usuarios[0].codigo_estudiante).toBeNull();
+    expect(usuarios[0].correo).toBe('maria.perez@example.test');
   });
   it('conserva los ceros iniciales de códigos numéricos', async () => {
     const r = await funcionaria
@@ -143,6 +154,32 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
       .expect(201);
     expect(r.body.codigo_estudiantil).toBe('000123');
   });
+  it('normaliza y guarda el correo electrónico obligatorio', async () => {
+    const r = await funcionaria
+      .post(RUTA)
+      .send({ ...DATOS, correo: '  María.Pérez@Example.TEST ' })
+      .expect(201);
+    expect(r.body.correo).toBe('maría.pérez@example.test');
+    expect((await usuariosNuevos())[0]).toMatchObject({
+      correo: 'maría.pérez@example.test',
+    });
+  });
+  it('rechaza un correo electrónico ya registrado', async () => {
+    await funcionaria
+      .post(RUTA)
+      .send({ ...DATOS, correo: 'ana@example.test' })
+      .expect(201);
+    const r = await funcionaria
+      .post(RUTA)
+      .send({
+        ...DATOS,
+        codigo_estudiantil: 'T00550002',
+        correo: 'ana@example.test',
+      })
+      .expect(409);
+    expect(r.body.message).toContain('correo electrónico ya está registrado');
+    expect(await usuariosNuevos()).toHaveLength(1);
+  });
   it.each([
     ['nombres vacíos', { nombres: '  ' }],
     ['apellidos ausentes', { apellidos: null }],
@@ -150,10 +187,16 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
     ['apellidos muy largos', { apellidos: 'a'.repeat(101) }],
     ['nombres no textuales', { nombres: 123 }],
     ['saltos de línea en el nombre', { nombres: 'Ana\nMaría' }],
-    ['código vacío', { codigo_estudiantil: '' }],
     ['código numérico JSON', { codigo_estudiantil: 123 }],
     ['código largo', { codigo_estudiantil: 'A'.repeat(51) }],
     ['código con espacios internos', { codigo_estudiantil: 'T 123' }],
+    ['correo ausente', { correo: null }],
+    ['correo vacío', { correo: '   ' }],
+    ['correo no textual', { correo: 123 }],
+    ['correo sin arroba', { correo: 'ana.example.test' }],
+    ['correo sin dominio', { correo: 'ana@' }],
+    ['correo con salto de línea', { correo: 'ana@example\n.test' }],
+    ['correo muy largo', { correo: `${'a'.repeat(146)}@x.co` }],
     ['rol funcionario', { rol: 'FUNCIONARIO' }],
     ['rol biblioteca', { rol: 'BIBLIOTECA' }],
     ['rol ausente', { rol: null }],
@@ -171,14 +214,13 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
       .send({
         ...DATOS,
         id_usuario: 1,
-        correo: 'otro@example.test',
         activo: false,
       })
       .expect(201);
     expect(r.body.id_usuario).not.toBe(1);
     expect((await usuariosNuevos())[0]).toMatchObject({
       rol: 'ESTUDIANTE',
-      correo: null,
+      correo: 'maria.perez@example.test',
       activo: true,
     });
   });
@@ -210,12 +252,12 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
         await estudiante.post(RUTA).send(DATOS).expect(403);
       } else {
         await importar(
-          CABECERA + 'Ana;Pérez;T55;ESTUDIANTE',
+          CABECERA + 'Ana;Pérez;T55;ana@example.test;ESTUDIANTE',
           'estudiantes.csv',
           anonimo,
         ).expect(401);
         await importar(
-          CABECERA + 'Ana;Pérez;T55;ESTUDIANTE',
+          CABECERA + 'Ana;Pérez;T55;ana@example.test;ESTUDIANTE',
           'estudiantes.csv',
           estudiante,
         ).expect(403);
@@ -234,7 +276,7 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
     const r = await importar(
       '\uFEFF' +
         CABECERA.replace('\n', '\r\n') +
-        '"María ""Luz""";Pérez;T55-1;ESTUDIANTE\r\nAna;Gómez;00055;ESTUDIANTE\r\n',
+        '"María ""Luz""";Pérez;T55-1;maria.luz@example.test;ESTUDIANTE\r\nAna;Gómez;00055;ana.gomez@example.test;ESTUDIANTE\r\n',
     ).expect(200);
     expect(r.body).toMatchObject({ total: 2, registrados: 2, errores: 0 });
     expect(r.body.filas.map((f: { linea: number }) => f.linea)).toEqual([2, 3]);
@@ -252,13 +294,13 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
     const r = await importar(
       CABECERA +
         [
-          'Ana;Pérez;T55-1;ESTUDIANTE',
-          ';Pérez;T55-2;ESTUDIANTE',
-          'Luis;Gómez;T55-3;FUNCIONARIO',
-          'Ana;Otra; t55-1 ;ESTUDIANTE',
-          'Eva;Gómez;EXISTENTE;ESTUDIANTE',
-          'Fila;Con;Demasiadas;ESTUDIANTE;Extra',
-          'Sol;Martínez;T55-4;ESTUDIANTE',
+          'Ana;Pérez;T55-1;ana.perez1@example.test;ESTUDIANTE',
+          ';Pérez;T55-2;perez2@example.test;ESTUDIANTE',
+          'Luis;Gómez;T55-3;luis@example.test;FUNCIONARIO',
+          'Ana;Otra; t55-1 ;ana.otra@example.test;ESTUDIANTE',
+          'Eva;Gómez;EXISTENTE;eva@example.test;ESTUDIANTE',
+          'Fila;Con;Demasiadas;correo@test;ESTUDIANTE;Extra',
+          'Sol;Martínez;T55-4;sol@example.test;ESTUDIANTE',
         ].join('\n'),
     ).expect(200);
     expect(r.body).toMatchObject({ total: 7, registrados: 2, errores: 5 });
@@ -268,19 +310,47 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
     expect(r.body.filas[2].mensaje).toContain('rol debe ser ESTUDIANTE');
     expect(r.body.filas[3].mensaje).toContain('se repite');
     expect(r.body.filas[4].mensaje).toContain('ya está registrado');
-    expect(r.body.filas[5].mensaje).toContain('cuatro columnas');
+    expect(r.body.filas[5].mensaje).toContain('cinco columnas');
     expect(await usuariosNuevos()).toHaveLength(3);
   });
   it('reimportar no sobrescribe a los estudiantes ya registrados', async () => {
-    await importar(CABECERA + 'Ana;Pérez;T55;ESTUDIANTE').expect(200);
-    const r = await importar(CABECERA + 'Otro;Nombre;T55;ESTUDIANTE').expect(
-      200,
-    );
+    await importar(
+      CABECERA + 'Ana;Pérez;T55;ana@example.test;ESTUDIANTE',
+    ).expect(200);
+    const r = await importar(
+      CABECERA + 'Otro;Nombre;T55;otro@example.test;ESTUDIANTE',
+    ).expect(200);
     expect(r.body).toMatchObject({ registrados: 0, errores: 1 });
     expect((await usuariosNuevos())[0].nombres).toBe('Ana');
   });
+  it('importa CSV con correo obligatorio y código opcional, detecta errores y duplicados', async () => {
+    const r = await importar(
+      CABECERA +
+        [
+          'Ana;Pérez;T55-C1;ana.csv@example.test;ESTUDIANTE',
+          'Luis;Gómez;;luis.csv@example.test;ESTUDIANTE',
+          'María;López;T55-C3;ana.csv@example.test;ESTUDIANTE',
+          'Carlos;Sánchez;T55-C4;correo-invalido;ESTUDIANTE',
+          'Elena;Díaz;T55-C5;;ESTUDIANTE',
+        ].join('\n'),
+    ).expect(200);
+    expect(r.body).toMatchObject({ total: 5, registrados: 2, errores: 3 });
+    expect(r.body.filas[0]).toMatchObject({
+      estado: 'registrado',
+      codigo_estudiantil: 'T55-C1',
+      correo: 'ana.csv@example.test',
+    });
+    expect(r.body.filas[1]).toMatchObject({
+      estado: 'registrado',
+      codigo_estudiantil: null,
+      correo: 'luis.csv@example.test',
+    });
+    expect(r.body.filas[2].mensaje).toContain('se repite en este archivo');
+    expect(r.body.filas[3].mensaje).toContain('formato válido');
+    expect(r.body.filas[4].mensaje).toContain('correo electrónico es obligatorio');
+  });
   it('las filas inválidas se informan sin crear estudiantes', async () => {
-    const r = await importar(CABECERA + ';;;\nAna;Gómez;;ESTUDIANTE').expect(
+    const r = await importar(CABECERA + ';;;;\nAna;Gómez;;;ESTUDIANTE').expect(
       200,
     );
     expect(r.body).toMatchObject({ total: 2, registrados: 0, errores: 2 });
@@ -289,7 +359,7 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
   it.each([
     [
       'encabezado de comas',
-      'nombres,apellidos,codigo_estudiantil,rol\nAna,Pérez,T55,ESTUDIANTE',
+      'nombres,apellidos,codigo_estudiantil,correo,rol\nAna,Pérez,T55,ana@example.test,ESTUDIANTE',
     ],
     [
       'encabezado incompleto',
@@ -297,8 +367,8 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
     ],
     ['archivo vacío', ''],
     ['solo encabezado', CABECERA],
-    ['comillas sin cerrar', CABECERA + '"Ana;Pérez;T55;ESTUDIANTE'],
-    ['texto después de comillas', CABECERA + '"Ana"extra;Pérez;T55;ESTUDIANTE'],
+    ['comillas sin cerrar', CABECERA + '"Ana;Pérez;T55;ana@example.test;ESTUDIANTE'],
+    ['texto después de comillas', CABECERA + '"Ana"extra;Pérez;T55;ana@example.test;ESTUDIANTE'],
   ])('rechaza %s sin importar ninguna fila', async (_nombre, texto) => {
     await importar(texto).expect(400);
     expect(await usuariosNuevos()).toHaveLength(0);
@@ -306,16 +376,17 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
   it('respeta líneas en blanco y reporta nombres multilínea como inválidos', async () => {
     const r = await importar(
       CABECERA +
-        '\n"Ana\nMaría";Pérez;T55;ESTUDIANTE\nSol;Gómez;T56;ESTUDIANTE',
+        '\n"Ana\nMaría";Pérez;T55;ana@example.test;ESTUDIANTE\nSol;Gómez;T56;sol@example.test;ESTUDIANTE',
     ).expect(200);
     expect(r.body).toMatchObject({ registrados: 1, errores: 1 });
     expect(r.body.filas.map((f: { linea: number }) => f.linea)).toEqual([3, 5]);
   });
   it('rechaza codificación inválida, otro tipo de archivo y archivo ausente', async () => {
     await importar(Buffer.from([0xff, 0xfe, 0x41, 0])).expect(400);
-    await importar(CABECERA + 'Ana;Pérez;T55;ESTUDIANTE', 'archivo.pdf').expect(
-      400,
-    );
+    await importar(
+      CABECERA + 'Ana;Pérez;T55;ana@example.test;ESTUDIANTE',
+      'archivo.pdf',
+    ).expect(400);
     await funcionaria.post(`${RUTA}/importar`).expect(400);
   });
   it('rechaza archivos que superan el límite antes de procesarlos', async () => {
@@ -325,9 +396,10 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
   it('rechaza más de 1000 registros', async () => {
     await importar(
       CABECERA +
-        Array.from({ length: 1001 }, (_, i) => `A;B;T${i};ESTUDIANTE`).join(
-          '\n',
-        ),
+        Array.from(
+          { length: 1001 },
+          (_, i) => `A;B;T${i};correo${i}@example.test;ESTUDIANTE`,
+        ).join('\n'),
     ).expect(400);
     expect(await usuariosNuevos()).toHaveLength(0);
   });
@@ -336,7 +408,8 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
       `CREATE OR REPLACE FUNCTION fallo_importacion_55() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.codigo_estudiante='FALLAR' THEN RAISE EXCEPTION 'Fallo de prueba'; END IF; RETURN NEW; END $$; CREATE TRIGGER fallo_importacion_55 BEFORE INSERT ON usuarios FOR EACH ROW EXECUTE FUNCTION fallo_importacion_55()`,
     );
     const csv =
-      CABECERA + 'Ana;Pérez;PRIMERO;ESTUDIANTE\nSol;Gómez;FALLAR;ESTUDIANTE';
+      CABECERA +
+      'Ana;Pérez;PRIMERO;ana.primero@example.test;ESTUDIANTE\nSol;Gómez;FALLAR;sol.fallar@example.test;ESTUDIANTE';
     await importar(csv).expect(503);
     expect(await usuariosNuevos()).toHaveLength(0);
     await base.db.exec('DROP TRIGGER fallo_importacion_55 ON usuarios');

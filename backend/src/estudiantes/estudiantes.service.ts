@@ -9,7 +9,8 @@ import { leerEstudiantesCsv } from './estudiantes-csv.js';
 export interface DatosEstudiante {
   nombres: string;
   apellidos: string;
-  codigo_estudiantil: string;
+  codigo_estudiantil: string | null;
+  correo: string;
   rol: 'ESTUDIANTE';
 }
 export interface EstudianteRegistrado extends DatosEstudiante {
@@ -19,17 +20,20 @@ export interface ResultadoFilaEstudiante {
   linea: number;
   nombres: string;
   apellidos: string;
-  codigo_estudiantil: string;
+  codigo_estudiantil: string | null;
+  correo: string;
   estado: 'registrado' | 'error';
   mensaje: string;
 }
 
 const INSERTAR_ESTUDIANTE = `INSERT INTO usuarios (nombres, apellidos, codigo_estudiante, rol, correo)
-  VALUES ($1, $2, $3, 'ESTUDIANTE', NULL)
-  ON CONFLICT (upper(btrim(codigo_estudiante))) WHERE codigo_estudiante IS NOT NULL DO NOTHING
-  RETURNING id_usuario, nombres, apellidos, codigo_estudiante AS codigo_estudiantil, rol`;
+  VALUES ($1, $2, $3, 'ESTUDIANTE', $4)
+  ON CONFLICT DO NOTHING
+  RETURNING id_usuario, nombres, apellidos, codigo_estudiante AS codigo_estudiantil, correo, rol`;
 const CODIGO_DUPLICADO =
   'El código estudiantil ya está registrado. Revisa el código antes de volver a enviarlo.';
+const CORREO_DUPLICADO =
+  'El correo electrónico ya está registrado. Revisa el correo antes de volver a enviarlo.';
 
 /** Crea usuarios base. Las importaciones confirman juntas las filas válidas. */
 @Injectable()
@@ -39,7 +43,8 @@ export class EstudiantesService {
   async registrar(input: unknown): Promise<EstudianteRegistrado> {
     const datos = this.validar(input);
     const registrado = await this.insertar(this.db, datos);
-    if (!registrado) throw new ConflictException(CODIGO_DUPLICADO);
+    if (!registrado)
+      throw new ConflictException(await this.explicarConflicto(this.db, datos));
     return registrado;
   }
 
@@ -48,20 +53,29 @@ export class EstudiantesService {
     return this.db.transaction(async (client) => {
       const resultados: ResultadoFilaEstudiante[] = [];
       const codigos = new Set<string>();
+      const correos = new Set<string>();
       for (const fila of filas) {
-        const [nombres = '', apellidos = '', codigo = '', rol = ''] =
-          fila.celdas;
+        const [
+          nombres = '',
+          apellidos = '',
+          codigo = '',
+          correo = '',
+          rol = '',
+        ] = fila.celdas;
+
         const resultado: ResultadoFilaEstudiante = {
           linea: fila.linea,
           nombres,
           apellidos,
-          codigo_estudiantil: codigo,
+          codigo_estudiantil: codigo.trim().toUpperCase() || null,
+          correo: correo.trim().toLowerCase(),
           estado: 'error',
           mensaje: '',
         };
-        if (fila.celdas.length !== 4) {
+
+        if (fila.celdas.length !== 5) {
           resultado.mensaje =
-            'La fila debe contener exactamente cuatro columnas separadas por punto y coma.';
+            'La fila debe contener exactamente cinco columnas separadas por punto y coma.';
           resultados.push(resultado);
           continue;
         }
@@ -71,6 +85,7 @@ export class EstudiantesService {
             nombres,
             apellidos,
             codigo_estudiantil: codigo,
+            correo,
             rol,
           });
         } catch (error) {
@@ -80,18 +95,30 @@ export class EstudiantesService {
           continue;
         }
         resultado.codigo_estudiantil = datos.codigo_estudiantil;
-        if (codigos.has(datos.codigo_estudiantil)) {
+        resultado.correo = datos.correo;
+        if (datos.codigo_estudiantil) {
+          if (codigos.has(datos.codigo_estudiantil)) {
+            resultado.mensaje =
+              'El código estudiantil se repite en este archivo.';
+            resultados.push(resultado);
+            continue;
+          }
+          codigos.add(datos.codigo_estudiantil);
+        }
+
+        if (correos.has(datos.correo)) {
           resultado.mensaje =
-            'El código estudiantil se repite en este archivo.';
+            'El correo electrónico se repite en este archivo.';
           resultados.push(resultado);
           continue;
         }
-        codigos.add(datos.codigo_estudiantil);
+        correos.add(datos.correo);
+
         const registrado = await this.insertar(client, datos);
         resultado.estado = registrado ? 'registrado' : 'error';
         resultado.mensaje = registrado
           ? 'Estudiante registrado correctamente.'
-          : CODIGO_DUPLICADO;
+          : await this.explicarConflicto(client, datos);
         resultados.push(resultado);
       }
       const registrados = resultados.filter(
@@ -112,9 +139,27 @@ export class EstudiantesService {
   ): Promise<EstudianteRegistrado | null> {
     const result = await client.query<EstudianteRegistrado>(
       INSERTAR_ESTUDIANTE,
-      [datos.nombres, datos.apellidos, datos.codigo_estudiantil],
+      [datos.nombres, datos.apellidos, datos.codigo_estudiantil, datos.correo],
     );
     return result.rows[0] ?? null;
+  }
+
+  private async explicarConflicto(
+    client: Pick<DatabaseService, 'query'>,
+    datos: DatosEstudiante,
+  ): Promise<string> {
+    const result = await client.query<{ codigo: boolean; correo: boolean }>(
+      `SELECT
+         EXISTS(SELECT 1 FROM usuarios
+                WHERE $1::text IS NOT NULL AND upper(btrim(codigo_estudiante)) = upper(btrim($1))) AS codigo,
+         EXISTS(SELECT 1 FROM usuarios
+                WHERE correo = $2) AS correo`,
+      [datos.codigo_estudiantil, datos.correo],
+    );
+    const conflicto = result.rows[0];
+    if (conflicto?.correo) return CORREO_DUPLICADO;
+    if (conflicto?.codigo) return CODIGO_DUPLICADO;
+    return 'No fue posible registrar al estudiante porque sus datos ya existen.';
   }
 
   private validar(input: unknown): DatosEstudiante {
@@ -125,21 +170,49 @@ export class EstudiantesService {
     const apellidos = this.nombre(campos.apellidos, 'apellidos');
     if (campos.rol !== 'ESTUDIANTE')
       throw new BadRequestException('El rol debe ser ESTUDIANTE.');
-    const codigo =
-      typeof campos.codigo_estudiantil === 'string'
-        ? campos.codigo_estudiantil.trim().toUpperCase()
-        : '';
-    if (!codigo || codigo.length > 50 || !/^[A-Z0-9_-]+$/.test(codigo)) {
+    return {
+      nombres,
+      apellidos,
+      codigo_estudiantil: this.codigo(campos.codigo_estudiantil),
+      correo: this.correo(campos.correo),
+      rol: 'ESTUDIANTE',
+    };
+  }
+
+  /** El código estudiantil es opcional. Si se envía, debe tener entre 1 y 50 letras, números, guiones o guiones bajos. */
+  private codigo(valor: unknown): string | null {
+    if (valor === undefined || valor === null) return null;
+    if (typeof valor !== 'string')
+      throw new BadRequestException('El código estudiantil debe ser texto.');
+    const codigo = valor.trim().toUpperCase();
+    if (!codigo) return null;
+    if (codigo.length > 50 || !/^[A-Z0-9_-]+$/.test(codigo)) {
       throw new BadRequestException(
         'El código estudiantil debe tener de 1 a 50 letras o números. También admite guion y guion bajo.',
       );
     }
-    return {
-      nombres,
-      apellidos,
-      codigo_estudiantil: codigo,
-      rol: 'ESTUDIANTE',
-    };
+    return codigo;
+  }
+
+  /** El correo electrónico es obligatorio, debe tener formato válido y máximo 150 caracteres. */
+  private correo(valor: unknown): string {
+    if (valor === undefined || valor === null || typeof valor !== 'string')
+      throw new BadRequestException('El correo electrónico es obligatorio.');
+    const correo = valor.trim().toLowerCase();
+    if (!correo) {
+      throw new BadRequestException('El correo electrónico es obligatorio.');
+    }
+    if (
+      correo.length > 150 ||
+      // oxlint-disable-next-line no-control-regex -- El correo no admite controles ni saltos de línea.
+      /[\u0000-\u001f\u007f]/.test(correo) ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)
+    ) {
+      throw new BadRequestException(
+        'El correo electrónico debe tener un formato válido y máximo 150 caracteres.',
+      );
+    }
+    return correo;
   }
 
   private nombre(valor: unknown, campo: string): string {

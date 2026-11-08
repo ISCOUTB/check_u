@@ -103,6 +103,9 @@ it.skipIf(process.env.ESTUDIANTES_UI_REAL !== '1')(
         .getByLabel('Código estudiantil', { exact: true })
         .fill('t00550001');
       await pagina
+        .getByLabel('Correo electrónico', { exact: true })
+        .fill('angela@example.test');
+      await pagina
         .getByRole('button', { name: 'Registrar estudiante', exact: true })
         .click();
       await esperar(pagina.getByRole('status')).toContainText(
@@ -112,7 +115,7 @@ it.skipIf(process.env.ESTUDIANTES_UI_REAL !== '1')(
         name: 'estudiantes.csv',
         mimeType: 'text/csv',
         buffer: Buffer.from(
-          'nombres;apellidos;codigo_estudiantil;rol\nLuis;Pérez;T00550002;ESTUDIANTE\nOtra;Persona;t00550001;ESTUDIANTE\nSin;Permiso;T00550003;FUNCIONARIO\n',
+          'nombres;apellidos;codigo_estudiantil;correo;rol\nLuis;Pérez;T00550002;luis@example.test;ESTUDIANTE\nOtra;Persona;t00550001;otra@example.test;ESTUDIANTE\nSin;Permiso;T00550003;sin@example.test;FUNCIONARIO\n',
         ),
       });
       await pagina
@@ -136,14 +139,14 @@ it.skipIf(process.env.ESTUDIANTES_UI_REAL !== '1')(
           apellidos: 'Peña',
           codigo_estudiante: 'T00550001',
           rol: 'ESTUDIANTE',
-          correo: null,
+          correo: 'angela@example.test',
         },
         {
           nombres: 'Luis',
           apellidos: 'Pérez',
           codigo_estudiante: 'T00550002',
           rol: 'ESTUDIANTE',
-          correo: null,
+          correo: 'luis@example.test',
         },
       ]);
       await pagina.reload();
@@ -152,6 +155,9 @@ it.skipIf(process.env.ESTUDIANTES_UI_REAL !== '1')(
       await pagina
         .getByLabel('Código estudiantil', { exact: true })
         .fill('T00550001');
+      await pagina
+        .getByLabel('Correo electrónico', { exact: true })
+        .fill('angela.nueva@example.test');
       await pagina
         .getByRole('button', { name: 'Registrar estudiante', exact: true })
         .click();

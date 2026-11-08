@@ -17,10 +17,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
     CONSTRAINT pk_usuarios PRIMARY KEY (id_usuario),
     CONSTRAINT uq_usuarios_correo UNIQUE (correo),
     CONSTRAINT uq_usuarios_codigo_estudiante UNIQUE (codigo_estudiante),
-    CONSTRAINT chk_usuarios_estudiante_con_codigo CHECK (
-        rol <> 'ESTUDIANTE' OR
-        (codigo_estudiante IS NOT NULL AND btrim(codigo_estudiante) <> '')
-    ),
     CONSTRAINT chk_usuarios_codigo_no_vacio CHECK (
         codigo_estudiante IS NULL OR btrim(codigo_estudiante) <> ''
     ),

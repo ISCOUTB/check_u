@@ -2,7 +2,13 @@ import { BadRequestException } from '@nestjs/common';
 
 export const MAXIMO_BYTES_CSV = 64 * 1024;
 export const MAXIMO_ESTUDIANTES_CSV = 1000;
-const ENCABEZADO = ['nombres', 'apellidos', 'codigo_estudiantil', 'rol'];
+const ENCABEZADO = [
+  'nombres',
+  'apellidos',
+  'codigo_estudiantil',
+  'correo',
+  'rol',
+];
 
 export interface FilaEstudianteCsv {
   linea: number;
@@ -76,13 +82,13 @@ export function leerEstudiantesCsv(texto: string): FilaEstudianteCsv[] {
   const encabezado = filas.shift();
   if (
     !encabezado ||
-    encabezado.celdas.length !== 4 ||
+    encabezado.celdas.length !== 5 ||
     !ENCABEZADO.every(
       (campo, i) => encabezado.celdas[i].toLowerCase() === campo,
     )
   ) {
     throw new BadRequestException(
-      'El CSV debe comenzar con nombres;apellidos;codigo_estudiantil;rol, en ese orden y separado por punto y coma.',
+      'El CSV debe comenzar con nombres;apellidos;codigo_estudiantil;correo;rol, en ese orden y separado por punto y coma.',
     );
   }
   if (filas.length === 0)

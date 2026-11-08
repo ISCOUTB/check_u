@@ -9,6 +9,7 @@ BEGIN
     END IF;
 END $$;
 ALTER TABLE usuarios ALTER COLUMN correo DROP NOT NULL;
+ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS chk_usuarios_estudiante_con_codigo;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_usuarios_correo_por_rol' AND conrelid = 'usuarios'::regclass) THEN
