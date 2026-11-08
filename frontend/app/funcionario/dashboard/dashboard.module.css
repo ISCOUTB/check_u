@@ -329,7 +329,13 @@
     gap: var(--space-2);
 }
 
-.botonIcono {
+/*
+ * Se anida bajo .accionesPanel a propósito: Next inyecta la hoja de Button.module.css
+ * después de esta en algunas cargas, y su padding (0 var(--space-5)) tiene la misma
+ * especificidad que .botonIcono. Sin el selector compuesto, el padding de .boton gana
+ * y el icono se comprime a 2px (parece que no cargara).
+ */
+.accionesPanel .botonIcono {
     width: 44px;
     padding: 0;
 }
