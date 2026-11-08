@@ -65,6 +65,12 @@ test.describe("dashboard", () => {
         const boton = page.getByRole("button", { name: "Mostrar filtros" });
         const cabecera = page.getByRole("heading", { name: "Filtros de búsqueda" }).locator("..");
         const desplegable = page.locator("#panel-filtros");
+        // Regresión: el padding de .boton comprimía el icono a 2px en la primera carga.
+        await expect(boton).toHaveCSS("padding", "0px");
+        expect(await boton.locator("svg").evaluate((icono) => {
+            const caja = icono.getBoundingClientRect();
+            return { ancho: caja.width, alto: caja.height };
+        })).toEqual({ ancho: 20, alto: 20 });
         await expect(boton).toHaveAttribute("aria-expanded", "false");
         await expect(cabecera).toHaveCSS("margin-bottom", "0px");
         await expect(desplegable).toHaveCSS("visibility", "hidden");
