@@ -10,7 +10,8 @@ import { OpcionesModule } from './opciones/opciones.module.js';
 import { PeriodosModule } from './periodos/periodos.module.js';
 import { modulosDeObservabilidad } from './observabilidad.js';
 import { SolicitudesModule } from './solicitudes/solicitudes.module.js';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core/constants.js';
 
 export { ObserveModule, ObserveInstrument } from './observabilidad.js';
 
@@ -38,6 +39,12 @@ const esTest =
     NotificacionesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
