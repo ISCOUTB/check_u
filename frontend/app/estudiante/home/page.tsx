@@ -206,6 +206,16 @@ export default function Home() {
 
   const hrefContinuar = '/estudiante/preinscripcion';
   const nombreNivel = nivelEfectivo === 'PREGRADO' ? 'pregrado' : 'posgrado';
+  const puedeIniciarNueva = Boolean(
+    resumenListado && !resumenListado.hayActiva,
+  );
+  const solicitudEnviada = Boolean(
+    estadoNav?.estado === 'ENVIADA' ||
+      (resumenListado?.reciente &&
+        resumenListado.reciente.estado !== 'BORRADOR') ||
+      (solicitud?.estadoSolicitud &&
+        solicitud.estadoSolicitud !== 'BORRADOR'),
+  );
 
   return (
     <>
@@ -243,6 +253,7 @@ export default function Home() {
           nombreNivel={nombreNivel}
           reciente={resumenListado?.reciente}
           hrefContinuar={hrefContinuar}
+          puedeIniciarNueva={puedeIniciarNueva}
         />
 
         <div className={styles.rejillaConSolicitud}>
@@ -261,6 +272,7 @@ export default function Home() {
             <TarjetaAviso
               solicitud={solicitud}
               errorSolicitud={errorSolicitud}
+              enviada={solicitudEnviada}
             />
             <NotificacionesPanel />
           </div>

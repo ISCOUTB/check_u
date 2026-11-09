@@ -10,13 +10,18 @@ interface SeccionBienvenidaProps {
   nombreNivel: string;
   reciente: SolicitudListado | null | undefined;
   hrefContinuar: string;
+  puedeIniciarNueva?: boolean;
 }
 
 export default function SeccionBienvenida({
   nombreNivel,
   reciente,
   hrefContinuar,
+  puedeIniciarNueva,
 }: SeccionBienvenidaProps) {
+  const admiteNueva =
+    puedeIniciarNueva !== undefined ? puedeIniciarNueva : !reciente?.activa;
+
   const titulo = reciente
     ? reciente.activa
       ? 'Tu solicitud de grado está en curso'
@@ -24,7 +29,9 @@ export default function SeccionBienvenida({
     : 'Aún no tienes solicitudes de grado';
 
   const texto = reciente
-    ? `Revisa el estado de tu solicitud de ${nombreNivel}. Puedes consultar el historial completo o iniciar una nueva preinscripción.`
+    ? admiteNueva
+      ? `Revisa el estado de tu solicitud de ${nombreNivel}. Puedes consultar el historial completo o iniciar una nueva preinscripción.`
+      : `Revisa el estado de tu solicitud de ${nombreNivel}. Puedes consultar el historial completo.`
     : 'Cuando inicies una preinscripción aparecerá aquí con su estado y su periodo asignado.';
 
   const revisarHref = reciente
