@@ -1,10 +1,18 @@
-import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
-import type { Request } from 'express';
+import {
+  ForbiddenException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import type { Request, Response } from 'express';
 import type { AuthService } from '../auth/auth.service.js';
 import { COOKIE_NAME } from '../auth/session.js';
 import type { AnalisisPreinscripcionService } from './analisis-preinscripcion.service.js';
 import type { ReenviosService } from './reenvios.service.js';
-import { SolicitudesController } from './solicitudes.controller.js';
+import {
+  MENSAJE_ERROR_MOTOR_INICIAL,
+  MENSAJE_ERROR_MOTOR_REENVIO,
+  SolicitudesController,
+} from './solicitudes.controller.js';
 import type { SolicitudesService } from './solicitudes.service.js';
 
 describe('SolicitudesController', () => {
@@ -18,6 +26,11 @@ describe('SolicitudesController', () => {
   let mockAuthService: {
     getUser: ReturnType<typeof vi.fn>;
   };
+  let mockReenviosService: {
+    reenviar: ReturnType<typeof vi.fn>;
+    original: ReturnType<typeof vi.fn>;
+    originalFuncionario: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     mockSolicitudesService = {
@@ -29,12 +42,17 @@ describe('SolicitudesController', () => {
     mockAuthService = {
       getUser: vi.fn(),
     };
+    mockReenviosService = {
+      reenviar: vi.fn(),
+      original: vi.fn(),
+      originalFuncionario: vi.fn(),
+    };
 
     controller = new SolicitudesController(
       mockSolicitudesService as unknown as SolicitudesService,
       mockAuthService as unknown as AuthService,
       {} as AnalisisPreinscripcionService,
-      {} as ReenviosService,
+      mockReenviosService as unknown as ReenviosService,
     );
   });
 
@@ -287,6 +305,228 @@ describe('SolicitudesController', () => {
         [expect.objectContaining({ tipo: 'identification' })],
         expect.any(Function),
       );
+    });
+
+    it('con error del motor en primer envío emite mensaje seguro que no menciona resultados anteriores ni pide corregir (ndjson)', async () => {
+      const req = {
+        headers: {
+          cookie: `${COOKIE_NAME}=sesion-valida`,
+          accept: 'application/x-ndjson',
+        },
+        body: { nivel: 'PREGRADO' },
+      } as unknown as Request;
+
+      mockAuthService.getUser.mockReturnValueOnce({
+        id: 1,
+        username: 'lizapata@utb.edu.co',
+        name: 'Lisandro Zapata',
+        role: 'estudiante',
+      });
+
+      mockSolicitudesService.enviarPreinscripcion.mockRejectedValueOnce(
+        new ServiceUnavailableException('El motor OCR no está disponible'),
+      );
+
+      const escritos: string[] = [];
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        setHeader: vi.fn(),
+        flushHeaders: vi.fn(),
+        write: vi.fn((data: string) => {
+          escritos.push(data);
+          return true;
+        }),
+        end: vi.fn(),
+        destroyed: false,
+        writableEnded: false,
+      } as unknown as Response;
+
+      const archivo = {
+        buffer: Buffer.from('%PDF-1.4'),
+        originalname: 'prueba.pdf',
+        mimetype: 'application/pdf',
+      };
+
+      await controller.enviarPreinscripcion(
+        req,
+        { datos: JSON.stringify(req.body), tipos: 'identification' },
+        [archivo],
+        res,
+      );
+
+      expect(res.write).toHaveBeenCalled();
+      const eventos = escritos.map((e) => JSON.parse(e));
+      const errorEvento = eventos.find((e) => e.tipo === 'error');
+      expect(errorEvento).toBeDefined();
+      expect(errorEvento.mensaje).toBe(MENSAJE_ERROR_MOTOR_INICIAL);
+      expect(errorEvento.mensaje).toContain('No fue posible completar el análisis en este momento');
+      expect(errorEvento.mensaje).toContain('Tu borrador y lo escrito se conservan');
+      expect(errorEvento.mensaje).not.toContain('resultados anteriores');
+      expect(errorEvento.mensaje.toLowerCase()).not.toContain('corrige');
+    });
+
+    it('con error del motor en primer envío sin ndjson responde con código 503 y mensaje seguro', async () => {
+      const req = {
+        headers: {
+          cookie: `${COOKIE_NAME}=sesion-valida`,
+        },
+        body: { nivel: 'PREGRADO' },
+      } as unknown as Request;
+
+      mockAuthService.getUser.mockReturnValueOnce({
+        id: 1,
+        username: 'lizapata@utb.edu.co',
+        name: 'Lisandro Zapata',
+        role: 'estudiante',
+      });
+
+      mockSolicitudesService.enviarPreinscripcion.mockRejectedValueOnce(
+        new ServiceUnavailableException('El motor OCR no está disponible'),
+      );
+
+      let statusCode = 0;
+      let jsonBody: unknown;
+      const res = {
+        status: vi.fn((code: number) => {
+          statusCode = code;
+          return {
+            json: (body: unknown) => {
+              jsonBody = body;
+            },
+          };
+        }),
+      } as unknown as Response;
+
+      const archivo = {
+        buffer: Buffer.from('%PDF-1.4'),
+        originalname: 'prueba.pdf',
+        mimetype: 'application/pdf',
+      };
+
+      await controller.enviarPreinscripcion(
+        req,
+        { datos: JSON.stringify(req.body), tipos: 'identification' },
+        [archivo],
+        res,
+      );
+
+      expect(statusCode).toBe(503);
+      expect(jsonBody).toEqual({
+        statusCode: 503,
+        message: MENSAJE_ERROR_MOTOR_INICIAL,
+      });
+    });
+  });
+
+  describe('POST solicitudes/:id/correcciones', () => {
+    it('con error del motor en reenvío emite mensaje que conserva el aviso de resultados anteriores (ndjson)', async () => {
+      const req = {
+        headers: {
+          cookie: `${COOKIE_NAME}=sesion-valida`,
+          accept: 'application/x-ndjson',
+        },
+      } as unknown as Request;
+
+      mockAuthService.getUser.mockReturnValueOnce({
+        id: 1,
+        username: 'lizapata@utb.edu.co',
+        name: 'Lisandro Zapata',
+        role: 'estudiante',
+      });
+
+      mockReenviosService.reenviar.mockRejectedValueOnce(
+        new ServiceUnavailableException('El motor OCR no está disponible'),
+      );
+
+      const escritos: string[] = [];
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        setHeader: vi.fn(),
+        flushHeaders: vi.fn(),
+        write: vi.fn((data: string) => {
+          escritos.push(data);
+          return true;
+        }),
+        end: vi.fn(),
+        destroyed: false,
+        writableEnded: false,
+      } as unknown as Response;
+
+      const archivo = {
+        buffer: Buffer.from('%PDF-1.4'),
+        originalname: 'corregido.pdf',
+        mimetype: 'application/pdf',
+      };
+
+      await controller.corregir(
+        req,
+        42,
+        { ids: '[10]', clave: 'clave-reenvio' },
+        [archivo],
+        res,
+      );
+
+      expect(res.write).toHaveBeenCalled();
+      const eventos = escritos.map((e) => JSON.parse(e));
+      const errorEvento = eventos.find((e) => e.tipo === 'error');
+      expect(errorEvento).toBeDefined();
+      expect(errorEvento.mensaje).toBe(MENSAJE_ERROR_MOTOR_REENVIO);
+      expect(errorEvento.mensaje).toContain('Los resultados anteriores se conservan');
+    });
+
+    it('con error de validación cliente (< 500) en reenvío respeta el mensaje del error', async () => {
+      const req = {
+        headers: {
+          cookie: `${COOKIE_NAME}=sesion-valida`,
+          accept: 'application/x-ndjson',
+        },
+      } as unknown as Request;
+
+      mockAuthService.getUser.mockReturnValueOnce({
+        id: 1,
+        username: 'lizapata@utb.edu.co',
+        name: 'Lisandro Zapata',
+        role: 'estudiante',
+      });
+
+      mockReenviosService.reenviar.mockRejectedValueOnce(
+        new ForbiddenException('No se permite reemplazar un documento válido.'),
+      );
+
+      const escritos: string[] = [];
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        setHeader: vi.fn(),
+        flushHeaders: vi.fn(),
+        write: vi.fn((data: string) => {
+          escritos.push(data);
+          return true;
+        }),
+        end: vi.fn(),
+        destroyed: false,
+        writableEnded: false,
+      } as unknown as Response;
+
+      const archivo = {
+        buffer: Buffer.from('%PDF-1.4'),
+        originalname: 'corregido.pdf',
+        mimetype: 'application/pdf',
+      };
+
+      await controller.corregir(
+        req,
+        42,
+        { ids: '[10]', clave: 'clave-reenvio' },
+        [archivo],
+        res,
+      );
+
+      expect(res.write).toHaveBeenCalled();
+      const eventos = escritos.map((e) => JSON.parse(e));
+      const errorEvento = eventos.find((e) => e.tipo === 'error');
+      expect(errorEvento).toBeDefined();
+      expect(errorEvento.codigo).toBe(403);
+      expect(errorEvento.mensaje).toBe('No se permite reemplazar un documento válido.');
     });
   });
 
