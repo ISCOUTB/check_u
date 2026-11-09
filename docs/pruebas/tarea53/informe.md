@@ -170,7 +170,8 @@ Todas las combinaciones de periodo, nivel, estado y fechas devolvieron lo correc
 
 ### H-10. El estudiante ve «Inválida» y la funcionaria «No válida» (baja)
 
-El mismo estado tiene dos nombres, y en la misma pantalla del estudiante los documentos dicen «No válido». `frontend/app/estudiante/solicitudes/listado.ts:41` indica que es intencional, pero la #133 y el dashboard usan «No válida». Evidencia: [05-a](capturas/05-a-no-valida-motor-real.png). Prueba: E5.1.
+- **Estado (09/11/2026):** corregido por #158; unificada la etiqueta a «No válida» (solicitud) y «No válido» (documento).
+- **Observado:** el mismo estado tenía dos nombres («Inválida» vs «No válida»), y en la misma pantalla del estudiante los documentos decían «No válido». `frontend/app/estudiante/solicitudes/listado.ts:41` indicaba que era intencional, pero la #133 y el dashboard usan «No válida». Evidencia: [05-a](capturas/05-a-no-valida-motor-real.png). Prueba: E5.1.
 
 ### H-11. El programa se muestra como código interno (baja)
 
