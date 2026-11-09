@@ -5,7 +5,10 @@ import type { TypeDocument } from '../contratos/enums.js';
 // del backend; el envío, los reenvíos y el cálculo del estado la consultan en vez de repetirla.
 
 export type TipoSolicitud =
-  'PREGRADO_UN_PROGRAMA' | 'PREGRADO_DOBLE_PROGRAMA' | 'POSGRADO';
+  | 'PREGRADO_UN_PROGRAMA'
+  | 'PREGRADO_DOBLE_PROGRAMA'
+  | 'POSGRADO'
+  | 'POSGRADO_DOBLE_PROGRAMA';
 export interface DocumentoRequerido {
   tipo: TypeDocument;
   orden: 1 | 2;
@@ -49,6 +52,12 @@ export const DOCUMENTOS_POR_TIPO: Readonly<
     uno('paz_y_salvo_bib'),
     uno('estampilla_pro_cultura'),
   ]),
+  POSGRADO_DOBLE_PROGRAMA: Object.freeze([
+    uno('identification'),
+    uno('paz_y_salvo_bib'),
+    uno('estampilla_pro_cultura'),
+    segundo('estampilla_pro_cultura'),
+  ]),
 });
 
 /** Máximo de PDF en un envío: el mayor total de documentos que se suben. */
@@ -71,7 +80,8 @@ export function tipoSolicitud(
   nivel: string,
   doblePrograma: boolean,
 ): TipoSolicitud {
-  if (nivel === 'POSGRADO') return 'POSGRADO';
+  if (nivel === 'POSGRADO')
+    return doblePrograma ? 'POSGRADO_DOBLE_PROGRAMA' : 'POSGRADO';
   if (nivel === 'PREGRADO')
     return doblePrograma ? 'PREGRADO_DOBLE_PROGRAMA' : 'PREGRADO_UN_PROGRAMA';
   throw new BadRequestException('Nivel académico no soportado');
