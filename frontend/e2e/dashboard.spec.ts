@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { ANCHOS, API, PERIODO_DEMO, revisarAxe, revisarPagina, sesionComo, TEMAS } from "./soporte";
+import { elegirPeriodo, periodoMasReciente } from "../app/funcionario/dashboard/page";
 
 const DASHBOARD = "/funcionario/dashboard";
 
@@ -381,3 +382,86 @@ test('el rango de fechas usa el primer envío en hora de Bogotá', async ({ page
     await expect(fila).toContainText('31/10/2026');
     await expect(page.getByRole('link', { name: 'Ver solicitud 7', exact: true })).toHaveAttribute('href', '/funcionario/detalle_preinscripcion/7');
 });
+
+test.describe("Tarea 63: periodo por defecto más reciente (H-09)", () => {
+    test("al abrir el dashboard selecciona automáticamente el periodo más reciente por mayor fecha_inicio", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        const periodoViejo = { ...PERIODO_DEMO, id: "periodo-viejo", nombre: "Periodo Antiguo", fechaInicio: "2026-01-01", fechaFin: "2026-02-01" };
+        const periodoReciente = { ...PERIODO_DEMO, id: "periodo-reciente", nombre: "Periodo Reciente", fechaInicio: "2026-11-01", fechaFin: "2026-12-01" };
+        await page.route(`${API}/periodos-grado`, (r) => r.request().method() === "GET"
+            ? r.fulfill({ json: [periodoViejo, periodoReciente] })
+            : r.fallback());
+        await page.route(`${API}/funcionario/solicitudes`, (r) => r.fulfill({ json: [
+            { id: "101", estado: "VALIDA", estudiante: "Estudiante Reciente", nivel: "PREGRADO", periodId: "periodo-reciente", fechaEnvio: "2026-11-05" },
+            { id: "102", estado: "VALIDA", estudiante: "Estudiante Antiguo", nivel: "PREGRADO", periodId: "periodo-viejo", fechaEnvio: "2026-01-05" },
+        ] }));
+        await page.goto(DASHBOARD);
+        await abrirFiltros(page);
+        await expect(page.locator("#periodo-grado")).toHaveValue("periodo-reciente");
+        await expect(page.getByRole("region", { name: "Tabla de solicitudes de grado" })).toContainText("Estudiante Reciente");
+        await expect(page.getByRole("region", { name: "Tabla de solicitudes de grado" })).not.toContainText("Estudiante Antiguo");
+    });
+
+    test("sin periodos registrados muestra un mensaje claro que lleva a crear uno", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        await page.route(`${API}/periodos-grado`, (r) => r.request().method() === "GET"
+            ? r.fulfill({ json: [] })
+            : r.fallback());
+        await page.goto(DASHBOARD);
+        await expect(page.getByRole("heading", { name: "No hay periodos registrados" })).toBeVisible();
+        await expect(page.getByText("Para consultar solicitudes, crea un periodo de grado.")).toBeVisible();
+        const botonCrear = page.getByRole("region", { name: "Solicitudes de grado" }).getByRole("button", { name: "Crear periodo" });
+        await expect(botonCrear).toBeVisible();
+        await botonCrear.click();
+        await expect(page.getByRole("dialog", { name: "Gestión de periodos de grado" })).toBeVisible();
+        await expect(page.getByLabel("Nombre del periodo")).toBeFocused();
+    });
+
+    test("permite cambiar a cualquier otro periodo sin perder los demás filtros", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        const periodoA = { ...PERIODO_DEMO, id: "periodo-a", nombre: "Periodo A", fechaInicio: "2026-05-01", fechaFin: "2026-06-01" };
+        const periodoB = { ...PERIODO_DEMO, id: "periodo-b", nombre: "Periodo B", fechaInicio: "2026-08-01", fechaFin: "2026-09-01" };
+        await page.route(`${API}/periodos-grado`, (r) => r.request().method() === "GET"
+            ? r.fulfill({ json: [periodoA, periodoB] })
+            : r.fallback());
+        await page.goto(DASHBOARD);
+        await abrirFiltros(page);
+        // Cambiar filtros
+        await page.getByLabel("Nivel académico").selectOption("POSGRADO");
+        await page.getByRole("button", { name: "No válidas", exact: true }).click();
+        await page.getByLabel("Fecha inicial").fill("2026-08-01");
+        await page.getByLabel("Fecha final").fill("2026-08-31");
+        await page.getByRole("button", { name: "Aplicar fechas" }).click();
+        // Cambiar de periodo B a periodo A
+        await page.locator("#periodo-grado").selectOption("periodo-a");
+        // Verificar que los otros filtros se conservan
+        await expect(page.getByLabel("Nivel académico")).toHaveValue("POSGRADO");
+        await expect(page.getByRole("button", { name: "No válidas", exact: true })).toHaveAttribute("aria-pressed", "true");
+        await expect(page.getByLabel("Fecha inicial")).toHaveValue("2026-08-01");
+        await expect(page.getByLabel("Fecha final")).toHaveValue("2026-08-31");
+        const resumen = page.getByRole("list", { name: "Filtros aplicados" });
+        await expect(resumen.getByText("Posgrado")).toBeVisible();
+        await expect(resumen.getByText("No válidas")).toBeVisible();
+        await expect(resumen.getByText("2026-08-01 – 2026-08-31")).toBeVisible();
+    });
+
+    test("periodoMasReciente y elegirPeriodo eligen el de mayor fechaInicio y recuperan si deja de existir", () => {
+        const periodos = [
+            { id: "1", nombre: "P1", fechaInicio: "2026-01-01", fechaFin: "2026-02-01", fechaGraduacion: "2026-03-01", estado: "ABIERTO" as const },
+            { id: "2", nombre: "P2", fechaInicio: "2026-08-01", fechaFin: "2026-09-01", fechaGraduacion: "2026-10-01", estado: "CERRADO" as const },
+            { id: "3", nombre: "P3", fechaInicio: "2026-05-01", fechaFin: "2026-06-01", fechaGraduacion: "2026-07-01", estado: "ABIERTO" as const },
+        ];
+        // Mayor fecha_inicio es P2 (2026-08-01)
+        expect(periodoMasReciente(periodos)?.id).toBe("2");
+        // Inicialmente vacío -> devuelve el más reciente
+        expect(elegirPeriodo(periodos, "")).toBe("2");
+        // Si actual existe -> lo conserva
+        expect(elegirPeriodo(periodos, "1")).toBe("1");
+        // Si actual deja de existir -> vuelve al más reciente
+        expect(elegirPeriodo(periodos, "inexistente")).toBe("2");
+        // Sin periodos -> null / ""
+        expect(periodoMasReciente([])).toBeNull();
+        expect(elegirPeriodo([], "1")).toBe("");
+    });
+});
+
