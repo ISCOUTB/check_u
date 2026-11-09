@@ -38,7 +38,7 @@ export function escenarioDesde(valor: string | undefined): Escenario {
 /** Lo que tarda cada llamada simulada, para que se vean "Guardando…" y "Enviando…". */
 const RETARDO_MS = 300;
 
-type ResultadoEnvio = { ok: true } | { ok: false; motivos: string[] };
+type ResultadoEnvio = { ok: true } | { ok: false; motivos: string[]; esErrorServicio?: boolean };
 
 let solicitudEnviada: { nivel: Nivel; correo: string } | null = null;
 /** Resultado de cada envío por su clave de idempotencia: repetir la clave no repite el envío. */
@@ -273,7 +273,7 @@ export async function enviarPreinscripcion(
             enviosPorClave.set(claveIdempotencia, { ok: true });
             return { ok: true };
         }
-        return { ok: false, motivos: [r.mensaje] };
+        return { ok: false, motivos: [r.mensaje], esErrorServicio: r.codigo >= 500 };
     }
     const respuesta = await fetch(`${API_URL}/solicitudes/enviar`, {
         method: "POST", credentials: "include", body: form,
@@ -286,12 +286,15 @@ export async function enviarPreinscripcion(
         return resultado;
     }
     // Los fallos NO se almacenan: reintentar debe comunicarse de nuevo con el backend.
-    const mensaje = respuesta.status === 503 ? "El motor o la base de datos no están disponibles. Tu borrador se conserva; intenta nuevamente." :
-        respuesta.status === 502 ? "El motor no pudo completar el análisis. Tu borrador se conserva; revisa los PDF e intenta nuevamente." :
-        respuesta.status === 409 ? "La solicitud ya fue enviada o no hay un periodo disponible. Recarga para comprobar su estado." :
-        respuesta.status === 400 ? "Revisa los datos del formulario y adjunta todos los PDF requeridos." :
-        "No fue posible registrar la preinscripción. Tu borrador se conserva.";
-    return { ok: false, motivos: [mensaje] };
+    const esErrorServicio = respuesta.status >= 500;
+    const mensaje = (respuesta.status === 503 || respuesta.status === 502)
+        ? "No fue posible completar el análisis en este momento. Tu borrador y lo escrito se conservan; puedes intentarlo de nuevo en unos minutos."
+        : respuesta.status === 409
+        ? "La solicitud ya fue enviada o no hay un periodo disponible. Recarga para comprobar su estado."
+        : respuesta.status === 400
+        ? "Revisa los datos del formulario y adjunta todos los PDF requeridos."
+        : "No fue posible registrar la preinscripción. Tu borrador se conserva.";
+    return { ok: false, motivos: [mensaje], esErrorServicio };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

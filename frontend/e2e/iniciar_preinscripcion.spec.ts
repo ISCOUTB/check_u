@@ -718,9 +718,43 @@ test.describe("iniciar preinscripción", () => {
         const motivos = resumenErrores(page, "El número de documento no coincide con el registrado en la universidad.");
         await expect(motivos).toBeVisible();
         await expect(motivos).toContainText("El programa indicado no coincide con el de tu código estudiantil.");
+        await expect(motivos).toContainText("Corrige lo que se indica y vuelve a enviarla.");
         await expect(motivos).toBeFocused();
         await expect(dialogoEnvio(page)).toHaveCount(0);
         await expect(page).toHaveURL(/escenario=rechazo/);
+    });
+
+    test("envío fallido por motor caído en primer envío no menciona resultados anteriores ni pide corregir", async ({ page }) => {
+        await abrir(page, POSGRADO);
+        await page.route("**/api/solicitudes/enviar", async (route) => {
+            await route.fulfill({
+                contentType: "application/x-ndjson",
+                body:
+                    JSON.stringify({
+                        tipo: "error",
+                        etapa: "Verificando documento de identidad.",
+                        porcentaje: 20,
+                        estado: "error",
+                        mensaje:
+                            "No fue posible completar el análisis en este momento. Tu borrador y lo escrito se conservan; puedes intentarlo de nuevo en unos minutos.",
+                        codigo: 503,
+                    }) + "\n",
+            });
+        });
+        await llenarObligatoriosPosgrado(page);
+        await expect(resumen(page, "Todo listo para enviar")).toBeVisible();
+
+        await botonEnviar(page).click();
+        await expect(dialogoEnvio(page)).toBeVisible();
+        await dialogoEnvio(page).getByRole("button", { name: "Enviar", exact: true }).click();
+
+        const alerta = page.getByRole("alert").filter({ hasText: "No se pudo enviar tu preinscripción" });
+        await expect(alerta).toBeVisible();
+        await expect(alerta).toContainText("No fue posible completar el análisis en este momento.");
+        await expect(alerta).toContainText("Tu borrador y lo escrito se conservan");
+        await expect(alerta).not.toContainText("resultados anteriores");
+        await expect(alerta).not.toContainText("Corrige lo que se indica");
+        await expect(dialogoEnvio(page)).toHaveCount(0);
     });
 
     test("envío completo abre el diálogo, envía y navega a /estudiante/preinscripcion", async ({ page }) => {
