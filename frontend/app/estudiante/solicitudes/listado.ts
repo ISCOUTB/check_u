@@ -38,12 +38,12 @@ export interface EstadoPresentado {
 
 /**
  * Traducción de los nombres internos del backend a las etiquetas del estudiante.
- * `NO_VALIDA` se presenta como Inválida y `CERRADA` como Anulada, igual que en el
+ * `NO_VALIDA` se presenta como No válida y `CERRADA` como Anulada, igual que en el
  * resto del módulo del estudiante.
  */
 const ESTADOS: Record<string, EstadoPresentado> = {
     VALIDA: { etiqueta: "Válida", tono: "valido" },
-    NO_VALIDA: { etiqueta: "Inválida", tono: "no_valido" },
+    NO_VALIDA: { etiqueta: "No válida", tono: "no_valido" },
     INCONSISTENTE: { etiqueta: "Inconsistente", tono: "inconsistente" },
     POR_REVISAR: { etiqueta: "Por revisar", tono: "por_revisar" },
     CANCELADA: { etiqueta: "Cancelada", tono: "cancelada" },

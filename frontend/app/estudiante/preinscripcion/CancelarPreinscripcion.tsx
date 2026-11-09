@@ -80,7 +80,7 @@ export default function CancelarPreinscripcion({
                                 EN_PROCESO: 'En proceso',
                                 POR_REVISAR: 'Por revisar',
                                 VALIDA: 'Válida',
-                                NO_VALIDA: 'Inválida',
+                                NO_VALIDA: 'No válida',
                                 INCONSISTENTE: 'Inconsistente',
                                 ACEPTADA: 'Aceptada',
                                 CERRADA: 'Anulada',
