@@ -136,6 +136,18 @@ const TRAZOS = {
             <path d="M6.5 11v4.5c0 1.5 2.5 2.5 5.5 2.5s5.5-1 5.5-2.5V11M21.5 9v5" />
         </>
     ),
+    universidad: (
+        <>
+            <path d="m12 2 8 5H4Z" />
+            <path d="M3 10h18M3 18h18M2 22h20M6 10v8M10 10v8M14 10v8M18 10v8" />
+        </>
+    ),
+    calendario: (
+        <>
+            <path d="M8 2v4M16 2v4M3 10h18" />
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+        </>
+    ),
     accesibilidad: (
         <>
             <circle cx="12" cy="4.5" r="1.5" />

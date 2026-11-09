@@ -247,6 +247,55 @@ test.describe("dashboard", () => {
         await expect(page.locator("figure").first()).toHaveAttribute("data-tema", "dark");
         await expect.poll(() => lienzo.evaluate((c) => (c as HTMLCanvasElement).toDataURL())).not.toBe(antes);
     });
+
+    test("resumen de filtros dinámico: muestra los filtros activos y se actualiza reactivamente (Tarea #68)", async ({ page }) => {
+        await sesionComo(page, "funcionario");
+        await page.goto(DASHBOARD);
+
+        const resumen = page.getByRole("list", { name: "Filtros aplicados" });
+        await expect(resumen).toBeVisible();
+
+        // 1. Filtros por defecto: periodo demo, pregrado, todas las solicitudes y sin rango de fechas
+        await expect(resumen.getByText("Grado octubre 2026 · Abierto")).toBeVisible();
+        await expect(resumen.getByText("Pregrado")).toBeVisible();
+        await expect(resumen.getByText("Todas")).toBeVisible();
+        await expect(resumen.getByText(/–/)).toHaveCount(0);
+
+        // Iconografía representativa presente en cada etiqueta (svg aria-hidden)
+        const iconos = resumen.locator("li svg[aria-hidden='true']");
+        await expect(iconos).toHaveCount(3);
+
+        // 2. Modificar nivel académico y verificar reactividad
+        await abrirFiltros(page);
+        await page.getByLabel("Nivel académico").selectOption("POSGRADO");
+        await expect(resumen.getByText("Posgrado")).toBeVisible();
+        await expect(resumen.getByText("Pregrado")).toHaveCount(0);
+
+        // 3. Modificar estado desde el panel
+        await page.getByRole("button", { name: "Válidas", exact: true }).click();
+        await expect(resumen.getByText("Válidas")).toBeVisible();
+        await expect(resumen.getByText("Todas")).toHaveCount(0);
+
+        // 4. Modificar estado desde los contadores
+        await page.locator('button[data-estado="inconsistente"]').click();
+        await expect(resumen.getByText("Inconsistentes")).toBeVisible();
+        await expect(resumen.getByText("Válidas")).toHaveCount(0);
+
+        // 5. Aplicar rango de fechas y verificar que se incorpora la etiqueta
+        await page.getByLabel("Fecha inicial").fill("2026-10-01");
+        await page.getByLabel("Fecha final").fill("2026-10-20");
+        await page.getByRole("button", { name: "Aplicar fechas" }).click();
+        await expect(resumen.getByText("2026-10-01 – 2026-10-20")).toBeVisible();
+        await expect(iconos).toHaveCount(4);
+
+        // 6. Limpiar fechas y verificar que se remueve la etiqueta
+        await page.getByRole("button", { name: "Limpiar fechas" }).click();
+        await expect(resumen.getByText("2026-10-01 – 2026-10-20")).toHaveCount(0);
+        await expect(iconos).toHaveCount(3);
+
+        // Accesibilidad del resumen
+        await revisarAxe(page);
+    });
 });
 
 test('la asociación real al periodo prevalece sobre la fecha de registro', async ({page}) => {

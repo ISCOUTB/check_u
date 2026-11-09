@@ -318,6 +318,56 @@
 }
 
 /* Panel de filtros: periodo, nivel, fechas y estado en un solo bloque */
+.resumenFiltros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    margin-right: auto;
+}
+
+.etiquetaFiltro {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 4px 10px;
+    background: var(--color-surface-muted);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    color: var(--color-text);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.etiquetaFiltro svg {
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+}
+
+.etiquetaFiltro span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+    .resumenFiltros {
+        order: 3;
+        width: 100%;
+        margin-right: 0;
+    }
+
+    .accionesPanel {
+        order: 2;
+        margin-left: auto;
+    }
+}
+
 .panelFiltros {
     margin-bottom: var(--space-6);
 }
