@@ -152,4 +152,67 @@ describe('PeriodosService', () => {
       ).rejects.toThrow('Ya existe un periodo con este nombre');
     });
   });
+
+  describe('listar', () => {
+    const mockDb = {
+      query: vi.fn(),
+    } as unknown as DatabaseService;
+
+    const service = new PeriodosService(mockDb);
+
+    it('ordena los periodos por fecha_inicio DESC y nombre al listar', async () => {
+      vi.mocked(mockDb.query).mockImplementation(async (sql: string) => {
+        expect(sql).toContain('ORDER BY fecha_inicio DESC, nombre');
+        return {
+          rows: [
+            {
+              id: 'p-reciente',
+              nombre: 'Grados 2027-2',
+              fecha_inicio: '2027-06-01',
+              fecha_fin: '2027-08-01',
+              fecha_graduacion: '2027-09-01',
+              estado: 'ABIERTO',
+            },
+            {
+              id: 'p-antiguo',
+              nombre: 'Grados 2027-1',
+              fecha_inicio: '2027-01-10',
+              fecha_fin: '2027-03-01',
+              fecha_graduacion: '2027-04-01',
+              estado: 'CERRADO',
+            },
+          ],
+        } as any;
+      });
+
+      const res = await service.listar();
+      expect(res).toHaveLength(2);
+      expect(res[0].id).toBe('p-reciente');
+      expect(res[1].id).toBe('p-antiguo');
+    });
+
+    it('aplica el filtro por estado cuando se especifica y mantiene el orden', async () => {
+      vi.mocked(mockDb.query).mockImplementation(async (sql: string, params: any) => {
+        expect(sql).toContain('WHERE estado = $1');
+        expect(sql).toContain('ORDER BY fecha_inicio DESC, nombre');
+        expect(params).toEqual(['ABIERTO']);
+        return {
+          rows: [
+            {
+              id: 'p-reciente',
+              nombre: 'Grados 2027-2',
+              fecha_inicio: '2027-06-01',
+              fecha_fin: '2027-08-01',
+              fecha_graduacion: '2027-09-01',
+              estado: 'ABIERTO',
+            },
+          ],
+        } as any;
+      });
+
+      const res = await service.listar('ABIERTO');
+      expect(res).toHaveLength(1);
+      expect(res[0].estado).toBe('ABIERTO');
+    });
+  });
 });
