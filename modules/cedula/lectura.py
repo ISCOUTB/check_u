@@ -244,9 +244,9 @@ def leer_cedula(paginas_entrada, progreso=None) -> ResultadoCedula:
         if not lectura.nombre_completo.valor and not lectura.numero_documento.valor:
             formato = FORMATO_DESCONOCIDO
             errores.append(
-                "No se pudo leer ni el numero ni el nombre del documento. "
-                "Puede que no sea una cedula, o que la imagen tenga muy "
-                "poca resolucion."
+                "No se pudo leer ni el número ni el nombre del documento. "
+                "Puede que no sea una cédula, o que la imagen tenga muy "
+                "poca resolución."
             )
 
     resultado = ResultadoCedula(

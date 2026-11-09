@@ -653,20 +653,20 @@ def leer(
     # --- Avisos para el usuario ---
     if datos_pdf417:
         lectura.avisos.append(
-            "Datos tomados del codigo de barras PDF417 del reverso "
+            "Datos tomados del código de barras PDF417 del reverso "
             "(lectura digital, no depende del OCR)."
         )
     else:
         lectura.avisos.append(
-            "No se pudo leer el codigo de barras PDF417 del reverso "
-            "(suele pasar con fotos de baja resolucion). Los datos se "
+            "No se pudo leer el código de barras PDF417 del reverso "
+            "(suele pasar con fotos de baja resolución). Los datos se "
             "obtuvieron por OCR del texto impreso."
         )
 
     if not lectura.numero_documento.valor:
         lectura.avisos.append(
-            "No se pudo determinar el numero de documento. Conviene "
-            "cargar una foto mas nitida o con mas resolucion."
+            "No se pudo determinar el número de documento. Conviene "
+            "cargar una foto más nítida o con más resolución."
         )
 
     return lectura
