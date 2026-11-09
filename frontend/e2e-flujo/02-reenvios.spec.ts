@@ -64,4 +64,21 @@ test.describe("Escenario 3: un reenvío actualiza el resultado", () => {
         await abrirPreinscripcion(page, id);
         await captura(page, "03-c-reenvio-actualiza-resultado");
     });
+
+    test("E3.4 reenvío con motor caído: conserva resultados anteriores, mantiene estado y no consume cupo", async ({ page }) => {
+        await motor("controlado", { identification: "valid", academic_evaluation: "valid", estampilla_pro_cultura: "invalid", saber_pro: "valid" });
+        await entrar(page, ESTUDIANTE);
+        const id = await preinscribir(page);
+        expect(documentosEnBd(id).estampilla_pro_cultura).toBe("NO_VALIDO");
+        expect(sql(`SELECT estado FROM solicitud_grado WHERE id_solicitud=${id}`)[0]).toBe("NO_VALIDA");
+
+        await motor("real", {}, true);
+        await reenviarPorPantalla(page, id, "Estampilla Pro-Cultura");
+
+        await expect(page.locator("p[role='status']")).toContainText("Los resultados anteriores se conservan");
+        expect(sql(`SELECT estado FROM solicitud_grado WHERE id_solicitud=${id}`)[0]).toBe("NO_VALIDA");
+        expect(sql(`SELECT count(*) FROM entregas WHERE id_solicitud=${id} AND tipo_entrega='CORRECCION'`)[0]).toBe("0");
+
+        await motor("real");
+    });
 });
