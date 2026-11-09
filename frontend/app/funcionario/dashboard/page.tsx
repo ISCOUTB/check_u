@@ -136,11 +136,12 @@ export default function Dashboard() {
         return () => { vigente = false; };
     }, [usuario]);
 
+    const periodoActual = useMemo(() => periodos.find((p) => p.id === periodoId) ?? null, [periodos, periodoId]);
     const solicitudesPeriodo = useMemo(() => {
-        const periodo = periodos.find((p) => p.id === periodoId);
-        if (!periodo) return [];
-        return solicitudes.filter(s => s.periodId === periodo.id);
-    }, [periodos, periodoId, solicitudes]);
+        if (!periodoActual) return [];
+        return solicitudes.filter(s => s.periodId === periodoActual.id);
+
+    }, [periodoActual, solicitudes]);
 
     const porNivelYFecha = useMemo(() => solicitudesPeriodo.filter((s) => {
         if (s.nivel !== nivel) return false;
@@ -247,6 +248,30 @@ export default function Dashboard() {
                     titulo="Filtros de búsqueda"
                     className={styles.panelFiltros}
                     cabeceraSinMargen={!mostrarFiltros}
+                    cabeceraExtra={
+                        <ul className={styles.resumenFiltros} aria-label="Filtros aplicados">
+                            {periodoActual && (
+                                <li className={styles.etiquetaFiltro}>
+                                    <Icono nombre="graduacion" tamano={15} />
+                                    <span>{periodoActual.nombre} · {periodoActual.estado === "ABIERTO" ? "Abierto" : periodoActual.estado === "CERRADO" ? "Cerrado" : periodoActual.estado}</span>
+                                </li>
+                            )}
+                            <li className={styles.etiquetaFiltro}>
+                                <Icono nombre="universidad" tamano={15} />
+                                <span>{nivel === "PREGRADO" ? "Pregrado" : "Posgrado"}</span>
+                            </li>
+                            {rangoAplicado && (
+                                <li className={styles.etiquetaFiltro}>
+                                    <Icono nombre="calendario" tamano={15} />
+                                    <span>{rangoAplicado.inicio} – {rangoAplicado.fin}</span>
+                                </li>
+                            )}
+                            <li className={styles.etiquetaFiltro}>
+                                <Icono nombre="lista" tamano={15} />
+                                <span>{filtroEstado === "todos" ? "Todas" : ETIQUETA_PLURAL[filtroEstado]}</span>
+                            </li>
+                        </ul>
+                    }
                     acciones={
                         <div className={styles.accionesPanel}>
                             <Button
