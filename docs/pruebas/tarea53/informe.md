@@ -26,7 +26,7 @@ este informe y las capturas describen la ejecución del 06/11.
 | 8 | Cancelación por el estudiante | ❌ Fallido | Controlado | **H-02** |
 | 9 | Dashboard de la funcionaria | ✅ Exitoso | Datos sembrados | |
 | 10 | Administración de periodos | ❌ Fallido | No aplica | H-07 |
-| 11 | Filtrado de solicitudes | ❌ Fallido | Datos sembrados | H-09 |
+| 11 | Filtrado de solicitudes | ✅ Exitoso | Datos sembrados | H-09 |
 | 12 | Revisión y gestión | ❌ Fallido | Controlado | **H-03**, H-05, H-06 |
 | 13 | Historial de solicitudes | ❌ Fallido | Controlado | **H-02** |
 | 14 | Anulación por la funcionaria | ❌ Fallido | Controlado | H-04 |
@@ -65,7 +65,7 @@ este informe y las capturas describen la ejecución del 06/11.
 | H-06 | Media | «Solicitar corrección» pisa el estado calculado | 12 |
 | H-07 | Media | Se pueden crear dos periodos con el mismo nombre (corregido en #163) | 10 |
 | H-08 | Por aclarar | Documentos de posgrado: la #133 y las reglas del proyecto no coinciden | 2 |
-| H-09 | Baja | Los filtros no se pueden usar sin periodo ni sin nivel | 11 |
+| H-09 | Baja | Los filtros no se pueden usar sin periodo ni sin nivel (corregido en #157) | 11 |
 | H-10 | Baja | El estudiante ve «Inválida» y la funcionaria «No válida» | 5 |
 | H-11 | Baja | El programa se muestra como código interno | 1, 13 |
 | H-12 | Baja | Con el motor caído, el mensaje no corresponde a un primer envío | 7 |
@@ -166,7 +166,8 @@ La aplicación sigue a `PROMPT_BASE.md`. Con **dos programas**, para lo que la #
 
 ### H-09. Los filtros no se pueden usar sin periodo ni sin nivel (baja)
 
-Todas las combinaciones de periodo, nivel, estado y fechas devolvieron lo correcto. Pero la #133 pide usarlos también individualmente, y sin periodo la tabla dice «Selecciona un periodo», mientras que el nivel no tiene una opción «Todos». Evidencia: [11-d](capturas/11-d-sin-periodo.png). Prueba: E11.
+- **Estado (09/11/2026):** corregido por #157: el dashboard selecciona automáticamente el periodo más reciente al abrir (mayor fecha de inicio), los filtros se conservan al cambiar de periodo y, si no hay ninguno registrado, muestra un mensaje claro con botón para crearlo.
+- **Detalle:** todas las combinaciones de periodo, nivel, estado y fechas devolvieron lo correcto. La #133 pedía usarlos también individualmente; ahora el dashboard siempre abre con el periodo más reciente seleccionado para habilitar los filtros de inmediato. Evidencia: [11-d](capturas/11-d-sin-periodo.png). Prueba: E11.
 
 ### H-10. El estudiante ve «Inválida» y la funcionaria «No válida» (baja)
 
@@ -248,9 +249,9 @@ Los contadores, porcentajes, gráficos y filas coinciden con la base de datos po
   - el estudiante ve los cambios: sin periodo cuando se cierra ([10-g](capturas/10-g-estudiante-sin-periodo-abierto.png)) y con el nombre nuevo al reabrirlo ([10-h](capturas/10-h-estudiante-con-periodo-editado.png)).
 - **Falla:** acepta dos periodos con el mismo nombre ([10-e](capturas/10-e-nombre-duplicado.png)).
 
-### 11. Filtrado: ❌ fallido (H-09)
+### 11. Filtrado: ✅ exitoso (H-09 corregido en #157)
 
-Periodo, nivel, estado y rango de fechas devuelven lo correcto, solos y combinados ([11-a](capturas/11-a-filtro-estado.png), [11-b](capturas/11-b-filtro-rango.png), [11-c](capturas/11-c-filtros-combinados.png)). Falla que no se pueden usar sin periodo ni sin nivel ([11-d](capturas/11-d-sin-periodo.png)).
+Periodo, nivel, estado y rango de fechas devuelven lo correcto, solos y combinados ([11-a](capturas/11-a-filtro-estado.png), [11-b](capturas/11-b-filtro-rango.png), [11-c](capturas/11-c-filtros-combinados.png)). El periodo más reciente se carga por defecto al abrir el dashboard ([11-d](capturas/11-d-sin-periodo.png)).
 
 ### 12. Revisión y gestión: ❌ fallido (H-03, H-05, H-06)
 

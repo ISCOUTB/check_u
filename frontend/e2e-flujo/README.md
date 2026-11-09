@@ -46,7 +46,6 @@ Una prueba en rojo corresponde a un hallazgo del informe, y se pondrá en verde 
 | E2.1 | H-08 |
 | E5.1 | H-10 |
 | E8, E13 | H-02 |
-| E11 | H-09 |
 | E12 | H-03, H-05, H-06 |
 | E14 | H-04 |
 
