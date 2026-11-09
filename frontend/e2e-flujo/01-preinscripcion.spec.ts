@@ -34,12 +34,22 @@ test.describe("Escenario 1: preinscripción de pregrado", () => {
         await expect(page.locator("section[aria-label='Datos del estudiante']")).toContainText("Ingeniería de Sistemas y Computación");
         await expect(page.locator("section[aria-label='Datos del estudiante']")).not.toContainText("INGENIERIA_DE_SISTEMAS_Y_COMPUTACION");
 
+        // Tarea 67 (H-13): una sola etiqueta por documento y tildes del motor
+        for (const item of await page.locator("li[class*='alertaItem']").all()) {
+            await expect(item.locator("div[class*='alertaChips'] [class*='badge']")).toHaveCount(1);
+        }
+        await expect(page.locator("body")).not.toContainText("resolucion");
+        await expect(page.locator("body")).not.toContainText("numero ni el nombre");
+
         const id = Number(sql("SELECT max(id_solicitud) FROM solicitud_grado")[0]);
         const docs = documentosEnBd(id);
         expect(Object.keys(docs).sort()).toEqual([...PREGRADO_UNO, "paz_y_salvo_bib"].sort());
         expect(docs.paz_y_salvo_bib).toBe("VALIDO");
         expect(docs.identification).not.toBe("VALIDO");
         await page.goto("/estudiante/home");
+        // Tarea 67 (H-13): sin panel «Antes de enviar» ni texto de iniciar nueva con solicitud activa
+        await expect(page.getByText("Antes de enviar")).toHaveCount(0);
+        await expect(page.locator("section[aria-labelledby='titulo-bienvenida']")).not.toContainText("iniciar una nueva preinscripción");
         const tarjeta = page.locator("#mi-solicitud");
         await expect(tarjeta).toContainText("Paz y Salvo de Biblioteca");
         await expect(tarjeta.getByRole("button", { name: /Subir nueva versión/ }).first().or(tarjeta.getByRole("link", { name: /Subir nueva versión/ }).first()).first()).toBeVisible();
