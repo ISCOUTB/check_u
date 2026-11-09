@@ -40,6 +40,13 @@ export default function PeriodoInscripcion({ datos }: { datos: ContextoPeriodo |
             <button type="button" className={styles.ayuda} aria-label="Ver información del periodo de inscripción"
                 aria-haspopup="dialog" onClick={() => setAbierto(true)}>?</button>
         </div>
+        {!periodo && (
+            <div className={styles.alertaSinPeriodo} role="alert">
+                <p>
+                    Actualmente no hay un periodo de inscripción disponible para asignar tu solicitud. Puedes guardar tu borrador para continuar más adelante, pero no es posible enviar la preinscripción en este momento.
+                </p>
+            </div>
+        )}
         <Dialog abierto={abierto} alCerrar={() => setAbierto(false)}
             titulo={datos.periodoAsignado ? "Periodo de inscripción asignado" : "Periodo de inscripción"} compacto>
             <div className={styles.detalles}>

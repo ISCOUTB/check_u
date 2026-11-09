@@ -168,9 +168,13 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
         if (await guardar()) confirmarSalida();
     };
 
+    const sinPeriodoDisponible = Boolean(
+        periodos && !periodos.periodoAsignado && !periodos.periodoDisponible,
+    );
+
     /** Con faltantes, el resumen de errores (que toma el foco); sin ellos, el diálogo de confirmación. */
     const pedirEnvio = () => {
-        if (!borrador) return;
+        if (!borrador || sinPeriodoDisponible) return;
         const pendientes = faltantes(borrador);
         setValidar(true);
         setResumen(pendientes.length > 0 ? { faltantes: pendientes } : null);
@@ -321,6 +325,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                                 errorGuardado={errorGuardado}
                                 alGuardar={() => void guardar()}
                                 alEnviar={pedirEnvio}
+                                deshabilitarEnvio={sinPeriodoDisponible}
                             />
                         </form>
                     </div>
