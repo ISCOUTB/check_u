@@ -1,24 +1,24 @@
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
-import Button from "@/app/components/ui/Button";
-import { GUARDADO_EXITOSO } from "./mensajes-borrador";
-import { formatearGuardado } from "./api";
-import styles from "./BarraAcciones.module.css";
+import { useEffect, useRef } from 'react';
+import Button from '@/app/components/ui/Button';
+import { GUARDADO_EXITOSO } from './mensajes-borrador';
+import { formatearGuardado } from './api';
+import styles from './BarraAcciones.module.css';
 
 export interface BarraAccionesProps {
-    /** ISO 8601 del último guardado, o null si nunca se ha guardado */
-    guardadoEn: string | null;
-    /** Cuántas veces se guardó en esta visita: cada guardado se anuncia, aunque diga la misma hora */
-    guardados: number;
-    cambiosSinGuardar: boolean;
-    guardando: boolean;
-    enviando: boolean;
-    /** El último guardado falló */
-    errorGuardado: string | null;
-    alGuardar: () => void;
-    alEnviar: () => void;
-    deshabilitarEnvio?: boolean;
+  /** ISO 8601 del último guardado, o null si nunca se ha guardado */
+  guardadoEn: string | null;
+  /** Cuántas veces se guardó en esta visita: cada guardado se anuncia, aunque diga la misma hora */
+  guardados: number;
+  cambiosSinGuardar: boolean;
+  guardando: boolean;
+  enviando: boolean;
+  /** El último guardado falló */
+  errorGuardado: string | null;
+  alGuardar: () => void;
+  alEnviar: () => void;
+  deshabilitarEnvio?: boolean;
 }
 
 /**
@@ -30,83 +30,99 @@ export interface BarraAccionesProps {
  * foco nunca queda debajo de la barra (WCAG 2.4.11).
  */
 export default function BarraAcciones({
-    guardadoEn,
-    guardados,
-    cambiosSinGuardar,
-    guardando,
-    enviando,
-    errorGuardado,
-    alGuardar,
-    alEnviar,
-    deshabilitarEnvio = false,
+  guardadoEn,
+  guardados,
+  cambiosSinGuardar,
+  guardando,
+  enviando,
+  errorGuardado,
+  alGuardar,
+  alEnviar,
+  deshabilitarEnvio = false,
 }: BarraAccionesProps) {
-    const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const barra = ref.current;
-        if (!barra) return;
-        const raiz = document.documentElement;
-        const medir = () => raiz.style.setProperty("--alto-barra-acciones", `${barra.offsetHeight}px`);
-        medir();
-        const observador = new ResizeObserver(medir);
-        observador.observe(barra);
-        return () => {
-            observador.disconnect();
-            raiz.style.removeProperty("--alto-barra-acciones");
-        };
-    }, []);
+  useEffect(() => {
+    const barra = ref.current;
+    if (!barra) return;
+    const raiz = document.documentElement;
+    const medir = () =>
+      raiz.style.setProperty(
+        '--alto-barra-acciones',
+        `${barra.offsetHeight}px`,
+      );
+    medir();
+    const observador = new ResizeObserver(medir);
+    observador.observe(barra);
+    return () => {
+      observador.disconnect();
+      raiz.style.removeProperty('--alto-barra-acciones');
+    };
+  }, []);
 
-    return (
-        <div ref={ref} className={styles.barra}>
-            <div className={styles.tarjeta}>
-                <div className={styles.textos}>
-                    <p role="status" className={styles.estado}>
-                        {/*
-                         * Un nodo nuevo por guardado: el lector no repite un texto que no cambió, y dos
-                         * guardados en el mismo minuto dicen lo mismo.
-                         */}
-                        {guardando ? <span>Guardando tu borrador…</span> : !errorGuardado && (
-                            cambiosSinGuardar ? <span>Tienes cambios sin guardar.</span> : guardadoEn ? (
-                                <span key={guardados}>
-                                    {GUARDADO_EXITOSO}{" "}
-                                    Borrador guardado el{" "}
-                                    <span className={styles.fecha}>{formatearGuardado(guardadoEn)}</span>
-                                </span>
-                            ) : null
-                        )}
-                    </p>
-                    {errorGuardado && (
-                        <p role="alert" className={styles.error}>
-                            {errorGuardado}{" "}
-                            <Button variante="sutil" className={styles.reintentar} onClick={alGuardar}>
-                                Reintentar
-                            </Button>
-                        </p>
-                    )}
-                    <p className={styles.nota}>Puedes guardar y retomar tu borrador más adelante.</p>
-                </div>
-                <div className={styles.botones}>
-                    <Button
-                        variante="secundario"
-                        cargando={guardando}
-                        textoCargando="Guardando…"
-                        conservarFoco
-                        disabled={enviando}
-                        onClick={alGuardar}
-                    >
-                        Guardar para continuar después
-                    </Button>
-                    <Button
-                        cargando={enviando}
-                        textoCargando="Enviando…"
-                        conservarFoco
-                        disabled={guardando || deshabilitarEnvio}
-                        onClick={alEnviar}
-                    >
-                        Enviar preinscripción
-                    </Button>
-                </div>
-            </div>
+  return (
+    <div ref={ref} className={styles.barra}>
+      <div className={styles.tarjeta}>
+        <div className={styles.textos}>
+          <p role="status" className={styles.estado}>
+            {/*
+             * Un nodo nuevo por guardado: el lector no repite un texto que no cambió, y dos
+             * guardados en el mismo minuto dicen lo mismo.
+             */}
+            {guardando ? (
+              <span>Guardando tu borrador…</span>
+            ) : (
+              !errorGuardado &&
+              (cambiosSinGuardar ? (
+                <span>Tienes cambios sin guardar.</span>
+              ) : guardadoEn ? (
+                <span key={guardados}>
+                  {GUARDADO_EXITOSO} Borrador guardado el{' '}
+                  <span className={styles.fecha}>
+                    {formatearGuardado(guardadoEn)}
+                  </span>
+                </span>
+              ) : null)
+            )}
+          </p>
+          {errorGuardado && (
+            <p role="alert" className={styles.error}>
+              {errorGuardado}{' '}
+              <Button
+                variante="terciario"
+                className={styles.reintentar}
+                onClick={alGuardar}
+              >
+                Reintentar
+              </Button>
+            </p>
+          )}
+          <p className={styles.nota}>
+            Puedes guardar y retomar tu borrador más adelante.
+          </p>
         </div>
-    );
+        <div className={styles.botones}>
+          <Button
+            variante="secundario"
+            cargando={guardando}
+            textoCargando="Guardando…"
+            conservarFoco
+            disabled={enviando}
+            onClick={alGuardar}
+          >
+            Guardar para continuar después
+          </Button>
+          <Button
+            cargando={enviando}
+            textoCargando="Enviando…"
+            conservarFoco
+            disabled={guardando || deshabilitarEnvio}
+            onClick={alEnviar}
+          >
+            Enviar preinscripción
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }

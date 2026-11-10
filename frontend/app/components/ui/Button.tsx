@@ -11,11 +11,9 @@ import styles from './Button.module.css';
  *               Mismo tamaño, menos saturación (borde + surface).
  * - terciario:  acciones de bajo impacto o auxiliares (Ver todas, Quitar, links de acción).
  *               Mínima presencia visual (sin fondo, tipografía más ligera).
- *
- * Alias "sutil" se mantiene temporalmente = terciario (migración).
  */
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variante?: 'primario' | 'secundario' | 'terciario' | 'sutil';
+  variante?: 'primario' | 'secundario' | 'terciario';
   /** Mientras espera: muestra textoCargando, queda deshabilitado y con aria-busy. */
   cargando?: boolean;
   textoCargando?: string;
@@ -41,9 +39,7 @@ export default function Button({
   type = 'button',
   ...resto
 }: ButtonProps) {
-  // Alias temporal: sutil → terciario (Tarea 68)
-  const varianteReal = variante === 'sutil' ? 'terciario' : variante;
-  const clases = [styles.boton, styles[varianteReal], className]
+  const clases = [styles.boton, styles[variante], className]
     .filter(Boolean)
     .join(' ');
   const ocupado = cargando && conservarFoco;
