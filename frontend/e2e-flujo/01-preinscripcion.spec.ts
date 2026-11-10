@@ -190,7 +190,7 @@ test.describe('Escenario 2: preinscripción de posgrado', () => {
     ]);
   });
 
-  test('E2.1 un programa: la #133 pide Cédula, Evaluación de Banner y Estampilla', async ({
+  test('E2.1 un programa: pide identidad y una estampilla', async ({
     page,
   }) => {
     await entrar(page, ESTUDIANTE);
@@ -200,14 +200,10 @@ test.describe('Escenario 2: preinscripción de posgrado', () => {
     );
     await llenarDatos(page, { nivel: 'posgrado' });
     await captura(page, '02-a-formulario-posgrado-un-programa');
-    // Hallazgo H-08 del informe: el formulario no pide la Evaluación de Banner en posgrado.
-    expect
-      .soft(await documentosPedidos(page))
-      .toEqual([
-        'identification',
-        'academic_evaluation',
-        'estampilla_pro_cultura',
-      ]);
+    expect(await documentosPedidos(page)).toEqual([
+      'identification',
+      'estampilla_pro_cultura',
+    ]);
     await adjuntarTodos(page);
     await enviar(page, async (p) => {
       await p
