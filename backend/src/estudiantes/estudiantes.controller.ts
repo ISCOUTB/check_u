@@ -15,7 +15,6 @@ import { EstudiantesService } from './estudiantes.service.js';
 import { FuncionariaGuard } from './funcionaria.guard.js';
 import { MAXIMO_BYTES_CSV } from './estudiantes-csv.js';
 import { Throttle } from '@nestjs/throttler';
-import { limiteCargas } from '../limites.js';
 @Controller('funcionario/estudiantes')
 @UseGuards(FuncionariaGuard)
 export class EstudiantesController {
@@ -31,7 +30,7 @@ export class EstudiantesController {
   @Post('importar')
   @HttpCode(200)
   @Header('Cache-Control', 'private, no-store')
-  @Throttle(limiteCargas())
+  @Throttle({ uploads: { limit: 8, ttl: 60_000 } })
   @UseInterceptors(
     FileInterceptor('archivo', {
       storage: memoryStorage(),

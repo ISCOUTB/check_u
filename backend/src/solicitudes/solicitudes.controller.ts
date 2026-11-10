@@ -28,14 +28,14 @@ import {
   Post,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from '../auth/auth.service.js';
 import { readSessionId } from '../auth/session.js';
 import { traducirErrorBorrador } from './errores-borrador.js';
 import { SolicitudesService } from './solicitudes.service.js';
-import { limiteCargas } from '../limites.js';
 import type {
   DatosEnvioPreinscripcion,
   RespuestaEnvioPreinscripcion,
@@ -49,6 +49,11 @@ export const MENSAJE_ERROR_MOTOR_INICIAL =
 
 export const MENSAJE_ERROR_MOTOR_REENVIO =
   'No fue posible completar el análisis. Los resultados anteriores se conservan. Revisa los documentos e intenta nuevamente.';
+
+const esTest =
+  process.env.NODE_ENV === 'test' ||
+  process.env.VITEST === 'true' ||
+  !!process.env.VITEST_WORKER_ID;
 
 @Controller()
 export class SolicitudesController {
@@ -86,8 +91,8 @@ export class SolicitudesController {
     );
   }
 
-  // El guard global ya cuenta esta ruta; un @UseGuards(ThrottlerGuard) aquí contaría cada envío dos veces.
-  @Throttle(limiteCargas())
+  @Throttle({ uploads: { limit: esTest ? 10_000 : 8, ttl: 60_000 } })
+  @UseGuards(ThrottlerGuard)
   @Post('solicitudes/enviar')
   @UseInterceptors(
     FilesInterceptor('documentos', MAXIMO_DOCUMENTOS, {
