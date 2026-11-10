@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -35,8 +36,11 @@ export class NotificacionesController {
   }
   @Get('estudiante/notificaciones')
   @Header('Cache-Control', 'private, no-store')
-  listar(@Req() req: Request) {
-    return this.notificaciones.listar(this.usuario(req, 'estudiante').id);
+  listar(@Req() req: Request, @Query('completas') completas?: string) {
+    return this.notificaciones.listar(
+      this.usuario(req, 'estudiante').id,
+      completas === '1',
+    );
   }
   @Patch('estudiante/notificaciones/:id/leida')
   @Header('Cache-Control', 'private, no-store')
