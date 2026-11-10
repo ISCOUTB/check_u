@@ -54,7 +54,7 @@ Cookie: sesión del estudiante
 | Estado del backend | Etiqueta del estudiante | Tono del distintivo |
 | --- | --- | --- |
 | `VALIDA` | Válida | `valido` |
-| `NO_VALIDA` | Inválida | `no_valido` |
+| `NO_VALIDA` | No válida | `no_valido` |
 | `INCONSISTENTE` | Inconsistente | `inconsistente` |
 | `POR_REVISAR` | Por revisar | `por_revisar` |
 | `CANCELADA` | Cancelada | `cancelada` |
@@ -63,7 +63,7 @@ Cookie: sesión del estudiante
 | `BORRADOR` | Borrador | `borrador` |
 | Otro valor | El valor recibido o `Sin estado` | `por_revisar` |
 
-`CERRADA` se presenta como **Anulada** y `NO_VALIDA` como **Inválida**, igual que en el resto del módulo del estudiante (tarea 44). Los estados `CANCELADA` y `CERRADA` son los que el backend marca con `activa: false` y, por tanto, los que reciben la marca de historial.
+`CERRADA` se presenta como **Anulada** y `NO_VALIDA` como **No válida**, igual que en el resto del módulo del estudiante (tarea 44). Los estados `CANCELADA` y `CERRADA` son los que el backend marca con `activa: false` y, por tanto, los que reciben la marca de historial.
 
 ## Implementación
 

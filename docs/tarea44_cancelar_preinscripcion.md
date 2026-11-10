@@ -36,7 +36,7 @@ La vista del historial corresponde a la tarea #106. Por revisión de la PR #110,
 
 Se conservan los datos, la auditoría, los endpoints de consulta propios y el detalle por ID. Cancelar sigue mostrando la confirmación en el detalle y permite recargar esa URL. La tarea #106 podrá presentar el listado en su vista correspondiente.
 
-Se conservan los nombres internos existentes: `NO_VALIDA` se presenta como Inválida y `CERRADA` como Anulada. `CANCELADA` es un estado distinto, exclusivo de la cancelación voluntaria. La navegación usa el contrato de la tarea 34 (`SIN_SOLICITUD`, `BORRADOR`, `ENVIADA`); una cancelada o anulada no cuenta como solicitud activa.
+Se conservan los nombres internos existentes: `NO_VALIDA` se presenta como No válida y `CERRADA` como Anulada. `CANCELADA` es un estado distinto, exclusivo de la cancelación voluntaria. La navegación usa el contrato de la tarea 34 (`SIN_SOLICITUD`, `BORRADOR`, `ENVIADA`); una cancelada o anulada no cuenta como solicitud activa.
 
 El detalle histórico utiliza `/estudiante/preinscripcion?solicitud=ID`. Verifica la sesión y consulta el ID propio sin aplicar la redirección de la solicitud activa. Esto permite revisar una cancelada aunque no haya otra solicitud o exista un borrador nuevo. Los parámetros de URL no permiten consultar solicitudes ajenas.
 

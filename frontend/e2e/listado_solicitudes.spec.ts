@@ -40,7 +40,7 @@ test.describe("presentación del listado de preinscripciones", () => {
             tono: "valido",
         });
         expect(presentarEstado("NO_VALIDA")).toEqual({
-            etiqueta: "Inválida",
+            etiqueta: "No válida",
             tono: "no_valido",
         });
         expect(presentarEstado("INCONSISTENTE")).toEqual({
@@ -174,7 +174,7 @@ test.describe("vista de solicitudes de grado", () => {
 
         const filaPosgrado = fila(page, "8");
         await expect(filaPosgrado).toContainText("POSGRADO");
-        await expect(filaPosgrado).toContainText("Inválida");
+        await expect(filaPosgrado).toContainText("No válida");
 
         await expect(fila(page, "7")).toContainText("Inconsistente");
         await expect(fila(page, "6")).toContainText("Por revisar");
@@ -315,7 +315,7 @@ test.describe("vista de solicitudes de grado", () => {
         await expect(fila(page, "9")).toContainText("Válida");
 
         await page.getByRole("button", { name: "Actualizar" }).click();
-        await expect(fila(page, "9")).toContainText("Inválida");
+        await expect(fila(page, "9")).toContainText("No válida");
         expect(consultas).toBe(2);
     });
 
