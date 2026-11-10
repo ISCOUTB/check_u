@@ -193,12 +193,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-.notificacionTexto {
+.notificacionTexto,
+.motivoAnulacion {
   margin-top: var(--space-1);
   color: var(--color-text);
   font-size: 13px;
   line-height: 1.5;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* Mi solicitud */
