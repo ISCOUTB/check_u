@@ -40,6 +40,17 @@ export async function detalleAnalisis(
         : null;
     // Conservar el perfil al cancelar aunque el estudiante lo cambie en otro periodo.
     if (cancelacion) s = { ...s, ...cancelacion.informacion_estudiante };
+    const motivoAnulacion =
+      s.estado === 'CERRADA'
+        ? (
+            await client.query<{ comentario: string | null }>(
+              `SELECT comentario FROM revisiones
+               WHERE id_solicitud=$1 AND resultado='RECHAZADA'
+               ORDER BY fecha_revision DESC, id_revision DESC LIMIT 1`,
+              [s.id_solicitud],
+            )
+          ).rows[0]?.comentario?.trim() || null
+        : null;
     const campoPrograma =
       s.tipo_solicitud === 'POSGRADO'
         ? 'PROGRAMA_POSGRADO'
@@ -205,6 +216,7 @@ export async function detalleAnalisis(
     return {
       id: String(s.id_solicitud),
       estadoSolicitud: s.estado,
+      motivoAnulacion,
       cancelacion: {
         permitida: ESTADOS_CANCELABLES.includes(s.estado),
         canceladaEn: cancelacion?.fecha_cancelacion ?? null,
