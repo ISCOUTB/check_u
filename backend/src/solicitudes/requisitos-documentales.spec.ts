@@ -31,10 +31,11 @@ describe('requisitos documentales por tipo de solicitud', () => {
       'estampilla_pro_cultura-2',
       'saber_pro',
     ]);
-    expect(claves('POSGRADO', false)).toEqual([
+    expect(claves('POSGRADO', true)).toEqual([
       'identification',
       'paz_y_salvo_bib',
       'estampilla_pro_cultura',
+      'estampilla_pro_cultura-2',
     ]);
     // Tarea 50: Paz y Salvo no se sube, así que el máximo de PDF es 6 (doble programa).
     expect(MAXIMO_DOCUMENTOS).toBe(6);
@@ -55,15 +56,26 @@ describe('requisitos documentales por tipo de solicitud', () => {
       'identification',
       'estampilla_pro_cultura',
     ]);
+    expect(subir('POSGRADO', true)).toEqual([
+      'identification',
+      'estampilla_pro_cultura',
+      'estampilla_pro_cultura-2',
+    ]);
     const paz = documentosRequeridos('POSGRADO', false).find(
       (d) => d.tipo === 'paz_y_salvo_bib',
     );
     expect(paz?.origen).toBe('consulta');
   });
 
-  it('posgrado ignora el doble programa', () => {
-    expect(tipoSolicitud('POSGRADO', true)).toBe('POSGRADO');
-    expect(claves('POSGRADO', true)).toEqual(claves('POSGRADO', false));
+  it('posgrado con doble programa exige segunda estampilla (H-08)', () => {
+    expect(tipoSolicitud('POSGRADO', false)).toBe('POSGRADO');
+    expect(tipoSolicitud('POSGRADO', true)).toBe('POSGRADO_DOBLE_PROGRAMA');
+    expect(claves('POSGRADO', true)).toEqual([
+      'identification',
+      'paz_y_salvo_bib',
+      'estampilla_pro_cultura',
+      'estampilla_pro_cultura-2',
+    ]);
     expect(tipoSolicitud('PREGRADO', true)).toBe('PREGRADO_DOBLE_PROGRAMA');
     expect(tipoSolicitud('PREGRADO', false)).toBe('PREGRADO_UN_PROGRAMA');
   });
