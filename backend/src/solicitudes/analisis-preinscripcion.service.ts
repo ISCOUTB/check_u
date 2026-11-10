@@ -162,7 +162,7 @@ export class AnalisisPreinscripcionService {
         if (respuesta.errores.length) {
           // Un error de ejecución no es evidencia de que el documento sea inválido. Se revierte el envío.
           throw new BadGatewayException(
-            'No fue posible completar el análisis de un documento. Tu borrador se conserva; revisa los PDF e intenta nuevamente.',
+            'No fue posible completar el análisis de un documento.',
           );
         }
         const validado = DocumentValidationResult.safeParse(

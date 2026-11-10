@@ -207,7 +207,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                 return; // Sigue "Enviando…" hasta que la página se va.
             }
             setConfirmando(false);
-            setResumen({ motivos: resultado.motivos });
+            setResumen({ motivos: resultado.motivos, esErrorServicio: resultado.esErrorServicio });
         } catch {
             setErrorEnvio(true);
         }

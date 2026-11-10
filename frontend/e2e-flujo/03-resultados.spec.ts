@@ -132,5 +132,12 @@ test.describe("Escenarios 4 a 7: resultado de la solicitud", () => {
             description: sql("SELECT id_solicitud, estado FROM solicitud_grado").join(", ") || "sin solicitudes",
         });
         await motor("real");
+
+        expect(error).toContain("No fue posible completar el análisis en este momento");
+        expect(error).toContain("Tu borrador y lo escrito se conservan");
+        expect(error).not.toContain("resultados anteriores");
+        expect(error.toLowerCase()).not.toContain("corrige");
+        expect(sql("SELECT estado FROM solicitud_grado ORDER BY id_solicitud DESC LIMIT 1")[0]).toBe("BORRADOR");
+        await expect(page.locator("#campo-nombres")).toHaveValue("Ana");
     });
 });

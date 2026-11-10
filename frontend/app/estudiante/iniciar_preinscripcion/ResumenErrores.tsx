@@ -6,7 +6,9 @@ import type { CampoFaltante } from "./validacion";
 import styles from "./ResumenErrores.module.css";
 
 /** Lo que muestra el resumen: lo que falta para enviar, o los motivos con que se rechazó el envío. */
-export type ContenidoResumen = { faltantes: CampoFaltante[] } | { motivos: string[] };
+export type ContenidoResumen =
+    | { faltantes: CampoFaltante[] }
+    | { motivos: string[]; esErrorServicio?: boolean };
 
 /**
  * Lleva al campo del enlace: muestra su etiqueta (o la pregunta, en un grupo de opciones) bajo la
@@ -41,13 +43,14 @@ export default function ResumenErrores({ contenido }: { contenido: ContenidoResu
         ref.current?.focus({ preventScroll: true });
     }, [contenido]);
 
+    const esServicio = "esErrorServicio" in contenido && Boolean(contenido.esErrorServicio);
     const titulo =
         "faltantes" in contenido ? "Revisa estos campos antes de enviar" : "No se pudo enviar tu preinscripción";
 
     return (
         <div ref={ref} role="alert" aria-labelledby={idTitulo} tabIndex={-1} className={styles.resumen}>
             <h2 id={idTitulo} className={styles.titulo}>
-                <Icono nombre="no_valido" tamano={20} />
+                <Icono nombre={esServicio ? "inconsistente" : "no_valido"} tamano={20} />
                 {titulo}
             </h2>
             {"faltantes" in contenido ? (
@@ -67,7 +70,7 @@ export default function ResumenErrores({ contenido }: { contenido: ContenidoResu
                             <li key={motivo}>{motivo}</li>
                         ))}
                     </ul>
-                    <p className={styles.siguiente}>Corrige lo que se indica y vuelve a enviarla.</p>
+                    {!esServicio && <p className={styles.siguiente}>Corrige lo que se indica y vuelve a enviarla.</p>}
                 </>
             )}
         </div>

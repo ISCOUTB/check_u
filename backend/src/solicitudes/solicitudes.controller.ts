@@ -44,6 +44,12 @@ import type {
   RespuestaSolicitudEstudiante,
 } from './solicitudes.types.js';
 
+export const MENSAJE_ERROR_MOTOR_INICIAL =
+  'No fue posible completar el análisis en este momento. Tu borrador y lo escrito se conservan; puedes intentarlo de nuevo en unos minutos.';
+
+export const MENSAJE_ERROR_MOTOR_REENVIO =
+  'No fue posible completar el análisis. Los resultados anteriores se conservan. Revisa los documentos e intenta nuevamente.';
+
 const esTest =
   process.env.NODE_ENV === 'test' ||
   process.env.VITEST === 'true' ||
@@ -118,13 +124,18 @@ export class SolicitudesController {
     const tipos = body.tipos.split(',');
     if (!archivos?.length || archivos.length !== tipos.length)
       throw new BadRequestException('La cantidad de tipos y PDF no coincide.');
-    return this.ejecutarEnvio(req, res, archivos.length, (informar) =>
-      this.solicitudesService.enviarPreinscripcion(
-        user.id,
-        datos,
-        archivos.map((a, i) => ({ ...a, tipo: tipos[i] })),
-        informar,
-      ),
+    return this.ejecutarEnvio(
+      req,
+      res,
+      archivos.length,
+      (informar) =>
+        this.solicitudesService.enviarPreinscripcion(
+          user.id,
+          datos,
+          archivos.map((a, i) => ({ ...a, tipo: tipos[i] })),
+          informar,
+        ),
+      'inicial',
     );
   }
 
@@ -248,8 +259,13 @@ export class SolicitudesController {
         'Adjunta los PDF seleccionados y sus identificadores.',
       );
     const corregidos = archivos.map((a, i) => ({ ...a, id: ids[i] as number }));
-    return this.ejecutarEnvio(req, res, archivos.length, (informar) =>
-      this.reenvios.reenviar(user.id, id, body.clave!, corregidos, informar),
+    return this.ejecutarEnvio(
+      req,
+      res,
+      archivos.length,
+      (informar) =>
+        this.reenvios.reenviar(user.id, id, body.clave!, corregidos, informar),
+      'reenvio',
     );
   }
 
@@ -258,12 +274,25 @@ export class SolicitudesController {
     res: Response | undefined,
     cantidad: number,
     accion: (informar: InformarAvance) => Promise<T>,
+    tipoEnvio: 'inicial' | 'reenvio' = 'inicial',
   ): Promise<T | void> {
     if (!res) return accion(() => {}); // invocaciones unitarias del controlador
     if (!req.headers.accept?.includes('application/x-ndjson')) {
-      const resultado = await accion(() => {});
-      res.status(201).json(resultado);
-      return;
+      try {
+        const resultado = await accion(() => {});
+        res.status(201).json(resultado);
+        return;
+      } catch (error) {
+        const codigo = error instanceof HttpException ? error.getStatus() : 500;
+        const mensaje =
+          error instanceof HttpException && codigo < 500
+            ? error.message
+            : tipoEnvio === 'inicial'
+              ? MENSAJE_ERROR_MOTOR_INICIAL
+              : MENSAJE_ERROR_MOTOR_REENVIO;
+        res.status(codigo).json({ statusCode: codigo, message: mensaje });
+        return;
+      }
     }
     const flujo = flujoProgreso(res, cantidad);
     try {
@@ -273,7 +302,9 @@ export class SolicitudesController {
       const mensaje =
         error instanceof HttpException && codigo < 500
           ? error.message
-          : 'No fue posible completar el análisis. Los resultados anteriores se conservan. Revisa los documentos e intenta nuevamente.';
+          : tipoEnvio === 'inicial'
+            ? MENSAJE_ERROR_MOTOR_INICIAL
+            : MENSAJE_ERROR_MOTOR_REENVIO;
       flujo.fallar(mensaje, codigo);
     }
   }
