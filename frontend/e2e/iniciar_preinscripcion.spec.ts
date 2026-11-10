@@ -20,6 +20,10 @@ async function abrir(page: Page, ruta: string): Promise<void> {
     await page.locator('main#contenido:not([aria-busy="true"])').waitFor();
 }
 
+/** Mensajes de la Tarea 47 (#128, texto de la issue #112) para un archivo de 0,1 MB o menos. */
+const RECHAZO_PNG = "Intento subir un archivo PNG de 0,1 MB. Solo se aceptan PDF de máximo 5 MB. Verifica e intenta de nuevo.";
+const RECHAZO_PDF = "Intento subir un archivo PDF de 0,1 MB. Solo se aceptan PDF de máximo 5 MB. Verifica e intenta de nuevo.";
+
 /** La bienvenida solo permanece visible si el estado real es "sin solicitud". */
 async function sinSolicitud(page: Page): Promise<void> {
     await page.route(`${API}/solicitudes/estado`, (ruta) =>
@@ -397,21 +401,22 @@ test.describe("iniciar preinscripción", () => {
         await expect(page.getByRole("heading", { level: 2, name: "Documentos" })).toBeInViewport();
     });
 
-    test("nivel inválido redirige a /estudiante/bienvenida", async ({ page }) => {
+    // Tarea 46 (#123): sin solicitud, el destino de navegación es el inicio, no la bienvenida.
+    test("nivel inválido redirige a /estudiante/home", async ({ page }) => {
         await sesionComo(page, "estudiante");
         await sinSolicitud(page);
         await page.goto(`${RUTA}?nivel=DOCTORADO`);
-        await expect(page).toHaveURL("/estudiante/bienvenida");
+        await expect(page).toHaveURL("/estudiante/home");
     });
 
-    test("sin nivel redirige a /estudiante/bienvenida", async ({ page }) => {
+    test("sin nivel redirige a /estudiante/home", async ({ page }) => {
         await sesionComo(page, "estudiante");
         await sinSolicitud(page);
         await page.goto(RUTA);
-        await expect(page).toHaveURL("/estudiante/bienvenida");
+        await expect(page).toHaveURL("/estudiante/home");
     });
 
-    test("nivel que no coincide con el del usuario redirige a /estudiante/bienvenida", async ({ page }) => {
+    test("nivel que no coincide con el del usuario redirige a /estudiante/home", async ({ page }) => {
         await sesionComo(page, "estudiante");
         await sinSolicitud(page);
         // La ruta registrada después tiene prioridad: este usuario es de posgrado.
@@ -419,7 +424,7 @@ test.describe("iniciar preinscripción", () => {
             ruta.fulfill({ status: 200, json: { user: { ...USUARIOS.estudiante, nivel: "POSGRADO" } } }),
         );
         await page.goto(PREGRADO);
-        await expect(page).toHaveURL("/estudiante/bienvenida");
+        await expect(page).toHaveURL("/estudiante/home");
     });
 
     test("una solicitud ya enviada redirige a /estudiante/preinscripcion", async ({ page }) => {
@@ -522,15 +527,16 @@ test.describe("iniciar preinscripción", () => {
         await abrir(page, PREGRADO);
         const entrada = page.locator("#documento-identification");
 
+        // Tarea 47 (#128): el mensaje dice el tipo y el tamaño del archivo rechazado.
         await entrada.setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: Buffer.from("png") });
-        await expect(zona(page, "identification")).toContainText("Solo se aceptan archivos PDF.");
+        await expect(zona(page, "identification")).toContainText(RECHAZO_PNG);
         await expect(entrada).toHaveAttribute("aria-invalid", "true");
-        await expect(entrada).toHaveAccessibleDescription(/Solo se aceptan archivos PDF\./);
+        await expect(entrada).toHaveAccessibleDescription(/Solo se aceptan PDF de máximo 5 MB\./);
         await expect(zona(page, "identification").getByRole("button", { name: /^Quitar/ })).toHaveCount(0);
 
         // Con extensión .pdf pero de otro tipo, tampoco.
         await entrada.setInputFiles({ name: "foto.pdf", mimeType: "image/png", buffer: Buffer.from("png") });
-        await expect(zona(page, "identification")).toContainText("Solo se aceptan archivos PDF.");
+        await expect(zona(page, "identification")).toContainText(RECHAZO_PDF);
 
         await expect(contador(page)).toHaveText("0 de 4 documentos cargados");
         await expect(indice(page).getByRole("link", { name: /Documentos/ })).toContainText(
@@ -544,7 +550,7 @@ test.describe("iniciar preinscripción", () => {
         // Así la entrega el navegador: el tipo sale de la extensión, aunque los bytes sean de un PNG.
         const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
         await entrada.setInputFiles({ name: "foto.pdf", mimeType: "application/pdf", buffer: png });
-        await expect(zona(page, "identification")).toContainText("Solo se aceptan archivos PDF.");
+        await expect(zona(page, "identification")).toContainText(RECHAZO_PDF);
         await expect(entrada).toHaveAttribute("aria-invalid", "true");
         await expect(contador(page)).toHaveText("0 de 4 documentos cargados");
     });
@@ -566,7 +572,7 @@ test.describe("iniciar preinscripción", () => {
         const entrada = page.locator("#documento-identification");
         const aviso = page.locator('#seccion-documentos [aria-live="polite"]');
         const png = { name: "foto.png", mimeType: "image/png", buffer: Buffer.from("png") };
-        const texto = "Cédula de ciudadanía: Solo se aceptan archivos PDF.";
+        const texto = `Cédula de ciudadanía: ${RECHAZO_PNG}`;
 
         await entrada.setInputFiles(png);
         await expect(aviso).toHaveText(texto);

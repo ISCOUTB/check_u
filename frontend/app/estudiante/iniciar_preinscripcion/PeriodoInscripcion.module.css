@@ -35,9 +35,9 @@
     margin-top: 0.75rem;
     padding: 0.75rem 1rem;
     border-radius: 0.5rem;
-    background: var(--status-invalid-bg, #fef2f2);
-    border: 1px solid var(--status-invalid-mark, #fecaca);
-    color: var(--status-invalid-text, #991b1b);
+    background: var(--status-invalid-bg);
+    border: 1px solid var(--status-invalid-mark);
+    color: var(--status-invalid-text);
 }
 
 .alertaSinPeriodo p {

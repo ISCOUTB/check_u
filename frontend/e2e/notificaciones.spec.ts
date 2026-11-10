@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { API, sesionComo, revisarAxe } from "./soporte";
+import { API, conSolicitudReciente, sesionComo, revisarAxe } from "./soporte";
 
 const avisos = [
     {
@@ -173,6 +173,7 @@ test("un error de notificaciones no bloquea el home y permite reintentar", async
     page,
 }) => {
     await sesionComo(page, "estudiante");
+    await conSolicitudReciente(page);
     let fallar = true;
     await page.route(`${API}/estudiante/notificaciones`, (r) =>
         fallar
@@ -204,6 +205,7 @@ test("una consulta detenida termina con un mensaje y mantiene el resto del home 
     page,
 }) => {
     await sesionComo(page, "estudiante");
+    await conSolicitudReciente(page);
     await page.clock.install();
     let liberar!: () => void;
     const espera = new Promise<void>((r) => {

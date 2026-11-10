@@ -107,10 +107,8 @@ export default function Home() {
   const idReciente = resumenListado?.reciente?.id ?? null;
 
   useEffect(() => {
-    if (!idReciente) {
-      setDetalle(null);
-      return;
-    }
+    // Sin solicitud reciente no hay detalle que pedir; detalleVigente ya queda en null.
+    if (!idReciente) return;
 
     const ac = new AbortController();
     let vigente = true;

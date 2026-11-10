@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ANCHOS, revisarAxe, revisarPagina, sesionComo, TEMAS } from "./soporte";
+import { ANCHOS, conSolicitudReciente, revisarAxe, revisarPagina, sesionComo, TEMAS } from "./soporte";
 
 const INICIO = "/estudiante/home";
 
@@ -25,6 +25,7 @@ test.describe("inicio del estudiante", () => {
 
     test("los estados se leen como texto, no solo como color", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await conSolicitudReciente(page);
         await page.goto(INICIO);
         for (const etiqueta of ["Válido", "Por revisar", "Falta cargar"])
             await expect(page.locator("[data-estado]", { hasText: etiqueta }).first()).toBeVisible();
@@ -32,6 +33,7 @@ test.describe("inicio del estudiante", () => {
 
     test("la barra de progreso expone su valor", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await conSolicitudReciente(page);
         await page.goto(INICIO);
         const barra = page.getByRole("progressbar");
         await expect(barra).toHaveAttribute("aria-valuemin", "0");

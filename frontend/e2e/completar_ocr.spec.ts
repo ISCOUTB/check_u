@@ -89,6 +89,10 @@ test('el primer envío confirma el resultado antes de redirigir', async ({ page 
   await page.getByLabel('Ciudad o municipio (obligatorio)').fill('Cartagena');
   await page.getByLabel('Dirección (obligatorio)').fill('Calle de ejemplo 1');
   await page.getByRole('radiogroup', {name:'¿Posee alguna discapacidad?'}).getByRole('radio',{name:'No'}).check();
+  // Tarea 54 (#162): en posgrado los estudios son obligatorios.
+  await page.locator('#campo-nivel-estudios').selectOption({index: 1});
+  await page.locator('#campo-titulo-obtenido').fill('Ingeniera de prueba');
+  await page.getByRole('radiogroup', {name:'¿Eres egresado o egresada de un pregrado de la UTB?'}).getByRole('radio',{name:'No'}).check();
   for (const id of ['identification','estampilla_pro_cultura']) { // Tarea 50: Paz y Salvo no se sube
     await page.locator(`#documento-${id}`).setInputFiles({name:`${id}.pdf`,mimeType:'application/pdf',buffer:Buffer.from(PDF)});
   }

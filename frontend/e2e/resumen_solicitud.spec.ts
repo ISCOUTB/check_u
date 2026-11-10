@@ -11,7 +11,7 @@ import type {
     DocumentoSolicitud,
     EstadoDocumento,
 } from "@/app/estudiante/preinscripcion/types";
-import { API, DETALLE_ESTUDIANTE, PERIODO_DEMO, sesionComo } from "./soporte";
+import { conSolicitudReciente, DETALLE_ESTUDIANTE, PERIODO_DEMO, sesionComo } from "./soporte";
 
 // Lógica pura y presentación de "Mi solicitud de grado" (issue #105).
 
@@ -74,15 +74,21 @@ test.describe("resumen documental de la solicitud", () => {
         expect(progresoRequisitos(requisitos)).toEqual({ validos: 1, total: 7 });
     });
 
-    test("posgrado exige 3 requisitos y no duplica la estampilla", () => {
-        const requisitos = construirRequisitos("POSGRADO", true, []);
-
-        expect(requisitos.map((requisito) => requisito.clave)).toEqual([
+    test("posgrado exige 3 requisitos y, con doble programa, una segunda estampilla", () => {
+        expect(construirRequisitos("POSGRADO", false, []).map((requisito) => requisito.clave)).toEqual([
             "identification",
             "paz_y_salvo_bib",
             "estampilla_pro_cultura",
         ]);
-        expect(progresoRequisitos(requisitos)).toEqual({ validos: 0, total: 3 });
+        // Tarea 62 (#182, H-08): en posgrado cada programa lleva su estampilla.
+        const requisitos = construirRequisitos("POSGRADO", true, []);
+        expect(requisitos.map((requisito) => requisito.clave)).toEqual([
+            "identification",
+            "paz_y_salvo_bib",
+            "estampilla_pro_cultura",
+            "estampilla_pro_cultura-2",
+        ]);
+        expect(progresoRequisitos(requisitos)).toEqual({ validos: 0, total: 4 });
     });
 
     test("un documento solo es válido si todas sus comprobaciones lo son", () => {
@@ -171,6 +177,7 @@ test.describe("resumen documental de la solicitud", () => {
 test.describe("Mi solicitud de grado en el inicio", () => {
     test("muestra el periodo, el progreso y las observaciones reales", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await conSolicitudReciente(page);
         await page.goto("/estudiante/home");
 
         const tarjeta = page.locator("#mi-solicitud");
@@ -204,9 +211,7 @@ test.describe("Mi solicitud de grado en el inicio", () => {
         };
 
         await sesionComo(page, "estudiante");
-        await page.route(`${API}/estudiante/solicitud/analisis`, (ruta) =>
-            ruta.fulfill({ status: 200, json: detalleDoble }),
-        );
+        await conSolicitudReciente(page, detalleDoble);
         await page.goto("/estudiante/home");
 
         const tarjeta = page.locator("#mi-solicitud");
@@ -225,9 +230,7 @@ test.describe("Mi solicitud de grado en el inicio", () => {
         };
 
         await sesionComo(page, "estudiante");
-        await page.route(`${API}/estudiante/solicitud/analisis`, (ruta) =>
-            ruta.fulfill({ status: 200, json: detallePosgrado }),
-        );
+        await conSolicitudReciente(page, detallePosgrado);
         await page.goto("/estudiante/home");
 
         const tarjeta = page.locator("#mi-solicitud");
@@ -240,12 +243,17 @@ test.describe("Mi solicitud de grado en el inicio", () => {
 
     test("los requisitos faltantes y corregibles enlazan a la preinscripción", async ({ page }) => {
         await sesionComo(page, "estudiante");
+        await conSolicitudReciente(page);
         await page.goto("/estudiante/home");
 
         const subir = page.getByRole("link", {
-            name: "Subir documento: Paz y Salvo de Biblioteca",
+            name: "Subir documento: Resultados Saber Pro",
         });
         await expect(subir).toHaveAttribute("href", "/estudiante/preinscripcion");
+        // Tarea 50 (#129): el Paz y Salvo se consulta con Biblioteca; no se sube.
+        await expect(
+            page.getByRole("link", { name: "Subir documento: Paz y Salvo de Biblioteca" }),
+        ).toHaveCount(0);
 
         const corregir = page.getByRole("link", {
             name: "Subir nueva versión: Estampilla Pro-Cultura",
@@ -255,9 +263,7 @@ test.describe("Mi solicitud de grado en el inicio", () => {
 
     test("un fallo del análisis documental no inventa requisitos y permite reintentar", async ({ page }) => {
         await sesionComo(page, "estudiante");
-        await page.route(`${API}/estudiante/solicitud/analisis`, (ruta) =>
-            ruta.fulfill({ status: 503, json: { message: "Base de datos no disponible" } }),
-        );
+        await conSolicitudReciente(page, { message: "Base de datos no disponible" }, 503);
         await page.goto("/estudiante/home");
 
         const tarjeta = page.locator("#mi-solicitud");
