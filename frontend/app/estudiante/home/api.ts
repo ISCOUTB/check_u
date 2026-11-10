@@ -23,6 +23,8 @@ export interface Notificacion {
     tipo: "success" | "warning" | "error" | "info";
     generadoPor: "system" | "motor" | "funcionario";
     leida: boolean;
+    solicitudId: string | null;
+    documentoId: string | null;
     /** ISO 8601 en zona America/Bogota */
     fecha: string;
 }
@@ -62,8 +64,11 @@ async function consultarNotificaciones(
 /** Solo recupera avisos persistidos del estudiante autenticado; nunca usa datos de demostración. */
 export async function obtenerNotificaciones(
     signal?: AbortSignal,
+    completas = false,
 ): Promise<Notificacion[]> {
-    const datos = (await consultarNotificaciones("", "GET", signal)) as {
+    const datos = (await consultarNotificaciones(
+        completas ? "?completas=1" : "", "GET", signal,
+    )) as {
         notificaciones?: unknown;
     };
     if (!Array.isArray(datos?.notificaciones))
@@ -87,6 +92,8 @@ export async function obtenerNotificaciones(
             id: n.id,
             titulo: n.titulo,
             descripcion: n.msg,
+            solicitudId: typeof n.solicitudId === "string" && /^[1-9]\d*$/.test(n.solicitudId) ? n.solicitudId : null,
+            documentoId: typeof n.documentoId === "string" && /^[1-9]\d*$/.test(n.documentoId) ? n.documentoId : null,
             fecha: n.creadoEn,
             tipo: n.tipo as Notificacion["tipo"],
             generadoPor: n.generado_por as Notificacion["generadoPor"],
