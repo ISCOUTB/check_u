@@ -113,6 +113,7 @@ export default function BarraAcciones({
             Guardar para continuar después
           </Button>
           <Button
+            variante="primario"
             cargando={enviando}
             textoCargando="Enviando…"
             conservarFoco
