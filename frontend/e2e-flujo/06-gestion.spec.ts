@@ -123,7 +123,10 @@ test.describe("Escenario 14: anulación por la funcionaria", () => {
         const funcionaria = await sesion(browser, FUNCIONARIA);
         await abrirDetalle(funcionaria, id, "Acciones");
         await captura(funcionaria, "14-a-acciones-antes-de-anular");
-        await accionRevision(funcionaria, id, "anulada", "Motivo de anulación de prueba.");
+        const motivo = "La anulación responde a una decisión administrativa. " +
+            "Los documentos se mantienen en el expediente para su consulta. ".repeat(5) +
+            "Fin del motivo de prueba.";
+        await accionRevision(funcionaria, id, "anulada", motivo);
         await captura(funcionaria, "14-b-solicitud-anulada");
         expect(estadoSolicitud(id)).toBe("CERRADA");
 
@@ -131,12 +134,17 @@ test.describe("Escenario 14: anulación por la funcionaria", () => {
         await page.context().clearCookies();
         await entrar(page, ESTUDIANTE);
         await verInicioEstudiante(page, "14-c-estudiante-tras-anular");
-        await expect(page.getByRole("main")).toContainText(/Anulada/);
-        await expect.soft(page.getByRole("main"), "El estudiante debe ver la información asociada a la anulación.").toContainText("Motivo de anulación de prueba", { timeout: 3000 });
+        const tarjeta = page.locator("#mi-solicitud");
+        await expect(tarjeta).toContainText("Anulada");
+        await expect(tarjeta).toContainText(`Motivo de anulación: ${motivo}`);
+        const aviso = page.getByRole("region", { name: "Notificaciones", exact: true })
+            .getByRole("listitem").filter({ hasText: "Solicitud anulada" });
+        await expect(aviso).toContainText(`Tu solicitud de grado fue anulada. Motivo: ${motivo}`);
+        await expect(aviso).not.toContainText("Incumpliste ciertos requisitos");
 
         await abrirDetalle(funcionaria, id, "Historial");
         await expect(funcionaria.getByRole("tabpanel")).toContainText("Solicitud anulada");
-        await expect(funcionaria.getByRole("tabpanel")).toContainText("Motivo de anulación de prueba.");
+        await expect(funcionaria.getByRole("tabpanel")).toContainText(motivo);
         await captura(funcionaria, "14-d-historial-anulacion");
         expect(sql(`SELECT resultado FROM revisiones WHERE id_solicitud=${id}`)).toContain("RECHAZADA");
     });
