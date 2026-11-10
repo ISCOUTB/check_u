@@ -7,7 +7,7 @@ import Button from '@/app/components/ui/Button';
 import Card from '@/app/components/ui/Card';
 import StatusBadge from '@/app/components/ui/StatusBadge';
 import type { SolicitudListado } from '../solicitudes/listado';
-import { presentarEstado } from '../solicitudes/listado';
+import { enCurso, presentarEstado } from '../solicitudes/listado';
 import type { SolicitudDetalle } from './api';
 import { useConsultaPazYSalvo } from '../preinscripcion/useConsultaPazYSalvo';
 import {
@@ -218,7 +218,7 @@ export default function TarjetaSolicitudReciente({
         </Button>
       }
     >
-      {!resumenListado.reciente.activa && (
+      {!enCurso(resumenListado.reciente) && (
         <p className={styles.textoSecundario}>
           Estado:{' '}
           <StatusBadge
