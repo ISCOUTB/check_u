@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
     abrirDetalle, abrirPreinscripcion, alma, captura, documentosEnBd, entrar, ESTUDIANTE, estadoSolicitud, FUNCIONARIA,
-    motor, preinscribir, reiniciar, sesion, sql,
+    motor, NOMBRES, preinscribir, reiniciar, sesion, sql,
 } from "./soporte";
 
 // Escenarios 4 a 7 de la #133: resultado de la solicitud. Como no hay documentos reales válidos, los que
@@ -138,6 +138,6 @@ test.describe("Escenarios 4 a 7: resultado de la solicitud", () => {
         expect(error).not.toContain("resultados anteriores");
         expect(error.toLowerCase()).not.toContain("corrige");
         expect(sql("SELECT estado FROM solicitud_grado ORDER BY id_solicitud DESC LIMIT 1")[0]).toBe("BORRADOR");
-        await expect(page.locator("#campo-nombres")).toHaveValue("Ana");
+        await expect(page.locator("#campo-nombres")).toHaveValue(NOMBRES);
     });
 });

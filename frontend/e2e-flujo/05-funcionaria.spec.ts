@@ -23,7 +23,9 @@ const SIEMBRA: SolicitudSembrada[] = [
 function sembrarDashboard(): void {
     sql(`INSERT INTO periodos_grado (nombre, fecha_inicio, fecha_fin, fecha_graduacion) VALUES
         ('${A}', CURRENT_DATE - 30, CURRENT_DATE + 40, CURRENT_DATE + 60),
-        ('${B}', CURRENT_DATE - 25, CURRENT_DATE + 45, CURRENT_DATE + 65);`);
+        ('${B}', CURRENT_DATE - 5, CURRENT_DATE + 45, CURRENT_DATE + 65);`);
+    // Tarea 63 (#177): el dashboard abre en el periodo con la fecha de inicio más reciente. B empieza
+    // después que «Grados de prueba», el periodo que crea reiniciar().
     sembrar(SIEMBRA);
 }
 

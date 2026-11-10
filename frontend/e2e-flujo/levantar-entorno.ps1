@@ -52,8 +52,10 @@ docker run -d --name checku-t53-motor -p 127.0.0.1:5013:5001 -e ALMA_MODO=simula
     -e ALMA_SIMULACION_ARCHIVO=/datos/alma/alma_simulacion.json -v "${datos}:/datos/alma:ro" $imagen | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo iniciar el motor.' }
 
+# NODE_ENV=test solo apaga los límites de frecuencia del backend: la suite sale de una sola IP y,
+# con el límite general, /auth/me responde 429 a los pocos minutos. Los límites tienen su propia prueba en el backend (#190).
 $backend = @"
-`$env:PORT='3000'; `$env:NODE_ENV='development'
+`$env:PORT='3000'; `$env:NODE_ENV='test'
 `$env:DB_HOST='127.0.0.1'; `$env:DB_PORT='5443'; `$env:DB_USER='checku'; `$env:DB_PASSWORD='checku_t53_pruebas'; `$env:DB_NAME='checku_local'
 `$env:MOTOR_URL='http://127.0.0.1:5014'; `$env:MOTOR_TIMEOUT_MS='120000'
 `$env:AUTH_ESTUDIANTE_USERNAME='estudiante@ejemplo.edu.co'; `$env:AUTH_ESTUDIANTE_PASSWORD='flujo-estudiante'; `$env:AUTH_ESTUDIANTE_NAME='Estudiante Prueba'
