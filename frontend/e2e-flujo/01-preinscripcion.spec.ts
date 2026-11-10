@@ -20,42 +20,54 @@ import {
 // Escenarios 1 y 2 de la #133: preinscripción de pregrado y de posgrado, con uno y dos programas.
 // Motor real con PDF inventados: los validadores reales los rechazan; Paz y Salvo sale de ALMA simulado.
 
-const PREGRADO_UNO = [
-  'identification',
-  'academic_evaluation',
-  'estampilla_pro_cultura',
-  'saber_pro',
-];
-const PREGRADO_DOS = [
-  'identification',
-  'academic_evaluation',
-  'academic_evaluation-2',
-  'estampilla_pro_cultura',
-  'estampilla_pro_cultura-2',
-  'saber_pro',
-];
+const PREGRADO_UNO = ["identification", "academic_evaluation", "estampilla_pro_cultura", "saber_pro"];
+const PREGRADO_DOS = ["identification", "academic_evaluation", "academic_evaluation-2", "estampilla_pro_cultura", "estampilla_pro_cultura-2", "saber_pro"];
 
-test.describe('Escenario 1: preinscripción de pregrado', () => {
-  test.beforeEach(reiniciar);
+test.describe("Escenario 1: preinscripción de pregrado", () => {
+    test.beforeEach(reiniciar);
 
-  test('E1.1 un programa: pide 4 documentos, muestra el progreso y los resultados', async ({
-    page,
-  }) => {
-    await entrar(page, ESTUDIANTE);
-    await expect(page).toHaveURL(/\/estudiante\/home/);
-    await expect(
-      page.getByRole('link', { name: 'Nueva preinscripción' }).first(),
-    ).toBeVisible();
-    await captura(page, '01-a-estudiante-nuevo-inicio');
+    test("E1.1 un programa: pide 4 documentos, muestra el progreso y los resultados", async ({ page }) => {
+        await entrar(page, ESTUDIANTE);
+        await expect(page).toHaveURL(/\/estudiante\/home/);
+        await expect(page.getByRole("link", { name: "Nueva preinscripción" }).first()).toBeVisible();
+        await captura(page, "01-a-estudiante-nuevo-inicio");
 
-    await abrirFormulario(page, 'pregrado');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-      'Preinscripción de grado · Pregrado',
-    );
-    await llenarDatos(page);
-    expect(await documentosPedidos(page)).toEqual(PREGRADO_UNO);
-    await adjuntarTodos(page);
-    await captura(page, '01-b-formulario-pregrado-un-programa');
+        await abrirFormulario(page, "pregrado");
+        await expect(page.getByRole("heading", { level: 1 })).toHaveText("Preinscripción de grado · Pregrado");
+        await llenarDatos(page);
+        expect(await documentosPedidos(page)).toEqual(PREGRADO_UNO);
+        await adjuntarTodos(page);
+        await captura(page, "01-b-formulario-pregrado-un-programa");
+
+        await enviar(page, async (p) => {
+            await expect(p.getByRole("progressbar").or(p.getByText(/Analizando|Consultando|Generando|Guardando/).first()).first()).toBeVisible();
+            await captura(p, "01-c-progreso-analisis", false);
+        });
+        await captura(page, "01-d-resultado-tras-enviar");
+        await expect(page.locator("section[aria-label='Datos del estudiante']")).toContainText("Ingeniería de Sistemas y Computación");
+        await expect(page.locator("section[aria-label='Datos del estudiante']")).not.toContainText("INGENIERIA_DE_SISTEMAS_Y_COMPUTACION");
+
+        // Tarea 67 (H-13): una sola etiqueta por documento y tildes del motor
+        for (const item of await page.locator("li[class*='alertaItem']").all()) {
+            await expect(item.locator("div[class*='alertaChips'] [class*='badge']")).toHaveCount(1);
+        }
+        await expect(page.locator("body")).not.toContainText("resolucion");
+        await expect(page.locator("body")).not.toContainText("numero ni el nombre");
+
+        const id = Number(sql("SELECT max(id_solicitud) FROM solicitud_grado")[0]);
+        const docs = documentosEnBd(id);
+        expect(Object.keys(docs).sort()).toEqual([...PREGRADO_UNO, "paz_y_salvo_bib"].sort());
+        expect(docs.paz_y_salvo_bib).toBe("VALIDO");
+        expect(docs.identification).not.toBe("VALIDO");
+        await page.goto("/estudiante/home");
+        // Tarea 67 (H-13): sin panel «Antes de enviar» ni texto de iniciar nueva con solicitud activa
+        await expect(page.getByText("Antes de enviar")).toHaveCount(0);
+        await expect(page.locator("section[aria-labelledby='titulo-bienvenida']")).not.toContainText("iniciar una nueva preinscripción");
+        const tarjeta = page.locator("#mi-solicitud");
+        await expect(tarjeta).toContainText("Paz y Salvo de Biblioteca");
+        await expect(tarjeta.getByRole("button", { name: /Subir nueva versión/ }).first().or(tarjeta.getByRole("link", { name: /Subir nueva versión/ }).first()).first()).toBeVisible();
+        await captura(page, "01-e-inicio-con-resultados");
+    });
 
     await enviar(page, async (p) => {
       await expect(

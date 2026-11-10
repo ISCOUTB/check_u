@@ -262,9 +262,9 @@ def leer(
         # usuario si el numero es confiable.
         if not _nacionalidad_parece(info.nationality or ""):
             lectura.avisos.append(
-                f"Nacionalidad leida: '{info.nationality}' (distinta de 'COL'). "
-                "Puede ser un documento de un extranjero, o el MRZ se leyo "
-                "corrido/desalineado; en ese caso conviene revisar el numero "
+                f"Nacionalidad leída: '{info.nationality}' (distinta de 'COL'). "
+                "Puede ser un documento de un extranjero, o el MRZ se leyó "
+                "corrido/desalineado; en ese caso conviene revisar el número "
                 "de documento a mano."
             )
 
@@ -301,9 +301,9 @@ def leer(
         actual = lectura.numero_documento.valor
         if actual and numero_etiqueta.valor != actual:
             lectura.avisos.append(
-                f"El numero leido en el frente ('{numero_etiqueta.valor}') no "
+                f"El número leído en el frente ('{numero_etiqueta.valor}') no "
                 f"coincide con el del MRZ ('{actual}'). Se usa el del frente: "
-                "el MRZ se desalinea entero si el OCR pierde un caracter."
+                "el MRZ se desalinea entero si el OCR pierde un carácter."
             )
             lectura.numero_documento = numero_etiqueta
         elif not actual:

@@ -122,6 +122,26 @@ function iniciales(nombre: string): string {
 }
 
 /** El modal utiliza exclusivamente la evidencia persistida del motor. */
+function estadoDocumento(doc: DocumentoSolicitud): EstadoDocumento {
+  if (doc.estado) {
+    const norm = doc.estado.toLowerCase();
+    if (
+      norm === 'valido' ||
+      norm === 'no_valido' ||
+      norm === 'inconsistente' ||
+      norm === 'por_revisar'
+    ) {
+      return norm as EstadoDocumento;
+    }
+  }
+  const estados = doc.resultados.map((r) => r.estado);
+  if (estados.includes('no_valido')) return 'no_valido';
+  if (estados.includes('inconsistente')) return 'inconsistente';
+  if (estados.length === 0 || estados.includes('por_revisar'))
+    return 'por_revisar';
+  return 'valido';
+}
+
 function analisisPersistido(doc: DocumentoSolicitud): DocumentAnalysisData {
   const estados: Record<EstadoDocumento, DocumentAnalysisData['status']> = {
     valido: 'VALIDO',
@@ -132,14 +152,7 @@ function analisisPersistido(doc: DocumentoSolicitud): DocumentAnalysisData {
   return {
     documentType: doc.nombre,
     fileName: doc.fileName ?? doc.nombre,
-    status:
-      estados[
-        doc.resultados.find(
-          (r) => r.estado === 'no_valido' || r.estado === 'inconsistente',
-        )?.estado ??
-          doc.resultados[0]?.estado ??
-          'por_revisar'
-      ],
+    status: estados[estadoDocumento(doc)],
     privateDocumentUrl:
       doc.archivoDisponible && doc.id
         ? `${API_URL}/estudiante/documentos/${encodeURIComponent(doc.id)}/original`
@@ -385,11 +398,11 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
         }
       : derivarEstadoGeneral(documentos);
   const reenviosRestantes = Math.max(0, politicaReenvios.limite - politicaReenvios.usados);
-  const docsConProblema = documentos.filter((d) =>
-    d.resultados.some((r) => r.estado !== 'valido'),
+  const docsConProblema = documentos.filter(
+    (d) => estadoDocumento(d) !== 'valido',
   );
-  const docsValidos = documentos.filter((d) =>
-    d.resultados.every((r) => r.estado === 'valido'),
+  const docsValidos = documentos.filter(
+    (d) => estadoDocumento(d) === 'valido',
   );
   const seleccionadosList = Object.keys(seleccionados);
   const puedeEnviar =
@@ -685,9 +698,7 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
                       <div className={styles.alertaMain}>
                         <strong>{doc.nombre}</strong>
                         <div className={styles.alertaChips}>
-                          {doc.resultados.map((r, i) => (
-                            <StatusBadge key={i} estado={r.estado} />
-                          ))}
+                          <StatusBadge estado={estadoDocumento(doc)} />
                         </div>
                         <p className={styles.alertaMsg}>
                           {doc.resultados.map((r) => r.mensaje).join(' ')}
@@ -735,9 +746,7 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
                       </div>
                     </div>
                     <div className={styles.alertaChips}>
-                      {doc.resultados.map((r, i) => (
-                        <StatusBadge key={i} estado={r.estado} />
-                      ))}
+                      <StatusBadge estado={estadoDocumento(doc)} />
                     </div>
                   </li>
                 ))}
@@ -795,9 +804,7 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
                       <h3>{doc.nombre}</h3>
                       {doc.version && <span>Versión {doc.version}</span>}
                       <div className={styles.alertaChips}>
-                        {doc.resultados.map((r, i) => (
-                          <StatusBadge key={i} estado={r.estado} />
-                        ))}
+                        <StatusBadge estado={estadoDocumento(doc)} />
                       </div>
                     </div>
 

@@ -7,12 +7,24 @@ import styles from './home.module.css';
 interface TarjetaAvisoProps {
   solicitud: SolicitudDetalle | null | undefined;
   errorSolicitud: string | null;
+  enviada?: boolean;
 }
 
 export default function TarjetaAviso({
   solicitud,
   errorSolicitud,
+  enviada,
 }: TarjetaAvisoProps) {
+  const fueEnviada =
+    enviada ??
+    Boolean(
+      solicitud?.estadoSolicitud && solicitud.estadoSolicitud !== 'BORRADOR',
+    );
+
+  if (fueEnviada) {
+    return null;
+  }
+
   const politica = solicitud?.politicaReenvios ?? null;
 
   return (

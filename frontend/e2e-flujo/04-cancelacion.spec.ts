@@ -34,6 +34,9 @@ test.describe("Escenario 8: cancelación por el estudiante", () => {
         // El periodo queda deshabilitado para ese estudiante.
         await abrirFormulario(page, "pregrado");
         await expect(page.getByText("Sin periodo disponible")).toBeVisible();
+        await expect(page.getByRole("alert").filter({ hasText: /periodo de inscripción disponible/i })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Enviar preinscripción" })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Guardar para continuar después" })).toBeEnabled();
         await captura(page, "08-d-periodo-deshabilitado", false);
 
         // Estado e historial del estudiante.

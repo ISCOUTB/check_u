@@ -18,6 +18,7 @@ export interface BarraAccionesProps {
     errorGuardado: string | null;
     alGuardar: () => void;
     alEnviar: () => void;
+    deshabilitarEnvio?: boolean;
 }
 
 /**
@@ -37,6 +38,7 @@ export default function BarraAcciones({
     errorGuardado,
     alGuardar,
     alEnviar,
+    deshabilitarEnvio = false,
 }: BarraAccionesProps) {
     const ref = useRef<HTMLDivElement>(null);
 
@@ -98,7 +100,7 @@ export default function BarraAcciones({
                         cargando={enviando}
                         textoCargando="Enviando…"
                         conservarFoco
-                        disabled={guardando}
+                        disabled={guardando || deshabilitarEnvio}
                         onClick={alEnviar}
                     >
                         Enviar preinscripción

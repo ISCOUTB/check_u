@@ -168,6 +168,18 @@ def test_sin_paginas():
     assert all(v == NULO for v in extraccion.datos.values())
 
 
+def test_errores_cedula_llevan_tildes():
+    error_esperado = (
+        "No se pudo leer ni el número ni el nombre del documento. "
+        "Puede que no sea una cédula, o que la imagen tenga muy poca resolución."
+    )
+    extraccion = desde_lectura(lectura(campos={}, errores=[error_esperado]))
+    assert extraccion.errores == [error_esperado]
+    assert "número" in extraccion.errores[0]
+    assert "cédula" in extraccion.errores[0]
+    assert "resolución" in extraccion.errores[0]
+
+
 def test_muestra_png(requiere_tesseract, png):
     extraccion = extraer(cargar_paginas(png))
     assert {k: v["value"] for k, v in extraccion.datos.items()} == {
