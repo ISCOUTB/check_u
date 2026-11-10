@@ -2,38 +2,28 @@ import { UnauthorizedException } from '@nestjs/common';
 import type { DatabaseService } from '../database/database.service.js';
 import { AuthService } from './auth.service.js';
 
-// La contraseña del estudiante siempre viene de AUTH_ESTUDIANTE_PASSWORD.
 const TREINTA_MINUTOS = 30 * 60 * 1000;
 
-function obligatorio(nombre: string): string {
-  const valor = process.env[nombre]?.trim();
-  if (!valor) {
-    throw new Error(
-      `Falta ${nombre} para los tests de AuthService. Defínela en backend/.env`,
-    );
-  }
-  return valor;
-}
-
 describe('AuthService', () => {
+  const estudianteUser = 'estudiante@f10.example';
+  const estudiantePass = 'prueba-estudiante';
+  const estudianteName = 'Estudiante de Prueba';
+  const funcionarioUser = 'funcionaria@f10.example';
+  const funcionarioPass = 'prueba-funcionaria';
+  const funcionarioName = 'Funcionaria de Prueba';
+  const db = { query: vi.fn() };
   let service: AuthService;
-  let estudianteUser: string;
-  let estudiantePass: string;
-  let estudianteName: string;
-  let funcionarioUser: string;
-  let funcionarioPass: string;
-  let funcionarioName: string;
 
   beforeEach(() => {
-    estudianteUser = obligatorio('AUTH_ESTUDIANTE_USERNAME');
-    estudiantePass = obligatorio('AUTH_ESTUDIANTE_PASSWORD');
-    estudianteName = process.env.AUTH_ESTUDIANTE_NAME?.trim() || 'Estudiante';
-    funcionarioUser = obligatorio('AUTH_FUNCIONARIO_USERNAME');
-    funcionarioPass = obligatorio('AUTH_FUNCIONARIO_PASSWORD');
-    funcionarioName =
-      process.env.AUTH_FUNCIONARIO_NAME?.trim() || 'Funcionario';
-
-    service = new AuthService();
+    vi.stubEnv('AUTH_INIT', 'ENV');
+    vi.stubEnv('AUTH_ESTUDIANTE_USERNAME', estudianteUser);
+    vi.stubEnv('AUTH_ESTUDIANTE_PASSWORD', estudiantePass);
+    vi.stubEnv('AUTH_ESTUDIANTE_NAME', estudianteName);
+    vi.stubEnv('AUTH_FUNCIONARIO_USERNAME', funcionarioUser);
+    vi.stubEnv('AUTH_FUNCIONARIO_PASSWORD', funcionarioPass);
+    vi.stubEnv('AUTH_FUNCIONARIO_NAME', funcionarioName);
+    db.query.mockReset();
+    service = new AuthService(db as unknown as DatabaseService);
   });
 
   afterEach(() => {
@@ -41,8 +31,11 @@ describe('AuthService', () => {
     vi.unstubAllEnvs();
   });
 
-  it('con credenciales válidas crea una sesión y no devuelve la contraseña', () => {
-    const { sessionId, user } = service.login(funcionarioUser, funcionarioPass);
+  it('con credenciales válidas crea una sesión y no devuelve la contraseña', async () => {
+    const { sessionId, user } = await service.login(
+      funcionarioUser,
+      funcionarioPass,
+    );
 
     expect(sessionId).toMatch(/^[0-9a-f]{64}$/);
     expect(user).toEqual({
@@ -54,20 +47,20 @@ describe('AuthService', () => {
     expect(user).not.toHaveProperty('password');
   });
 
-  it('con contraseña incorrecta responde 401', () => {
-    expect(() => service.login(funcionarioUser, 'otra')).toThrow(
+  it('con contraseña incorrecta responde 401', async () => {
+    await expect(service.login(funcionarioUser, 'otra')).rejects.toThrow(
       UnauthorizedException,
     );
   });
 
-  it('con un usuario que no existe responde 401', () => {
-    expect(() =>
+  it('con un usuario que no existe responde 401', async () => {
+    await expect(
       service.login('nadie@ejemplo.edu.co', funcionarioPass),
-    ).toThrow(UnauthorizedException);
+    ).rejects.toThrow(UnauthorizedException);
   });
 
-  it('getUser devuelve el usuario de una sesión vigente', () => {
-    const { sessionId } = service.login(estudianteUser, estudiantePass);
+  it('getUser devuelve el usuario de una sesión vigente', async () => {
+    const { sessionId } = await service.login(estudianteUser, estudiantePass);
 
     expect(service.getUser(sessionId)).toEqual({
       id: 1,
@@ -79,7 +72,7 @@ describe('AuthService', () => {
 
   it('la sesión dura 30 minutos', async () => {
     vi.useFakeTimers();
-    const { sessionId } = service.login(estudianteUser, estudiantePass);
+    const { sessionId } = await service.login(estudianteUser, estudiantePass);
 
     vi.advanceTimersByTime(TREINTA_MINUTOS - 1);
     expect(service.getUser(sessionId)).not.toBeNull();
@@ -92,8 +85,8 @@ describe('AuthService', () => {
     expect(service.getUser('no-existe')).toBeNull();
   });
 
-  it('logout borra la sesión', () => {
-    const { sessionId } = service.login(estudianteUser, estudiantePass);
+  it('logout borra la sesión', async () => {
+    const { sessionId } = await service.login(estudianteUser, estudiantePass);
 
     service.logout(sessionId);
 
@@ -107,9 +100,9 @@ describe('AuthService', () => {
   it('rechaza un AUTH_INIT desconocido en lugar de adivinar el origen', async () => {
     vi.stubEnv('AUTH_INIT', 'LDAP');
 
-    await expect(
-      service.login('lizapata@utb.edu.co', '12345'),
-    ).rejects.toThrow(/AUTH_INIT debe ser ENV o DB/);
+    await expect(service.login('lizapata@utb.edu.co', '12345')).rejects.toThrow(
+      /AUTH_INIT debe ser ENV o DB/,
+    );
   });
 
   describe('con AUTH_INIT=DB', () => {
@@ -148,7 +141,7 @@ describe('AuthService', () => {
     });
 
     it('no consulta la base de datos para el funcionario', async () => {
-      await service.login('rmarriaga@utb.edu.co', '12345');
+      await service.login(funcionarioUser, funcionarioPass);
 
       expect(db.query).not.toHaveBeenCalled();
     });
