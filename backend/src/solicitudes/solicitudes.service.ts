@@ -150,7 +150,7 @@ export class SolicitudesService {
     const datos = validarBorrador(payload);
     const esperados = documentosASubir(
       datos.nivel === 'POSGRADO' ? 'POSGRADO' : 'PREGRADO',
-      datos.nivel !== 'POSGRADO' && datos.segundoPrograma === true,
+      datos.segundoPrograma === true,
     ).map(claveDocumento);
     if (
       archivos.length !== esperados.length ||
@@ -831,7 +831,9 @@ export class SolicitudesService {
       if (preg.es_empleado_utb === null)
         faltantesPregrado.push('responder si es empleado de la UTB');
       if (preg.es_hijo_empleado_utb === null)
-        faltantesPregrado.push('responder si es hijo o hija de un empleado de la UTB');
+        faltantesPregrado.push(
+          'responder si es hijo o hija de un empleado de la UTB',
+        );
       if (faltantesPregrado.length > 0) {
         throw new BadRequestException(
           `Información de pregrado incompleta: falta ${faltantesPregrado.join(', ')}`,

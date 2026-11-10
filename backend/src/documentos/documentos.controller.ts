@@ -10,6 +10,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { DocumentosService } from './documentos.service.js';
 import type { RespuestaAnalisis } from './documentos.types.js';
+import { Throttle } from '@nestjs/throttler';
 
 /** Evita depender de Express.Multer.File (rompe el typecheck en este proyecto). */
 type ArchivoSubido = {
@@ -23,6 +24,7 @@ export class DocumentosController {
   constructor(private readonly documentosService: DocumentosService) {}
 
   @Post('analizar')
+  @Throttle({ uploads: { limit: 8, ttl: 60_000 } })
   @UseInterceptors(
     FilesInterceptor('documentos', 10, {
       storage: memoryStorage(),
