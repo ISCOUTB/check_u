@@ -87,9 +87,11 @@ test.describe("Escenario 11: filtrado de solicitudes", () => {
 
     test("E11 los filtros funcionan solos y combinados", async ({ page }) => {
         await abrirDashboard(page);
-        // Periodo
-        await elegirPeriodo(page, B);
+        // Periodo: al abrir el dashboard carga por defecto el más reciente (Periodo B, Tarea 63)
+        await expect(page.locator("#periodo-grado option:checked")).toContainText(B);
         await expect(filas(page)).toHaveCount(1);
+        await captura(page, "11-d-periodo-por-defecto");
+        // Permite cambiar a cualquier otro periodo
         await elegirPeriodo(page, A);
         // Nivel
         await page.locator("#nivel-academico").selectOption("POSGRADO");
@@ -114,10 +116,6 @@ test.describe("Escenario 11: filtrado de solicitudes", () => {
         await captura(page, "11-c-filtros-combinados");
         await page.getByRole("button", { name: "Limpiar fechas" }).click();
         await expect(filas(page)).toHaveCount(2);
-        // Sin periodo: documenta si se puede consultar sin elegirlo.
-        await page.locator("#periodo-grado").selectOption("");
-        await captura(page, "11-d-sin-periodo");
-        await expect.soft(page.getByRole("heading", { name: "Selecciona un periodo" }), "La #133 pide usar cada filtro individualmente; sin periodo no hay resultados.").toHaveCount(0);
     });
 });
 

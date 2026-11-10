@@ -20,20 +20,17 @@ import styles from "./dashboard.module.css";
 
 type FiltroEstado = "todos" | EstadoSolicitud;
 type EstadoPeriodo = "ABIERTO" | "CERRADO";
-interface Periodo { id: string; nombre: string; fechaInicio: string; fechaFin: string; fechaGraduacion: string; estado: EstadoPeriodo }
+export interface Periodo { id: string; nombre: string; fechaInicio: string; fechaFin: string; fechaGraduacion: string; estado: EstadoPeriodo }
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-function periodoVigente(periodos: Periodo[]): Periodo | null {
-    const ahora = new Date();
-    const hoy = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}`;
-    return periodos
-        .filter((p) => p.estado === "ABIERTO" && p.fechaInicio <= hoy && p.fechaFin >= hoy)
-        .sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio))[0] ?? null;
+export function periodoMasReciente(periodos: Periodo[]): Periodo | null {
+    if (!periodos || periodos.length === 0) return null;
+    return [...periodos].sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio) || a.nombre.localeCompare(b.nombre))[0] ?? null;
 }
 
-function elegirPeriodo(periodos: Periodo[], actual: string): string {
+export function elegirPeriodo(periodos: Periodo[], actual: string): string {
     if (actual && periodos.some((p) => p.id === actual)) return actual;
-    return periodoVigente(periodos)?.id ?? "";
+    return periodoMasReciente(periodos)?.id ?? "";
 }
 
 async function obtenerPeriodos(): Promise<Periodo[]> {
@@ -310,7 +307,7 @@ export default function Dashboard() {
                                         onChange={(e) => setPeriodoId(e.target.value)}
                                         disabled={cargandoPeriodos || periodos.length === 0}
                                     >
-                                        <option value="">{cargandoPeriodos ? "Cargando periodos..." : "Selecciona un periodo"}</option>
+                                        <option value="" disabled hidden={periodos.length > 0}>{cargandoPeriodos ? "Cargando periodos..." : periodos.length === 0 ? "Sin periodos registrados" : "Selecciona un periodo"}</option>
                                         {periodos.map((p) => <option key={p.id} value={p.id}>{p.nombre} · {p.estado} ({p.fechaInicio} – {p.fechaFin})</option>)}
                                     </select>
                                     {errorPeriodos && <p className={styles.error} role="alert">{errorPeriodos}</p>}
@@ -420,8 +417,24 @@ export default function Dashboard() {
                     <p className={styles.textoSecundario}>Solicitudes registradas para los filtros seleccionados.</p>
                     {cargandoSolicitudes && <p role="status">Cargando solicitudes...</p>}
                     {errorSolicitudes && <div role="alert"><p>{errorSolicitudes}</p><Button onClick={() => { setCargandoSolicitudes(true); setIntentoSolicitudes(i => i + 1); }}>Reintentar solicitudes</Button></div>}
-                    {!cargandoSolicitudes && !errorSolicitudes && (!periodoId ? <div className={styles.vacio}><h3>Selecciona un periodo</h3><p>Para consultar solicitudes, selecciona un periodo de grado registrado.</p></div>
-                    : filtradas.length === 0 ? <div className={styles.vacio}><h3>No hay solicitudes</h3><p>No hay solicitudes para la combinación de periodo, nivel, estado y fechas seleccionada.</p></div>
+                    {!cargandoSolicitudes && !errorSolicitudes && (
+                        !cargandoPeriodos && periodos.length === 0 ? (
+                            <div className={styles.vacio}>
+                                <h3>No hay periodos registrados</h3>
+                                <p>Para consultar solicitudes, crea un periodo de grado.</p>
+                                <Button onClick={abrirGestion} aria-haspopup="dialog">Crear periodo</Button>
+                            </div>
+                        ) : !periodoId ? (
+                            <div className={styles.vacio}>
+                                <h3>Selecciona un periodo</h3>
+                                <p>Para consultar solicitudes, selecciona un periodo de grado registrado.</p>
+                            </div>
+                        ) : filtradas.length === 0 ? (
+                            <div className={styles.vacio}>
+                                <h3>No hay solicitudes</h3>
+                                <p>No hay solicitudes para la combinación de periodo, nivel, estado y fechas seleccionada.</p>
+                            </div>
+                        )
                     : <>
                         <div className={styles.tablaContenedor} role="region" aria-label="Tabla de solicitudes de grado" tabIndex={0}>
                         <table className={styles.tabla}>
