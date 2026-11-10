@@ -35,10 +35,10 @@ export interface AccionRevision {
   comentario?: unknown;
   documentos?: unknown;
 }
-const CAMPOS = `id::text AS id,tipo,titulo,msg,generado_por,leida,
-  (creado_en AT TIME ZONE 'America/Bogota')::date::text AS fecha,
-  to_char(creado_en AT TIME ZONE 'America/Bogota','HH24:MI:SS') AS hora,
-  to_char(creado_en AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "creadoEn"`;
+const CAMPOS = `n.id::text AS id,n.tipo,n.titulo,n.generado_por,n.leida,
+  (n.creado_en AT TIME ZONE 'America/Bogota')::date::text AS fecha,
+  to_char(n.creado_en AT TIME ZONE 'America/Bogota','HH24:MI:SS') AS hora,
+  to_char(n.creado_en AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "creadoEn"`;
 
 @Injectable()
 export class NotificacionesService {
@@ -200,10 +200,24 @@ export class NotificacionesService {
     );
   }
 
-  async listar(estudianteId: number) {
+  async listar(estudianteId: number, completas = false) {
     await this.generarRecordatorios(estudianteId);
     const r = await this.db.query(
-      `SELECT ${CAMPOS} FROM notificaciones WHERE estudiante_id=$1 ORDER BY creado_en DESC,id DESC`,
+      completas
+        ? `SELECT ${CAMPOS},
+          CASE WHEN r.resultado='POR_REVISAR' AND n.generado_por='funcionario'
+            THEN COALESCE('La funcionaria te dejó un comentario: ' || NULLIF(btrim(r.comentario), ''), n.msg)
+            ELSE n.msg END AS msg,
+          s.id_solicitud::text AS "solicitudId",
+          CASE WHEN d.id_solicitud=s.id_solicitud THEN d.id_documento::text END AS "documentoId"
+          FROM notificaciones n
+          LEFT JOIN documentos d ON d.id_documento=n.documento_id
+          LEFT JOIN solicitud_grado s ON s.id_solicitud=COALESCE(n.solicitud_id,d.id_solicitud)
+            AND s.id_estudiante=n.estudiante_id
+          LEFT JOIN revisiones r ON r.id_revision=n.revision_id AND r.id_solicitud=s.id_solicitud
+          WHERE n.estudiante_id=$1 ORDER BY n.creado_en DESC,n.id DESC`
+        : `SELECT ${CAMPOS}, n.msg FROM notificaciones n
+           WHERE n.estudiante_id=$1 ORDER BY n.creado_en DESC,n.id DESC`,
       [estudianteId],
     );
     return {
