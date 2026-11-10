@@ -313,6 +313,13 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     });
     expect(r.body.noLeidas).toBe(2);
     expect(JSON.stringify(r.body)).not.toContain('Privada');
+    const completo = await estudiante
+      .get('/api/estudiante/notificaciones?completas=1&estudiante_id=999')
+      .expect(200);
+    expect(completo.body.notificaciones.map((n) => n.id)).toEqual(
+      r.body.notificaciones.map((n) => n.id),
+    );
+    expect(completo.body.noLeidas).toBe(2);
   });
   it.each([
     ['aceptada', 'Solicitud aceptada', 'info', 'ACEPTADA'],
@@ -341,6 +348,7 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     'Corto',
     'QuinceCaracteres',
     'QuinceCaracteres y más',
+    'Primera línea.\nSegunda línea del comentario.',
     '😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀X',
   ])(
     'el comentario limita su vista previa sin perder el original: %s',
@@ -355,6 +363,15 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
       const n = (await estudiante.get('/api/estudiante/notificaciones')).body
         .notificaciones[0];
       expect(n.msg).toBe('La funcionaria te dejó un comentario: ' + esperado);
+      const ruta = '/api/estudiante/notificaciones?completas=1';
+      const completa = await estudiante.get(ruta).expect(200).expect('Cache-Control', 'private, no-store');
+      expect(completa.body.notificaciones[0]).toMatchObject({
+        id: n.id,
+        solicitudId: String(id),
+        documentoId: null,
+        msg: 'La funcionaria te dejó un comentario: ' + texto,
+      });
+      await funcionaria.get(ruta).expect(403);
       expect(
         (await base.db.query('SELECT comentario FROM revisiones')).rows[0]
           .comentario,
