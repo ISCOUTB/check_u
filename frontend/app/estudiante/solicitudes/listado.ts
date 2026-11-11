@@ -48,6 +48,7 @@ const ESTADOS: Record<string, EstadoPresentado> = {
     POR_REVISAR: { etiqueta: "Por revisar", tono: "por_revisar" },
     CANCELADA: { etiqueta: "Cancelada", tono: "cancelada" },
     CERRADA: { etiqueta: "Anulada", tono: "anulada" },
+    ACEPTADA: { etiqueta: "Aceptada", tono: "aceptada" },
     // Estados que todavía forman parte del proceso, pero aún no tienen resultado final.
     EN_PROCESO: { etiqueta: "En proceso", tono: "en_proceso" },
     BORRADOR: { etiqueta: "Borrador", tono: "borrador" },
@@ -55,6 +56,14 @@ const ESTADOS: Record<string, EstadoPresentado> = {
 
 export function presentarEstado(estado: string): EstadoPresentado {
     return ESTADOS[estado] ?? { etiqueta: estado || "Sin estado", tono: "por_revisar" };
+}
+
+/**
+ * Una solicitud aceptada sigue `activa` en el backend porque impide iniciar otra
+ * preinscripción, pero para el estudiante ya no está en curso: es un estado final.
+ */
+export function enCurso(solicitud: Pick<SolicitudListado, "activa" | "estado">): boolean {
+    return solicitud.activa && solicitud.estado !== "ACEPTADA";
 }
 
 /** Fecha calendario para una fecha sin hora (`DATE` de PostgreSQL). */

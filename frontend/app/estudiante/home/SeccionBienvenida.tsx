@@ -3,7 +3,7 @@
 import Button from '@/app/components/ui/Button';
 import Icono from '@/app/components/ui/Icono';
 import type { SolicitudListado } from '../solicitudes/listado';
-import { presentarEstado } from '../solicitudes/listado';
+import { enCurso, presentarEstado } from '../solicitudes/listado';
 import styles from './home.module.css';
 
 interface SeccionBienvenidaProps {
@@ -22,16 +22,23 @@ export default function SeccionBienvenida({
   const admiteNueva =
     puedeIniciarNueva !== undefined ? puedeIniciarNueva : !reciente?.activa;
 
+  const aceptada = reciente?.estado === 'ACEPTADA';
+  const recienteEnCurso = reciente ? enCurso(reciente) : false;
+
   const titulo = reciente
-    ? reciente.activa
-      ? 'Tu solicitud de grado está en curso'
-      : `Tu solicitud más reciente está ${presentarEstado(reciente.estado).etiqueta.toLowerCase()}`
+    ? aceptada
+      ? 'Tu solicitud de grado fue aceptada'
+      : recienteEnCurso
+        ? 'Tu solicitud de grado está en curso'
+        : `Tu solicitud más reciente está ${presentarEstado(reciente.estado).etiqueta.toLowerCase()}`
     : 'Aún no tienes solicitudes de grado';
 
   const texto = reciente
-    ? admiteNueva
-      ? `Revisa el estado de tu solicitud de ${nombreNivel}. Puedes consultar el historial completo o iniciar una nueva preinscripción.`
-      : `Revisa el estado de tu solicitud de ${nombreNivel}. Puedes consultar el historial completo.`
+    ? aceptada
+      ? `Tu solicitud de ${nombreNivel} fue aceptada. Puedes consultar su detalle y el historial completo.`
+      : admiteNueva
+        ? `Revisa el estado de tu solicitud de ${nombreNivel}. Puedes consultar el historial completo o iniciar una nueva preinscripción.`
+        : `Revisa el estado de tu solicitud de ${nombreNivel}. Puedes consultar el historial completo.`
     : 'Cuando inicies una preinscripción aparecerá aquí con su estado y su periodo asignado.';
 
   const revisarHref = reciente
@@ -52,9 +59,9 @@ export default function SeccionBienvenida({
         </div>
       </div>
 
-      {(reciente?.activa || reciente?.estado === 'CANCELADA') && (
+      {(recienteEnCurso || aceptada || reciente?.estado === 'CANCELADA') && (
         <div className={styles.accionesBienvenida}>
-          {reciente?.activa ? (
+          {recienteEnCurso ? (
             <Button href={hrefContinuar} className={styles.bienvenidaAccion}>
               Continuar mi preinscripción
             </Button>
