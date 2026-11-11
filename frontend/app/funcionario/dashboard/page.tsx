@@ -282,7 +282,7 @@ export default function Dashboard() {
                             >
                                 <Icono nombre="filtro" tamano={20} />
                             </Button>
-                            <Button variante="secundario" onClick={abrirGestion} aria-haspopup="dialog">
+                            <Button variante="primario" onClick={abrirGestion} aria-haspopup="dialog">
                                 Gestionar periodos
                             </Button>
                         </div>
