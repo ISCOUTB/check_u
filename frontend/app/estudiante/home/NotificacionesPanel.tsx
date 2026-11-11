@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Card from "@/app/components/ui/Card";
 import Button from "@/app/components/ui/Button";
 import {
@@ -23,22 +23,32 @@ const TIPO = {
     info: "Información",
 };
 
+const FORMATO_FECHA = new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "America/Bogota",
+});
+
+/** Ancla única de cada aviso en el historial completo. */
+const anclaNotificacion = (id: string) => `notificacion-${id}`;
+const PREFIJO_ANCLA = "notificacion-";
+
 /** Un fallo de esta consulta no bloquea el resto del home. */
-export default function NotificacionesPanel() {
-    const idLista = useId();
+export default function NotificacionesPanel({
+    completas = false,
+}: { completas?: boolean }) {
     const [notificaciones, setNotificaciones] = useState<Notificacion[] | null>(
         null,
     );
     const [error, setError] = useState<string | null>(null);
     const [errorLectura, setErrorLectura] = useState<string | null>(null);
     const [intento, setIntento] = useState(0);
-    const [verTodas, setVerTodas] = useState(false);
     const [leyendo, setLeyendo] = useState<string | null>(null);
     const bloqueo = useRef(false);
     useEffect(() => {
         const controlador = new AbortController();
         let vigente = true;
-        obtenerNotificaciones(controlador.signal)
+        obtenerNotificaciones(controlador.signal, completas)
             .then((n) => {
                 if (vigente) setNotificaciones(n);
             })
@@ -54,7 +64,25 @@ export default function NotificacionesPanel() {
             vigente = false;
             controlador.abort();
         };
-    }, [intento]);
+    }, [intento, completas]);
+    const cargadas = !!notificaciones?.length;
+    // El historial carga después del primer render; cuando llegan los datos, lleva el foco
+    // y la vista al aviso indicado por el hash (#notificacion-<id>). Solo se repite si
+    // cambia el hash, no cada vez que se marca un aviso como leído.
+    useEffect(() => {
+        if (!completas || !cargadas) return;
+        const irAlAncla = () => {
+            const id = window.location.hash.slice(1);
+            if (!id.startsWith(PREFIJO_ANCLA)) return;
+            const destino = document.getElementById(id);
+            if (!destino) return;
+            destino.scrollIntoView({ block: "start" });
+            destino.focus({ preventScroll: true });
+        };
+        irAlAncla();
+        window.addEventListener("hashchange", irAlAncla);
+        return () => window.removeEventListener("hashchange", irAlAncla);
+    }, [completas, cargadas]);
     async function marcar(n: Notificacion) {
         if (bloqueo.current) return;
         bloqueo.current = true;
@@ -77,12 +105,18 @@ export default function NotificacionesPanel() {
             setLeyendo(null);
         }
     }
-    const visibles =
-        notificaciones &&
-        (verTodas ? notificaciones : notificaciones.slice(0, 3));
+    const visibles = completas ? notificaciones : notificaciones?.slice(0, 3);
     const noLeidas = notificaciones?.filter((n) => !n.leida).length ?? 0;
     return (
-        <Card titulo="Notificaciones" id="notificaciones">
+        <Card
+            titulo={completas ? "Historial de notificaciones" : "Notificaciones"}
+            id="notificaciones"
+            acciones={!completas && (
+                <Button variante="sutil" href="/estudiante/notificaciones">
+                    Ver todas las notificaciones
+                </Button>
+            )}
+        >
             {notificaciones && (
                 <p aria-live="polite" className={styles.textoSecundario}>
                     {noLeidas} sin leer
@@ -120,10 +154,12 @@ export default function NotificacionesPanel() {
                 </p>
             )}
             {!!visibles?.length && (
-                <ul id={idLista} className={styles.notificaciones}>
+                <ul className={styles.notificaciones}>
                     {visibles.map((n) => (
                         <li
                             key={n.id}
+                            id={anclaNotificacion(n.id)}
+                            tabIndex={completas ? -1 : undefined}
                             className={styles.notificacion}
                             data-tipo={n.tipo}
                             data-leida={n.leida}
@@ -143,13 +179,9 @@ export default function NotificacionesPanel() {
                                 <span>{ORIGEN[n.generadoPor]}</span>
                                 <time
                                     dateTime={n.fecha}
-                                    title={new Intl.DateTimeFormat("es-CO", {
-                                        dateStyle: "long",
-                                        timeStyle: "short",
-                                        timeZone: "America/Bogota",
-                                    }).format(new Date(n.fecha))}
+                                    title={completas ? undefined : FORMATO_FECHA.format(new Date(n.fecha))}
                                 >
-                                    {formatearFecha(n.fecha)}
+                                    {completas ? FORMATO_FECHA.format(new Date(n.fecha)) : formatearFecha(n.fecha)}
                                 </time>
                                 {n.leida ? (
                                     <span>Leída</span>
@@ -165,22 +197,24 @@ export default function NotificacionesPanel() {
                                         Marcar como leída
                                     </Button>
                                 )}
+                                {!completas && (
+                                    <Button
+                                        variante="sutil"
+                                        href={`/estudiante/notificaciones#${anclaNotificacion(n.id)}`}
+                                        aria-label={`Ver notificación completa: ${n.titulo}`}
+                                    >
+                                        Ver notificación completa
+                                    </Button>
+                                )}
+                                {completas && n.solicitudId && (
+                                    <Button variante="sutil" href={`/estudiante/preinscripcion?solicitud=${n.solicitudId}${n.documentoId ? `&documento=${n.documentoId}` : ""}`}>
+                                        {n.documentoId ? "Ver documento" : "Ver solicitud"}
+                                    </Button>
+                                )}
                             </div>
                         </li>
                     ))}
                 </ul>
-            )}
-            {notificaciones && notificaciones.length > 3 && (
-                <Button
-                    variante="sutil"
-                    aria-expanded={verTodas}
-                    aria-controls={idLista}
-                    onClick={() => setVerTodas((v) => !v)}
-                >
-                    {verTodas
-                        ? "Ver menos notificaciones"
-                        : "Ver todas las notificaciones"}
-                </Button>
             )}
         </Card>
     );
