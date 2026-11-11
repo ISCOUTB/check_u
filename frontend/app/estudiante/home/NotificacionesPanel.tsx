@@ -1,26 +1,26 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import Card from "@/app/components/ui/Card";
-import Button from "@/app/components/ui/Button";
+import { useEffect, useId, useRef, useState } from 'react';
+import Card from '@/app/components/ui/Card';
+import Button from '@/app/components/ui/Button';
 import {
-    formatearFecha,
-    marcarNotificacionLeida,
-    obtenerNotificaciones,
-    type Notificacion,
-} from "./api";
-import styles from "./home.module.css";
+  formatearFecha,
+  marcarNotificacionLeida,
+  obtenerNotificaciones,
+  type Notificacion,
+} from './api';
+import styles from './home.module.css';
 
 const ORIGEN = {
-    system: "Sistema",
-    motor: "Análisis documental",
-    funcionario: "Oficina de grados",
+  system: 'Sistema',
+  motor: 'Análisis documental',
+  funcionario: 'Oficina de grados',
 };
 const TIPO = {
-    success: "Éxito",
-    warning: "Advertencia",
-    error: "Error",
-    info: "Información",
+  success: 'Éxito',
+  warning: 'Advertencia',
+  error: 'Error',
+  info: 'Información',
 };
 
 const FORMATO_FECHA = new Intl.DateTimeFormat("es-CO", {
@@ -34,6 +34,7 @@ const anclaNotificacion = (id: string) => `notificacion-${id}`;
 const PREFIJO_ANCLA = "notificacion-";
 
 /** Un fallo de esta consulta no bloquea el resto del home. */
+
 export default function NotificacionesPanel({
     completas = false,
 }: { completas?: boolean }) {
@@ -45,9 +46,17 @@ export default function NotificacionesPanel({
     const [intento, setIntento] = useState(0);
     const [leyendo, setLeyendo] = useState<string | null>(null);
     const bloqueo = useRef(false);
+
+    const formatoFechaCompleta = new Intl.DateTimeFormat("es-CO", {
+        dateStyle: "long",
+        timeStyle: "short",
+        timeZone: "America/Bogota",
+    });
+
     useEffect(() => {
         const controlador = new AbortController();
         let vigente = true;
+
         obtenerNotificaciones(controlador.signal, completas)
             .then((n) => {
                 if (vigente) setNotificaciones(n);
@@ -60,36 +69,51 @@ export default function NotificacionesPanel({
                             : "La consulta tardó demasiado. Intenta nuevamente.",
                     );
             });
+
         return () => {
             vigente = false;
             controlador.abort();
         };
     }, [intento, completas]);
-    const cargadas = !!notificaciones?.length;
-    // El historial carga después del primer render; cuando llegan los datos, lleva el foco
-    // y la vista al aviso indicado por el hash (#notificacion-<id>). Solo se repite si
-    // cambia el hash, no cada vez que se marca un aviso como leído.
+
+    const cargadas = notificaciones !== null;
+
+    // Permite navegar directamente a una notificación mediante su hash.
     useEffect(() => {
         if (!completas || !cargadas) return;
+
         const irAlAncla = () => {
             const id = window.location.hash.slice(1);
+
             if (!id.startsWith(PREFIJO_ANCLA)) return;
+
             const destino = document.getElementById(id);
+
             if (!destino) return;
+
             destino.scrollIntoView({ block: "start" });
             destino.focus({ preventScroll: true });
         };
+
         irAlAncla();
+
         window.addEventListener("hashchange", irAlAncla);
-        return () => window.removeEventListener("hashchange", irAlAncla);
+
+        return () => {
+            window.removeEventListener("hashchange", irAlAncla);
+        };
     }, [completas, cargadas]);
+
     async function marcar(n: Notificacion) {
         if (bloqueo.current) return;
+
         bloqueo.current = true;
         setLeyendo(n.id);
         setErrorLectura(null);
+
         try {
             await marcarNotificacionLeida(n.id);
+
             setNotificaciones(
                 (anteriores) =>
                     anteriores?.map((a) =>
@@ -105,33 +129,47 @@ export default function NotificacionesPanel({
             setLeyendo(null);
         }
     }
-    const visibles = completas ? notificaciones : notificaciones?.slice(0, 3);
-    const noLeidas = notificaciones?.filter((n) => !n.leida).length ?? 0;
+
+    const visibles = completas
+        ? notificaciones
+        : notificaciones?.slice(0, 3);
+
+    const noLeidas =
+        notificaciones?.filter((n) => !n.leida).length ?? 0;
+
     return (
         <Card
             titulo={completas ? "Historial de notificaciones" : "Notificaciones"}
             id="notificaciones"
-            acciones={!completas && (
-                <Button variante="sutil" href="/estudiante/notificaciones">
-                    Ver todas las notificaciones
-                </Button>
-            )}
+            acciones={
+                !completas && (
+                    <Button
+                        variante="sutil"
+                        href="/estudiante/notificaciones"
+                    >
+                        Ver todas las notificaciones
+                    </Button>
+                )
+            }
         >
             {notificaciones && (
                 <p aria-live="polite" className={styles.textoSecundario}>
                     {noLeidas} sin leer
                 </p>
             )}
+
             {!notificaciones && !error && (
                 <p role="status" className={styles.textoSecundario}>
                     Cargando notificaciones...
                 </p>
             )}
+
             {error && (
                 <div>
                     <p role="alert" className={styles.textoError}>
                         {error}
                     </p>
+
                     <Button
                         variante="secundario"
                         onClick={() => {
@@ -143,16 +181,19 @@ export default function NotificacionesPanel({
                     </Button>
                 </div>
             )}
+
             {errorLectura && (
                 <p role="alert" className={styles.textoError}>
                     {errorLectura}
                 </p>
             )}
+
             {notificaciones?.length === 0 && (
                 <p className={styles.textoSecundario}>
                     No tienes notificaciones.
                 </p>
             )}
+
             {!!visibles?.length && (
                 <ul className={styles.notificaciones}>
                     {visibles.map((n) => (
@@ -168,21 +209,32 @@ export default function NotificacionesPanel({
                                 <h3 className={styles.notificacionTitulo}>
                                     {n.titulo}
                                 </h3>
+
                                 <span className={styles.notificacionTipo}>
                                     {TIPO[n.tipo]}
                                 </span>
                             </div>
+
                             <p className={styles.notificacionTexto}>
                                 {n.descripcion}
                             </p>
+
                             <div className={styles.notificacionMeta}>
                                 <span>{ORIGEN[n.generadoPor]}</span>
+
                                 <time
                                     dateTime={n.fecha}
-                                    title={completas ? undefined : FORMATO_FECHA.format(new Date(n.fecha))}
+                                    title={formatoFechaCompleta.format(
+                                        new Date(n.fecha),
+                                    )}
                                 >
-                                    {completas ? FORMATO_FECHA.format(new Date(n.fecha)) : formatearFecha(n.fecha)}
+                                    {completas
+                                        ? formatoFechaCompleta.format(
+                                              new Date(n.fecha),
+                                          )
+                                        : formatearFecha(n.fecha)}
                                 </time>
+
                                 {n.leida ? (
                                     <span>Leída</span>
                                 ) : (
@@ -197,6 +249,7 @@ export default function NotificacionesPanel({
                                         Marcar como leída
                                     </Button>
                                 )}
+
                                 {!completas && (
                                     <Button
                                         variante="sutil"
@@ -206,9 +259,15 @@ export default function NotificacionesPanel({
                                         Ver notificación completa
                                     </Button>
                                 )}
+
                                 {completas && n.solicitudId && (
-                                    <Button variante="sutil" href={`/estudiante/preinscripcion?solicitud=${n.solicitudId}${n.documentoId ? `&documento=${n.documentoId}` : ""}`}>
-                                        {n.documentoId ? "Ver documento" : "Ver solicitud"}
+                                    <Button
+                                        variante="sutil"
+                                        href={`/estudiante/preinscripcion?solicitud=${n.solicitudId}${n.documentoId ? `&documento=${n.documentoId}` : ""}`}
+                                    >
+                                        {n.documentoId
+                                            ? "Ver documento"
+                                            : "Ver solicitud"}
                                     </Button>
                                 )}
                             </div>
@@ -218,4 +277,5 @@ export default function NotificacionesPanel({
             )}
         </Card>
     );
+}
 }
