@@ -32,7 +32,13 @@ const DATOS = {
   perfil: {
     tipoDocumento: 'CC',
     numeroDocumento: '1000000001',
+    fechaNacimiento: '2000-01-01',
+    genero: 'MASCULINO',
     celular: '3001234567',
+    departamento: 'Bolívar',
+    ciudad: 'Cartagena',
+    direccion: 'Calle 1 # 2-3',
+    tieneDiscapacidad: false,
   },
   segundoPrograma: false,
   programas: [
@@ -40,10 +46,15 @@ const DATOS = {
       orden: 1,
       programa: 'Ingeniería',
       modalidad: 'PRESENCIAL',
-      tipoOpcionGrado: 'PROYECTO',
+      tipoOpcionGrado: 'TRABAJO_DE_GRADO',
     },
   ],
-  pregrado: { conoceRegistroSaberPro: false },
+  pregrado: {
+    conoceRegistroSaberPro: false,
+    fechaExamenSaberPro: '2024-06-01',
+    esEmpleadoUtb: false,
+    esHijoDeEmpleadoUtb: false,
+  },
 };
 
 describe('Tarea 44: cancelación lógica y consulta histórica', () => {
@@ -423,7 +434,7 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
       base.db.exec('DELETE FROM solicitud_grado WHERE id_solicitud=1'),
     ).rejects.toThrow();
   });
-  it('deja de ser activa, conserva su entrada histórica y no aparece pendiente en el dashboard', async () => {
+  it('deja de ser activa, conserva su entrada histórica y aparece como cancelada en el dashboard', async () => {
     await crear();
     await cancelar().expect(201);
     expect(
@@ -434,7 +445,7 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
       (await estudiante.get('/api/solicitudes/estado').expect(200)).body,
     ).toMatchObject({
       estado: 'SIN_SOLICITUD',
-      destino: '/estudiante/bienvenida',
+      destino: '/estudiante/home',
     });
     const lista = await estudiante
       .get('/api/estudiante/solicitudes')
@@ -446,9 +457,15 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
       periodo: { id: PERIODO, nombre: 'Periodo asignado' },
     });
     expect(lista.body.solicitudes[0].canceladaEn).toBeTruthy();
-    expect(
-      (await funcionaria.get('/api/funcionario/solicitudes').expect(200)).body,
-    ).toEqual([]);
+    const listado = (
+      await funcionaria.get('/api/funcionario/solicitudes').expect(200)
+    ).body;
+    expect(listado).toHaveLength(1);
+    expect(listado[0]).toMatchObject({
+      id: '1',
+      estado: 'CANCELADA',
+      nivel: 'PREGRADO',
+    });
   });
   it('bloquea correcciones y decisiones manuales después de cancelar, sin volver a invocar el motor', async () => {
     await enviar().expect(201);
@@ -547,7 +564,8 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
     );
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-31T04:59:59Z'));
-    expect((await detalle()).body.cancelacion).toMatchObject({
+    const res = await detalle().expect(200);
+    expect(res.body.cancelacion).toMatchObject({
       fechaActual: '2026-10-30',
       fechaCorte: '2026-11-03',
       diasRestantes: 4,
@@ -564,13 +582,19 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
   });
   it('no inventa fechas si una solicitud histórica no tiene periodo', async () => {
     await crear('EN_PROCESO', 1, null);
-    expect((await detalle()).body.cancelacion).toMatchObject({
+
+    await estudiante
+      .post('/api/auth/login')
+      .send({ username: 'lizapata@utb.edu.co', password: '12345' })
+      .expect(201);
+
+    const res = await detalle().expect(200);
+    expect(res.body.cancelacion).toMatchObject({
       permitida: true,
       nombrePeriodo: null,
       fechaCorte: null,
       diasRestantes: null,
     });
-    await cancelar().expect(201);
   });
   it.skipIf(process.env.CANCELACION_UI_REAL !== '1')(
     'cancelación desde el navegador con API y PostgreSQL reales, consulta histórica y nuevo periodo',

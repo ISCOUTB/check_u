@@ -36,6 +36,7 @@ import {
 import type {
   DatosEnvioPreinscripcion,
   DocumentoCargadoDTO,
+  IdentidadEstudiante,
   RespuestaEnvioPreinscripcion,
   RespuestaEstadoNavegacion,
   RespuestaGuardarBorrador,
@@ -309,6 +310,13 @@ export class SolicitudesService {
         solicitud?.id_periodo ?? null,
         idEstudiante,
       );
+      // La identidad sale de `usuarios`: el formulario la precarga aunque no exista borrador.
+      const usuario = await client.query<IdentidadEstudiante>(
+        `SELECT nombres, apellidos, correo, codigo_estudiante AS "codigoEstudiantil"
+        FROM usuarios WHERE id_usuario = $1`,
+        [idEstudiante],
+      );
+      const estudiante = usuario.rows[0] ?? null;
       if (!solicitud || solicitud.estado !== 'BORRADOR') {
         return {
           ok: true,
@@ -316,14 +324,16 @@ export class SolicitudesService {
           estado: solicitud?.estado ?? null,
           borrador: null,
           periodos,
+          estudiante,
         };
       }
       const id = solicitud.id_solicitud;
-      const usuario = await client.query(
-        `SELECT nombres, apellidos, codigo_estudiante AS "codigoEstudiantil"
-        FROM usuarios WHERE id_usuario = $1`,
-        [idEstudiante],
-      );
+      // `borrador` conserva el contrato previo; la identidad completa va en `estudiante`.
+      const identidadBorrador = {
+        nombres: estudiante?.nombres,
+        apellidos: estudiante?.apellidos,
+        codigoEstudiantil: estudiante?.codigoEstudiantil ?? undefined,
+      };
       const perfil = await client.query(
         `SELECT ${proyeccion(PERFIL)} FROM perfil_estudiante WHERE id_usuario = $1`,
         [idEstudiante],
@@ -376,8 +386,9 @@ export class SolicitudesService {
         id_solicitud: id,
         estado: 'BORRADOR',
         periodos,
+        estudiante,
         borrador: {
-          ...usuario.rows[0],
+          ...identidadBorrador,
           nivel: solicitud.tipo_solicitud,
           segundoPrograma: solicitud.segundo_programa,
           perfil: perfil.rows[0] ?? {},
@@ -399,10 +410,13 @@ export class SolicitudesService {
     const datos = validarBorrador(payload);
     return this.databaseService.transaction(async (client) => {
       // Bloquear una fila que SIEMPRE existe evita duplicados incluso en el primer guardado.
-      await client.query(
-        'SELECT id_usuario FROM usuarios WHERE id_usuario = $1 FOR UPDATE',
+      // El código se lee con el bloqueo: si ya está registrado, nunca se sobrescribe con el payload.
+      const bloqueo = await client.query<{ codigo_estudiante: string | null }>(
+        'SELECT codigo_estudiante FROM usuarios WHERE id_usuario = $1 FOR UPDATE',
         [idEstudiante],
       );
+      const codigoRegistrado =
+        bloqueo.rows[0]?.codigo_estudiante?.trim() ?? '';
       const res = await client.query<SolicitudResumen>(
         `SELECT id_solicitud, id_periodo, tipo_solicitud, estado FROM solicitud_grado
          WHERE id_estudiante = $1 AND estado NOT IN ('CANCELADA','CERRADA') ORDER BY id_solicitud DESC LIMIT 1 FOR UPDATE`,
@@ -470,7 +484,9 @@ export class SolicitudesService {
             ([k, v]) =>
               ['nombres', 'apellidos', 'codigoEstudiantil'].includes(k) &&
               typeof v === 'string' &&
-              v.trim(),
+              v.trim() &&
+              // El código ya registrado es inmutable: solo se completa cuando está vacío.
+              (k !== 'codigoEstudiantil' || !codigoRegistrado),
           ),
         ),
         false,
