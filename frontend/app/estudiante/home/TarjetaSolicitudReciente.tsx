@@ -235,6 +235,12 @@ export default function TarjetaSolicitudReciente({
         </p>
       )}
 
+      {solicitud.estadoSolicitud === 'CERRADA' && solicitud.motivoAnulacion && (
+        <p className={styles.motivoAnulacion}>
+          <strong>Motivo de anulación:</strong> {solicitud.motivoAnulacion}
+        </p>
+      )}
+
       <dl className={styles.metaSolicitud}>
         <div className={styles.metaItem}>
           <dt>Tipo de solicitud</dt>
