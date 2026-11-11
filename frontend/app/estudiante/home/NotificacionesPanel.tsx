@@ -144,7 +144,7 @@ export default function NotificacionesPanel({
             acciones={
                 !completas && (
                     <Button
-                        variante="sutil"
+                        variante="terciario"
                         href="/estudiante/notificaciones"
                     >
                         Ver todas las notificaciones
@@ -239,7 +239,7 @@ export default function NotificacionesPanel({
                                     <span>Leída</span>
                                 ) : (
                                     <Button
-                                        variante="sutil"
+                                        variante="terciario"
                                         disabled={leyendo !== null}
                                         aria-label={`Marcar como leída: ${n.titulo}`}
                                         onClick={() => {
@@ -252,7 +252,7 @@ export default function NotificacionesPanel({
 
                                 {!completas && (
                                     <Button
-                                        variante="sutil"
+                                        variante="terciario"
                                         href={`/estudiante/notificaciones#${anclaNotificacion(n.id)}`}
                                         aria-label={`Ver notificación completa: ${n.titulo}`}
                                     >
@@ -262,7 +262,7 @@ export default function NotificacionesPanel({
 
                                 {completas && n.solicitudId && (
                                     <Button
-                                        variante="sutil"
+                                        variante="terciario"
                                         href={`/estudiante/preinscripcion?solicitud=${n.solicitudId}${n.documentoId ? `&documento=${n.documentoId}` : ""}`}
                                     >
                                         {n.documentoId
@@ -277,5 +277,4 @@ export default function NotificacionesPanel({
             )}
         </Card>
     );
-}
 }
