@@ -40,7 +40,7 @@ const DATOS = {
       orden: 1,
       programa: 'Ingeniería',
       modalidad: 'PRESENCIAL',
-      tipoOpcionGrado: 'PROYECTO',
+      tipoOpcionGrado: 'TRABAJO_DE_GRADO',
     },
   ],
   pregrado: { conoceRegistroSaberPro: false },
@@ -434,7 +434,7 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
       (await estudiante.get('/api/solicitudes/estado').expect(200)).body,
     ).toMatchObject({
       estado: 'SIN_SOLICITUD',
-      destino: '/estudiante/bienvenida',
+      destino: '/estudiante/home',
     });
     const lista = await estudiante
       .get('/api/estudiante/solicitudes')
@@ -553,7 +553,8 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
     );
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-31T04:59:59Z'));
-    expect((await detalle()).body.cancelacion).toMatchObject({
+    const res = await detalle().expect(200);
+    expect(res.body.cancelacion).toMatchObject({
       fechaActual: '2026-10-30',
       fechaCorte: '2026-11-03',
       diasRestantes: 4,
