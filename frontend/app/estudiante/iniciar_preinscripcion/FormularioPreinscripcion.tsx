@@ -48,7 +48,7 @@ function nivelDesde(valor: string | undefined): Nivel | null {
  */
 export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?: string; escenario?: string }) {
     const router = useRouter();
-    const { usuario, cargando } = useSesion("estudiante");
+    const { usuario, cargando, errorSesion, reintentar } = useSesion("estudiante");
     const nivelPedido = nivelDesde(nivel);
 
     const [periodos, setPeriodos] = useState<ContextoPeriodo | null>(null);
@@ -222,6 +222,17 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
     const marcarEntrada = (entrada: "puntero" | "teclado") => {
         if (formularioRef.current) formularioRef.current.dataset.entrada = entrada;
     };
+
+    if (errorSesion) {
+        return (
+            <main id="contenido" tabIndex={-1} className={styles.cargando}>
+                <p role="alert">No pudimos verificar tu sesión. Revisa tu conexión e inténtalo de nuevo.</p>
+                <Button variante="secundario" onClick={reintentar}>
+                    Reintentar
+                </Button>
+            </main>
+        );
+    }
 
     if (cargando || !usuario) {
         return (
