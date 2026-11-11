@@ -29,6 +29,10 @@ const FORMATO_FECHA = new Intl.DateTimeFormat("es-CO", {
     timeZone: "America/Bogota",
 });
 
+/** Ancla única de cada aviso en el historial completo. */
+const anclaNotificacion = (id: string) => `notificacion-${id}`;
+const PREFIJO_ANCLA = "notificacion-";
+
 /** Un fallo de esta consulta no bloquea el resto del home. */
 export default function NotificacionesPanel({
     completas = false,
@@ -61,6 +65,24 @@ export default function NotificacionesPanel({
             controlador.abort();
         };
     }, [intento, completas]);
+    const cargadas = !!notificaciones?.length;
+    // El historial carga después del primer render; cuando llegan los datos, lleva el foco
+    // y la vista al aviso indicado por el hash (#notificacion-<id>). Solo se repite si
+    // cambia el hash, no cada vez que se marca un aviso como leído.
+    useEffect(() => {
+        if (!completas || !cargadas) return;
+        const irAlAncla = () => {
+            const id = window.location.hash.slice(1);
+            if (!id.startsWith(PREFIJO_ANCLA)) return;
+            const destino = document.getElementById(id);
+            if (!destino) return;
+            destino.scrollIntoView({ block: "start" });
+            destino.focus({ preventScroll: true });
+        };
+        irAlAncla();
+        window.addEventListener("hashchange", irAlAncla);
+        return () => window.removeEventListener("hashchange", irAlAncla);
+    }, [completas, cargadas]);
     async function marcar(n: Notificacion) {
         if (bloqueo.current) return;
         bloqueo.current = true;
@@ -136,6 +158,8 @@ export default function NotificacionesPanel({
                     {visibles.map((n) => (
                         <li
                             key={n.id}
+                            id={anclaNotificacion(n.id)}
+                            tabIndex={completas ? -1 : undefined}
                             className={styles.notificacion}
                             data-tipo={n.tipo}
                             data-leida={n.leida}
@@ -171,6 +195,15 @@ export default function NotificacionesPanel({
                                         }}
                                     >
                                         Marcar como leída
+                                    </Button>
+                                )}
+                                {!completas && (
+                                    <Button
+                                        variante="sutil"
+                                        href={`/estudiante/notificaciones#${anclaNotificacion(n.id)}`}
+                                        aria-label={`Ver notificación completa: ${n.titulo}`}
+                                    >
+                                        Ver notificación completa
                                     </Button>
                                 )}
                                 {completas && n.solicitudId && (

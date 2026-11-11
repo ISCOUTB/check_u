@@ -101,6 +101,31 @@ for (const tema of ["light", "dark"] as const)
         });
     }
 
+test("el resumen enlaza al mensaje completo con un ancla única", async ({ page }) => {
+    await sesionComo(page, "estudiante");
+    const aviso = avisos[3];
+    await page.route(`${API}/estudiante/notificaciones`, (r) =>
+        r.fulfill({ json: { notificaciones: [aviso], noLeidas: 1 } }),
+    );
+    await page.route(`${API}/estudiante/notificaciones?completas=1`, (r) =>
+        r.fulfill({ json: { notificaciones: [{ ...aviso, msg: comentarioCompleto }], noLeidas: 1 } }),
+    );
+    await page.goto("/estudiante/home");
+    const panel = page.getByRole("region", {
+        name: "Notificaciones",
+        exact: true,
+    });
+    const enlace = panel.getByRole("link", {
+        name: "Ver notificación completa: Nuevo comentario",
+    });
+    await expect(enlace).toHaveAttribute("href", "/estudiante/notificaciones#notificacion-1");
+    await enlace.click();
+    await expect(page).toHaveURL(/\/estudiante\/notificaciones#notificacion-1$/);
+    const completo = page.locator("#notificacion-1");
+    await expect(completo).toContainText(comentarioCompleto);
+    await expect(completo).toBeFocused();
+});
+
 test("un estado vacío no inventa avisos del OCR ni de la funcionaria", async ({
     page,
 }) => {
