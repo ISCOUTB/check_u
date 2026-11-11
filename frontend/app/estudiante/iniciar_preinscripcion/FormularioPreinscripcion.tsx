@@ -25,7 +25,7 @@ import Documentos from "./secciones/Documentos";
 import EstudiosExperiencia from "./secciones/EstudiosExperiencia";
 import Identificacion from "./secciones/Identificacion";
 import SaberProVinculacion from "./secciones/SaberProVinculacion";
-import type { BorradorPreinscripcion } from "./tipos";
+import type { BorradorPreinscripcion, IdentidadEstudiante } from "./tipos";
 import { useCambiosSinGuardar } from "./useCambiosSinGuardar";
 import { progreso as calcularProgreso, faltantes, seccionesDelNivel } from "./validacion";
 import PeriodoInscripcion, { type ContextoPeriodo } from "./PeriodoInscripcion";
@@ -53,6 +53,8 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
 
     const [periodos, setPeriodos] = useState<ContextoPeriodo | null>(null);
     const [borrador, setBorrador] = useState<BorradorPreinscripcion | null>(null);
+    /** Identidad de la tabla `usuarios`: precarga el formulario y bloquea correo y código. */
+    const [identidad, setIdentidad] = useState<IdentidadEstudiante | null>(null);
     const [opciones, setOpciones] = useState<OpcionesFormulario | null>(null);
     const [errorCarga, setErrorCarga] = useState(false);
     const [intento, setIntento] = useState(0);
@@ -114,6 +116,7 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                     return;
                 }
                 setBorrador(resultado.borrador);
+                setIdentidad(resultado.identidad ?? null);
                 setPeriodos(resultado.periodos ?? null);
                 setOpciones(opcionesCargadas);
             })
@@ -309,7 +312,13 @@ export default function FormularioPreinscripcion({ nivel, escenario }: { nivel?:
                             {resumen && <ResumenErrores contenido={resumen} />}
                             <Identificacion borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} />
                             <Contacto borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} />
-                            <Academico borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} />
+                            <Academico
+                                borrador={borrador}
+                                cambiar={cambiar}
+                                errores={errores}
+                                opciones={opciones}
+                                codigoBloqueado={Boolean(identidad?.codigoEstudiantil?.trim())}
+                            />
                             {borrador.nivel === "PREGRADO" ? (
                                 <SaberProVinculacion borrador={borrador} cambiar={cambiar} errores={errores} opciones={opciones} />
                             ) : (
