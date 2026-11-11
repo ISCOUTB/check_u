@@ -7,6 +7,7 @@ import {
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
 import { COOKIE_NAME, readSessionId } from './session.js';
@@ -36,6 +37,8 @@ export class AuthController {
     return { user };
   }
 
+  // El frontend consulta la sesión al abrir cada página; esa consulta no debe consumir el límite general.
+  @SkipThrottle()
   @Get('me')
   me(@Req() req: Request) {
     const sessionId = readSessionId(req);
