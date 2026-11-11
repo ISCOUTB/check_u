@@ -37,6 +37,8 @@ services:
     environment:
       PORT: "3000"
       NODE_OPTIONS: --max-old-space-size=192
+      # Traefik/Dokploy está delante del backend: confía en un salto para usar la IP del cliente.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
       OCR_ENGINE_URL: http://ocr:5001
       MOTOR_URL: http://ocr:5001
       DB_HOST: db

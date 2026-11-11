@@ -69,43 +69,6 @@ test.describe("Escenario 1: preinscripción de pregrado", () => {
         await captura(page, "01-e-inicio-con-resultados");
     });
 
-    await enviar(page, async (p) => {
-      await expect(
-        p
-          .getByRole('progressbar')
-          .or(p.getByText(/Analizando|Consultando|Generando|Guardando/).first())
-          .first(),
-      ).toBeVisible();
-      await captura(p, '01-c-progreso-analisis', false);
-    });
-    await captura(page, '01-d-resultado-tras-enviar');
-    await expect(
-      page.locator("section[aria-label='Datos del estudiante']"),
-    ).toContainText('Ingeniería de Sistemas y Computación');
-    await expect(
-      page.locator("section[aria-label='Datos del estudiante']"),
-    ).not.toContainText('INGENIERIA_DE_SISTEMAS_Y_COMPUTACION');
-
-    const id = Number(sql('SELECT max(id_solicitud) FROM solicitud_grado')[0]);
-    const docs = documentosEnBd(id);
-    expect(Object.keys(docs).sort()).toEqual(
-      [...PREGRADO_UNO, 'paz_y_salvo_bib'].sort(),
-    );
-    expect(docs.paz_y_salvo_bib).toBe('VALIDO');
-    expect(docs.identification).not.toBe('VALIDO');
-    await page.goto('/estudiante/home');
-    const tarjeta = page.locator('#mi-solicitud');
-    await expect(tarjeta).toContainText('Paz y Salvo de Biblioteca');
-    await expect(
-      tarjeta
-        .getByRole('button', { name: /Subir nueva versión/ })
-        .first()
-        .or(tarjeta.getByRole('link', { name: /Subir nueva versión/ }).first())
-        .first(),
-    ).toBeVisible();
-    await captura(page, '01-e-inicio-con-resultados');
-  });
-
   test('E1.2 dos programas: pide 6 documentos y conserva los dos programas', async ({
     page,
   }) => {

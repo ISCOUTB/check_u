@@ -158,6 +158,10 @@
   --notificacion-tono: var(--status-invalid-text);
   background: var(--status-invalid-bg);
 }
+.notificacion:target {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
 .notificacionTipo {
   color: var(--notificacion-tono);
   font-size: 12px;

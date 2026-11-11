@@ -27,7 +27,7 @@ const ENLACES: Record<
     },
     {
       texto: 'Notificaciones',
-      href: '/estudiante/home#notificaciones',
+      href: '/estudiante/notificaciones',
       icono: 'campana',
     },
   ],
