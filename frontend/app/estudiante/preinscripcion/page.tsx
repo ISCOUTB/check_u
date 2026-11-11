@@ -205,9 +205,10 @@ export default function PreinscripcionPage() {
 function SeleccionarDetalle() {
   const parametros=useSearchParams();
   const id=parametros.get('solicitud') ?? undefined;
-  return <DetallePreinscripcion key={id ?? 'actual'} idSolicitud={id} />;
+  const documento = parametros.get('documento') ?? undefined;
+  return <DetallePreinscripcion key={id ?? 'actual'} idSolicitud={id} idDocumento={documento} />;
 }
-function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
+function DetallePreinscripcion({ idSolicitud, idDocumento }: { idSolicitud?: string; idDocumento?: string }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tabsId = useId();
@@ -218,6 +219,12 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
   const [solicitud, setSolicitud] = useState<SolicitudDetalle | null>(null);
   const [errorDatos, setErrorDatos] = useState<string | null>(null);
   const [pestana, setPestana] = useState<Pestana>('documentos');
+  const solicitudCargada = solicitud !== null;
+  useEffect(() => {
+    if (!idDocumento || !solicitudCargada) return;
+    (document.getElementById(`documento-${idDocumento}`) ??
+      document.getElementById('titulo-documentos'))?.focus();
+  }, [idDocumento, solicitudCargada]);
 
   // Análisis automático
   const [analysisOpen, setAnalysisOpen] = useState(false);
@@ -785,7 +792,7 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
             aria-labelledby={`${tabsId}-documentos`}
             className={styles.panel}
           >
-            <h2 className={styles.panelTitle}>Tus documentos</h2>
+            <h2 id="titulo-documentos" tabIndex={-1} className={styles.panelTitle}>Tus documentos</h2>
             <p className={styles.panelSubtitle}>
               Resultado del análisis automático de cada documento requerido para{' '}
               {estudiante.nivel.toLowerCase()}.
@@ -798,6 +805,8 @@ function DetallePreinscripcion({idSolicitud}: {idSolicitud?:string}) {
                 return (
                   <article
                     key={doc.id ?? `${doc.tipo}-${doc.orden ?? 1}`}
+                    id={doc.id ? `documento-${doc.id}` : undefined}
+                    tabIndex={-1}
                     className={styles.docCard}
                   >
                     <div className={styles.docCardHeader}>

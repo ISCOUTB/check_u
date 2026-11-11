@@ -131,7 +131,9 @@ export default function TarjetaSolicitudReciente({
       if (await consultarBiblioteca(solicitud.id)) onReintentar();
     } catch (error) {
       setErrorConsulta(
-        error instanceof Error ? error.message : 'No fue posible consultar Biblioteca.',
+        error instanceof Error
+          ? error.message
+          : 'No fue posible consultar Biblioteca.',
       );
     } finally {
       setConsultando(false);
@@ -164,8 +166,13 @@ export default function TarjetaSolicitudReciente({
               etiqueta={ETIQUETA_PARA_ESTUDIANTE[requisito.estado]}
             />
           </div>
-          {requisito.biblioteca && <TablaPazYSalvo resultado={requisito.biblioteca} />}
-          {mensajesFueraDeTabla(requisito.observaciones, requisito.biblioteca).map((observacion, indice) => (
+          {requisito.biblioteca && (
+            <TablaPazYSalvo resultado={requisito.biblioteca} />
+          )}
+          {mensajesFueraDeTabla(
+            requisito.observaciones,
+            requisito.biblioteca,
+          ).map((observacion, indice) => (
             <p
               key={`${requisito.clave}-observacion-${indice}`}
               className={
@@ -213,7 +220,7 @@ export default function TarjetaSolicitudReciente({
       titulo="Mi solicitud de grado"
       id="mi-solicitud"
       acciones={
-        <Button href="/estudiante/solicitudes" variante="sutil">
+        <Button href="/estudiante/solicitudes" variante="terciario">
           Ver todas mis solicitudes
         </Button>
       }

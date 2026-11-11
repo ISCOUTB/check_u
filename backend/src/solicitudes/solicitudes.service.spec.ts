@@ -132,6 +132,50 @@ describe('SolicitudesService', () => {
       expect(typeof res.guardadoEn).toBe('string');
     });
 
+    describe('código estudiantil registrado (evita el duplicado 23505)', () => {
+      const llamadas = () => mockClient.query.mock.calls as [string, unknown[]][];
+      const updateUsuarios = () =>
+        llamadas().find(([sql]) => sql.startsWith('UPDATE usuarios SET'));
+
+      const preparar = (codigo: string | null) => {
+        mockClient.query
+          .mockResolvedValueOnce({ rows: [{ codigo_estudiante: codigo }] }) // bloqueo de usuario
+          .mockResolvedValueOnce({
+            rows: [{ id_solicitud: 102, id_periodo: '11111111-1111-4111-8111-111111111111', tipo_solicitud: 'PREGRADO', estado: 'BORRADOR' }],
+          })
+          .mockResolvedValueOnce({ rows: [{ fecha_actualizacion: new Date() }] })
+          .mockResolvedValue({ rows: [] });
+      };
+
+      it('no sobrescribe el código que ya existe en usuarios', async () => {
+        preparar('T00071293');
+
+        await service.guardarBorrador(1, {
+          nombres: 'Ana',
+          apellidos: 'Pérez',
+          codigoEstudiantil: 'T00099999',
+        });
+
+        const update = updateUsuarios();
+        expect(update?.[0]).toContain('nombres');
+        expect(update?.[0]).not.toContain('codigo_estudiante');
+      });
+
+      it('completa el código cuando usuarios aún no lo tiene', async () => {
+        preparar(null);
+
+        await service.guardarBorrador(1, {
+          nombres: 'Ana',
+          apellidos: 'Pérez',
+          codigoEstudiantil: 'T00099999',
+        });
+
+        const update = updateUsuarios();
+        expect(update?.[0]).toContain('codigo_estudiante');
+        expect(update?.[1]).toContain('T00099999');
+      });
+    });
+
     describe('el programa 2 solo se guarda si el estudiante respondió que sí', () => {
       const programas = [
         { orden: 1, programa: 'Ingeniería de Sistemas', modalidad: 'PRESENCIAL', tipoOpcionGrado: 'TRABAJO' },

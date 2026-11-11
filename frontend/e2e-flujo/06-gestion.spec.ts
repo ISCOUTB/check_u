@@ -37,15 +37,26 @@ test.describe("Escenario 12: revisión y gestión", () => {
         await captura(funcionaria, "12-c-analisis-documento", false);
         await funcionaria.keyboard.press("Escape");
 
-        // Comentario.
-        await accionRevision(funcionaria, id, "comentario", "Comentario de prueba de la funcionaria sobre la estampilla.");
+        // Comentario: el inicio conserva el resumen y el historial muestra el original.
+        const comentario = "Comentario de prueba de la funcionaria sobre la estampilla.\nRevisa también la segunda línea.";
+        await accionRevision(funcionaria, id, "comentario", comentario);
         await captura(funcionaria, "12-d-comentario-registrado");
         await verInicioEstudiante(page, "12-e-estudiante-tras-comentario");
-        await expect(page.getByRole("region", { name: "Notificaciones", exact: true })).toContainText("Comentario de p");
-        // ¿Puede el estudiante leer el comentario completo? La notificación solo trae 15 caracteres.
-        await abrirPreinscripcion(page, id);
-        await captura(page, "12-e2-estudiante-detalle-tras-comentario");
-        await expect.soft(page.getByRole("main"), "El estudiante debe poder leer el comentario completo.").toContainText("sobre la estampilla", { timeout: 3000 });
+        const panel = page.getByRole("region", { name: "Notificaciones", exact: true });
+        await expect(panel).toContainText("Comentario de p…");
+        await panel.getByRole("link", { name: "Ver todas las notificaciones" }).click();
+        const historial = page.getByRole("region", { name: "Historial de notificaciones" });
+        const aviso = historial.getByRole("listitem").filter({ hasText: "Nuevo comentario" });
+        await expect(aviso.getByText("La funcionaria te dejó un comentario:", { exact: false }))
+            .toHaveJSProperty("textContent", `La funcionaria te dejó un comentario: ${comentario}`);
+        await expect(aviso.getByRole("link", { name: "Ver solicitud" }))
+            .toHaveAttribute("href", `/estudiante/preinscripcion?solicitud=${id}`);
+        await captura(page, "12-e2-estudiante-historial-tras-comentario");
+        await aviso.getByRole("button", { name: "Marcar como leída: Nuevo comentario" }).click();
+        await expect(aviso.getByText("Leída", { exact: true })).toBeVisible();
+        const sinLeer = await historial.getByText(/^[0-9]+ sin leer$/).textContent();
+        await page.getByRole("link", { name: "Inicio", exact: true }).click();
+        await expect(panel.getByText(sinLeer!, { exact: true })).toBeVisible();
 
         // Solicitar corrección.
         await accionRevision(funcionaria, id, "recarga", "Sube de nuevo la estampilla.", ["Estampilla Pro-Cultura"]);

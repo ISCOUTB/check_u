@@ -10,7 +10,13 @@ import { ID_CAMPOS, idCampoPrograma, type Orden } from "../validacion";
 import styles from "../iniciar_preinscripcion.module.css";
 import { aSiNo, cambioPrograma, Condicional, deSiNo, OPCIONES_SI_NO, Seccion, type PropsSeccion } from "./comun";
 
-export default function Academico({ borrador, cambiar, errores, opciones }: PropsSeccion) {
+export default function Academico({
+    borrador,
+    cambiar,
+    errores,
+    opciones,
+    codigoBloqueado = false,
+}: PropsSeccion & { codigoBloqueado?: boolean }) {
     return (
         <Seccion id="academico">
             <div className={styles.campos}>
@@ -18,9 +24,14 @@ export default function Academico({ borrador, cambiar, errores, opciones }: Prop
                     id={ID_CAMPOS.codigoEstudiantil}
                     etiqueta="Código estudiantil"
                     obligatorio
-                    ayuda="Ejemplo: T00012345"
+                    ayuda={
+                        codigoBloqueado
+                            ? "Viene de tu registro institucional; no se puede cambiar"
+                            : "Ejemplo: T00012345"
+                    }
                     autoComplete="off"
                     spellCheck={false}
+                    readOnly={codigoBloqueado}
                     value={borrador.codigoEstudiantil}
                     onChange={(evento) => {
                         const codigoEstudiantil = evento.target.value;
