@@ -30,5 +30,5 @@ export const ETIQUETA_PLURAL: Record<EstadoSolicitud, string> = {
 };
 export const DESCRIPCION_CONTADOR: Record<EstadoSolicitud, string> = {
     valido: "Solicitudes válidas", no_valido: "Solicitudes no válidas", inconsistente: "Solicitudes inconsistentes", por_revisar: "Solicitudes pendientes de revisión",
-    aceptada: "Solicitudes aceptadas por la funcionaria", anulada: "Solicitudes anuladas",
+    aceptada: "Solicitudes aceptadas por tí", anulada: "Solicitudes anuladas por tí",
 };
