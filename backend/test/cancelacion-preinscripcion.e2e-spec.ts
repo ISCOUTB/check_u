@@ -423,7 +423,7 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
       base.db.exec('DELETE FROM solicitud_grado WHERE id_solicitud=1'),
     ).rejects.toThrow();
   });
-  it('deja de ser activa, conserva su entrada histórica y no aparece pendiente en el dashboard', async () => {
+  it('deja de ser activa, conserva su entrada histórica y aparece como cancelada en el dashboard', async () => {
     await crear();
     await cancelar().expect(201);
     expect(
@@ -446,9 +446,15 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
       periodo: { id: PERIODO, nombre: 'Periodo asignado' },
     });
     expect(lista.body.solicitudes[0].canceladaEn).toBeTruthy();
-    expect(
-      (await funcionaria.get('/api/funcionario/solicitudes').expect(200)).body,
-    ).toEqual([]);
+    const listado = (
+      await funcionaria.get('/api/funcionario/solicitudes').expect(200)
+    ).body;
+    expect(listado).toHaveLength(1);
+    expect(listado[0]).toMatchObject({
+      id: '1',
+      estado: 'CANCELADA',
+      nivel: 'PREGRADO',
+    });
   });
   it('bloquea correcciones y decisiones manuales después de cancelar, sin volver a invocar el motor', async () => {
     await enviar().expect(201);

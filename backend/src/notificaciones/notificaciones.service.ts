@@ -54,7 +54,7 @@ export class NotificacionesService {
       to_char(e.fecha_entrega AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "envioEn"
       FROM solicitud_grado s JOIN usuarios u ON u.id_usuario=s.id_estudiante
       LEFT JOIN entregas e ON e.id_solicitud=s.id_solicitud AND e.tipo_entrega='INICIAL'
-      WHERE s.estado NOT IN ('BORRADOR','CANCELADA')
+      WHERE s.estado <> 'BORRADOR'
       ORDER BY e.fecha_entrega DESC NULLS LAST,s.id_solicitud DESC`);
     return r.rows;
   }
