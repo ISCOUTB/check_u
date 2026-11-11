@@ -32,7 +32,13 @@ const DATOS = {
   perfil: {
     tipoDocumento: 'CC',
     numeroDocumento: '1000000001',
+    fechaNacimiento: '2000-01-01',
+    genero: 'MASCULINO',
     celular: '3001234567',
+    departamento: 'Bolívar',
+    ciudad: 'Cartagena',
+    direccion: 'Calle 1 # 2-3',
+    tieneDiscapacidad: false,
   },
   segundoPrograma: false,
   programas: [
@@ -43,7 +49,12 @@ const DATOS = {
       tipoOpcionGrado: 'TRABAJO_DE_GRADO',
     },
   ],
-  pregrado: { conoceRegistroSaberPro: false },
+  pregrado: {
+    conoceRegistroSaberPro: false,
+    fechaExamenSaberPro: '2024-06-01',
+    esEmpleadoUtb: false,
+    esHijoDeEmpleadoUtb: false,
+  },
 };
 
 describe('Tarea 44: cancelación lógica y consulta histórica', () => {
@@ -571,13 +582,19 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
   });
   it('no inventa fechas si una solicitud histórica no tiene periodo', async () => {
     await crear('EN_PROCESO', 1, null);
-    expect((await detalle()).body.cancelacion).toMatchObject({
+
+    await estudiante
+      .post('/api/auth/login')
+      .send({ username: 'lizapata@utb.edu.co', password: '12345' })
+      .expect(201);
+
+    const res = await detalle().expect(200);
+    expect(res.body.cancelacion).toMatchObject({
       permitida: true,
       nombrePeriodo: null,
       fechaCorte: null,
       diasRestantes: null,
     });
-    await cancelar().expect(201);
   });
   it.skipIf(process.env.CANCELACION_UI_REAL !== '1')(
     'cancelación desde el navegador con API y PostgreSQL reales, consulta histórica y nuevo periodo',
