@@ -117,9 +117,9 @@ function DetalleSolicitud({id}: {id: string}) {
     }, [usuario, id, intento]);
 
     const corregibles = detalle?.documentos.filter(d => estadoDocumento(d) !== 'valido') ?? [];
-    // Tarea 42a: ACEPTADA, CERRADA y CANCELADA son finales; solo se acepta una solicitud VALIDA.
+    // ACEPTADA, CERRADA y CANCELADA son finales. La aceptación no depende del resultado
+    // automático: la funcionaria revisó la solicitud y su decisión prevalece.
     const admiteDecision = !!detalle && !['BORRADOR', 'ACEPTADA', 'CERRADA', 'CANCELADA'].includes(detalle.estadoSolicitud);
-    const admiteAceptar = admiteDecision && detalle?.estadoSolicitud === 'VALIDA';
     const admiteRecarga = admiteDecision && detalle?.estadoSolicitud !== 'VALIDA' && corregibles.length > 0;
     const documentosConProblema = detalle?.documentos.filter(d => d.resultados.some(r => r.estado !== 'valido')) ?? [];
     const documentosValidos = detalle?.documentos.filter(d => d.resultados.every(r => r.estado === 'valido')) ?? [];
@@ -349,11 +349,10 @@ function DetalleSolicitud({id}: {id: string}) {
                 <label>Acción<select value={accion} onChange={e => { setAccion(e.target.value as AccionRevision); setErrorEnvio(''); }} disabled={enviando}>
                     <option value="comentario">Enviar comentario</option>
                     <option value="recarga" disabled={!admiteRecarga}>Solicitar corrección</option>
-                    <option value="aceptada" disabled={!admiteAceptar}>Aceptar solicitud</option>
+                    <option value="aceptada" disabled={!admiteDecision}>Aceptar solicitud</option>
                     <option value="anulada" disabled={!admiteDecision}>Anular solicitud</option>
                 </select></label>
                 {!admiteDecision && <p>El estado actual solo permite agregar comentarios.</p>}
-                {admiteDecision && !admiteAceptar && <p>Solo se puede aceptar una solicitud válida.</p>}
                 {accion === 'recarga' && <fieldset><legend>Documentos que debe volver a subir</legend>
                     {corregibles.map(doc => <label key={doc.id} className={styles.opcionDocumento}><input type="checkbox" checked={seleccionados.includes(Number(doc.id))} disabled={enviando}
                         onChange={e => setSeleccionados(prev => e.target.checked ? [...prev, Number(doc.id)] : prev.filter(d => d !== Number(doc.id)))} />{doc.nombre}</label>)}
@@ -361,7 +360,7 @@ function DetalleSolicitud({id}: {id: string}) {
                 <label>Comentario{accion === 'comentario' ? ' (obligatorio)' : ' (opcional)'}<textarea value={comentario} maxLength={5000} required={accion === 'comentario'} rows={4} disabled={enviando} onChange={e => setComentario(e.target.value)} /></label>
                 <p>Al enviar un comentario, la notificación mostrará sus primeros 15 caracteres. El historial conserva el texto completo.</p>
                 <div className={styles.acciones}>
-                    <Button type="submit" disabled={enviando || requiereConsulta || !!error || (accion !== 'comentario' && !admiteDecision) || (accion === 'aceptada' && !admiteAceptar)}>{ACCIONES[accion]}</Button>
+                    <Button type="submit" disabled={enviando || requiereConsulta || !!error || (accion !== 'comentario' && !admiteDecision)}>{ACCIONES[accion]}</Button>
                 </div>
             </form>
         </div>

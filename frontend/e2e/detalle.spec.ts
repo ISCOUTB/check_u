@@ -41,8 +41,8 @@ for(const [accion,boton,estado] of [
 ] as const) {
     test(`confirma y persiste ${accion} mediante API y muestra historial`, async ({page}) => {
         await sesionComo(page,'funcionario');
-        // Tarea 42a: solo se acepta una solicitud válida.
-        let detalle={...structuredClone(DETALLE_FUNCIONARIA),...(accion==='aceptada'?{estadoSolicitud:'VALIDA'}:{})};
+        // Todas las acciones no finales están disponibles; aceptar no exige estado VALIDA.
+        let detalle={...structuredClone(DETALLE_FUNCIONARIA)};
         await page.route(`${API}/funcionario/solicitudes/1`,r=>r.fulfill({json:detalle}));
         let envios=0;
         await page.route(`${API}/funcionario/solicitudes/1/revisiones`,async r=> {
@@ -137,14 +137,16 @@ test('solicitud inexistente no presenta datos de ejemplo ni acciones',async ({pa
     await expect(page.getByText('Ana Prueba',{exact:true})).toHaveCount(0);
 });
 
-test('solo se acepta una solicitud válida', async ({page}) => {
+test('una solicitud marcada no válida también se puede aceptar tras la revisión', async ({page}) => {
     await sesionComo(page,'funcionario');
     await page.route(`${API}/funcionario/solicitudes/1`,r=>r.fulfill({json:{...DETALLE_FUNCIONARIA,estadoSolicitud:'NO_VALIDA'}}));
     await page.goto(DETALLE);
     await abrirPestana(page, 'Acciones de revisión');
     await expect(page.getByText('Estado:')).toContainText('No válida');
-    await expect(page.getByRole('option',{name:'Aceptar solicitud'})).toHaveAttribute('disabled','');
-    await expect(page.getByText('Solo se puede aceptar una solicitud válida.',{exact:true})).toBeVisible();
+    await expect(page.getByRole('option',{name:'Aceptar solicitud'})).not.toHaveAttribute('disabled');
+    await expect(page.getByText('Solo se puede aceptar una solicitud válida.',{exact:true})).toHaveCount(0);
+    await page.getByRole('combobox',{name:'Acción',exact:true}).selectOption('aceptada');
+    await expect(page.getByRole('button',{name:'Aceptar solicitud',exact:true})).toBeEnabled();
     await expect(page.getByRole('option',{name:'Anular solicitud'})).not.toHaveAttribute('disabled');
 });
 

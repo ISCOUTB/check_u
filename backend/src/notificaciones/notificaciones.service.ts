@@ -284,11 +284,8 @@ export class NotificacionesService {
         throw new ConflictException(
           'La solicitud no admite esa revisión en su estado actual.',
         );
-      // Tarea 42a: aceptar cierra la solicitud, y solo cuando cumple todos los requisitos.
-      if (accion === 'aceptada' && r.rows[0].estado !== 'VALIDA')
-        throw new ConflictException(
-          'Solo se puede aceptar una solicitud válida.',
-        );
+      // La aceptación no depende del resultado automático: la funcionaria revisó la
+      // solicitud y puede aceptarla aunque el sistema la haya marcado como no válida.
       // Tarea 42a: después de fecha_fin − 7 el estudiante ya no puede corregir; no se le pide.
       const fin = r.rows[0].fecha_fin as string | null;
       if (accion === 'recarga' && fin && !dentroDelPlazoCorreccion(fin))
