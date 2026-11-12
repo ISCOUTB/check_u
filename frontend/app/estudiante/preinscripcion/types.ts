@@ -105,6 +105,7 @@ export interface SolicitudDetalle {
     diasRestantes: number | null;
   };
   estadoSolicitud: string;
+  motivoAnulacion?: string | null;
   estadoAnalisis: "pendiente" | "registrado";
   informacion: DatosInformacionEstudiante;
   id: string;

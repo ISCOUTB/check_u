@@ -745,7 +745,9 @@ BEGIN
     IF NEW.resultado='APROBADA' THEN
         clase:='info'; encabezado:='Solicitud aceptada'; mensaje:='Tu solicitud de grado fue aceptada.';
     ELSIF NEW.resultado='RECHAZADA' THEN
-        clase:='error'; encabezado:='Solicitud anulada'; mensaje:='Tu solicitud fue anulada. Incumpliste ciertos requisitos.';
+        clase:='error'; encabezado:='Solicitud anulada';
+        mensaje:='Tu solicitud de grado fue anulada.' ||
+            COALESCE(' Motivo: '||NULLIF(btrim(NEW.comentario),''),'');
     ELSIF NEW.resultado='CORRECCION_REQUERIDA' THEN
         IF COALESCE(cardinality(NEW.documentos_ids),0)=0 THEN RAISE EXCEPTION 'Selecciona los documentos de la corrección'; END IF;
         SELECT count(*), string_agg(nombre_documento_notificacion(d.tipo_documento,d.orden), ', ' ORDER BY d.tipo_documento,d.orden)
@@ -922,7 +924,9 @@ BEGIN
     IF NEW.resultado='APROBADA' THEN
         clase:='info'; encabezado:='Solicitud aceptada'; mensaje:='Tu solicitud de grado fue aceptada.';
     ELSIF NEW.resultado='RECHAZADA' THEN
-        clase:='error'; encabezado:='Solicitud anulada'; mensaje:='Tu solicitud fue anulada. Incumpliste ciertos requisitos.';
+        clase:='error'; encabezado:='Solicitud anulada';
+        mensaje:='Tu solicitud de grado fue anulada.' ||
+            COALESCE(' Motivo: '||NULLIF(btrim(NEW.comentario),''),'');
     ELSIF NEW.resultado='CORRECCION_REQUERIDA' THEN
         IF COALESCE(cardinality(NEW.documentos_ids),0)=0 THEN RAISE EXCEPTION 'Selecciona los documentos de la corrección'; END IF;
         SELECT count(*), string_agg(nombre_documento_notificacion(d.tipo_documento,d.orden), ', ' ORDER BY d.tipo_documento,d.orden)

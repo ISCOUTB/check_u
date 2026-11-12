@@ -9,7 +9,7 @@ import { transportarEnvio, type AlProgreso } from "../envio-documental";
 import { documentosRequeridos, type NivelAcademico as Nivel } from "@/app/estudiante/documentos-requeridos";
 import { errorDeConexion, interpretarErrorGuardado } from "./mensajes-borrador";
 import type { ContextoPeriodo } from "./PeriodoInscripcion";
-import { borradorVacio, type BorradorPreinscripcion } from "./tipos";
+import { borradorVacio, type BorradorPreinscripcion, type IdentidadEstudiante } from "./tipos";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Escenarios de demostración
@@ -159,7 +159,12 @@ export async function cargarPreinscripcion(
     nivel: Nivel,
     correo: string,
     escenario: Escenario,
-): Promise<{ estado: "sin_borrador" | "borrador" | "enviada"; borrador: BorradorPreinscripcion; periodos?: ContextoPeriodo }> {
+): Promise<{
+    estado: "sin_borrador" | "borrador" | "enviada";
+    borrador: BorradorPreinscripcion;
+    periodos?: ContextoPeriodo;
+    identidad?: IdentidadEstudiante | null;
+}> {
     if (escenario !== "ninguno") await esperar();
 
     const estudiante = { nivel, correo };
@@ -178,11 +183,20 @@ export async function cargarPreinscripcion(
     });
     if (!respuesta.ok) throw new Error("No fue posible recuperar el borrador");
     const datos = await respuesta.json();
+    // La identidad registrada en `usuarios` manda sobre el borrador y la sesión.
+    const identidad: IdentidadEstudiante | null = datos.estudiante ?? null;
+    const correoRegistrado = identidad?.correo?.trim() || correo;
     if (datos.estado && datos.estado !== "BORRADOR") {
         return { estado: "enviada", borrador: borradorVacio(nivel, correo) };
     }
-    if (!datos.borrador) return { estado: "sin_borrador", borrador: borradorVacio(nivel, correo), periodos: datos.periodos };
-    const base = borradorVacio(datos.borrador.nivel ?? nivel, correo);
+    if (!datos.borrador)
+        return {
+            estado: "sin_borrador",
+            borrador: conIdentidad(borradorVacio(nivel, correoRegistrado), identidad),
+            periodos: datos.periodos,
+            identidad,
+        };
+    const base = borradorVacio(datos.borrador.nivel ?? nivel, correoRegistrado);
     // PostgreSQL usa NULL para textos pendientes; los controles del formulario usan "".
     const normalizar = <T extends object>(vacio: T, guardado: Partial<T> | undefined): T =>
         Object.fromEntries(Object.entries(vacio).map(([clave, valor]) => {
@@ -190,15 +204,31 @@ export async function cargarPreinscripcion(
             return [clave, dato == null ? valor : dato];
         })) as T;
     const guardado = datos.borrador;
-    return { estado: "borrador", periodos: datos.periodos, borrador: {
-        ...normalizar(base, guardado), correo, id_solicitud: datos.id_solicitud,
+    const borrador: BorradorPreinscripcion = {
+        ...normalizar(base, guardado), correo: correoRegistrado, id_solicitud: datos.id_solicitud,
         perfil: normalizar(base.perfil, guardado.perfil),
         pregrado: normalizar(base.pregrado, guardado.pregrado),
         posgrado: normalizar(base.posgrado, guardado.posgrado),
         programas: base.programas.map(p => normalizar(p, guardado.programas?.find((g: { orden: number }) => g.orden === p.orden))),
         experiencia: base.experiencia.map(e => normalizar(e, guardado.experiencia?.find((g: { orden: number }) => g.orden === e.orden))),
         documentos: guardado.documentos ?? {},
-    } };
+    };
+    return { estado: "borrador", periodos: datos.periodos, borrador: conIdentidad(borrador, identidad), identidad };
+}
+
+/** Precarga la identidad registrada. Nombres y apellidos siguen editables; correo y código, no. */
+function conIdentidad(
+    borrador: BorradorPreinscripcion,
+    identidad: IdentidadEstudiante | null,
+): BorradorPreinscripcion {
+    if (!identidad) return borrador;
+    return {
+        ...borrador,
+        nombres: identidad.nombres?.trim() || borrador.nombres,
+        apellidos: identidad.apellidos?.trim() || borrador.apellidos,
+        correo: identidad.correo?.trim() || borrador.correo,
+        codigoEstudiantil: identidad.codigoEstudiantil?.trim() || borrador.codigoEstudiantil,
+    };
 }
 
 /**

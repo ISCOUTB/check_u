@@ -43,6 +43,8 @@ export class AuthController {
     return { user };
   }
 
+  // El frontend consulta la sesión al abrir cada página; esa consulta no debe consumir el límite general.
+  @SkipThrottle()
   @Get('me')
   @Header('Cache-Control', 'private, no-store')
   me(@Req() req: Request) {
