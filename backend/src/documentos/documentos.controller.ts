@@ -13,6 +13,13 @@ import type { RespuestaAnalisis } from './documentos.types.js';
 import { Throttle } from '@nestjs/throttler';
 import { limiteCargas } from '../limites.js';
 
+// Igual que en SolicitudesController: en pruebas se apagan los límites de
+// frecuencia para que la suite pueda repetir peticiones desde una sola IP.
+const esTest =
+  process.env.NODE_ENV === 'test' ||
+  process.env.VITEST === 'true' ||
+  !!process.env.VITEST_WORKER_ID;
+
 /** Evita depender de Express.Multer.File (rompe el typecheck en este proyecto). */
 type ArchivoSubido = {
   buffer: Buffer;
@@ -25,7 +32,7 @@ export class DocumentosController {
   constructor(private readonly documentosService: DocumentosService) {}
 
   @Post('analizar')
-  @Throttle(limiteCargas())
+  @Throttle({ uploads: { limit: esTest ? 10_000 : 8, ttl: 60_000 } })
   @UseInterceptors(
     FilesInterceptor('documentos', 10, {
       storage: memoryStorage(),

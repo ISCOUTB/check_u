@@ -279,6 +279,35 @@ export const LISTADO_ESTUDIANTE = {
     ],
 };
 
+/** La solicitud más reciente del estudiante, en curso: coincide con DETALLE_ESTUDIANTE. */
+export const SOLICITUD_RECIENTE = {
+    id: "1",
+    nivel: "PREGRADO",
+    estado: "EN_PROCESO",
+    activa: true,
+    fechaSolicitud: "2026-10-04T15:00:00.000Z",
+    fechaCreacion: "2026-10-01T15:00:00.000Z",
+    canceladaEn: null,
+    periodo: { ...PERIODO_DEMO, fechaCorte: "2026-10-24" },
+};
+
+/**
+ * Desde la Tarea 46 (#123) el inicio toma la solicitud más reciente del listado y pide su detalle
+ * por id. `sesionComo` devuelve un listado vacío; esto simula un estudiante con una solicitud.
+ */
+export async function conSolicitudReciente(
+    page: Page,
+    detalle: unknown = DETALLE_ESTUDIANTE,
+    estado = 200,
+): Promise<void> {
+    await page.route(`${API}/estudiante/solicitudes`, (ruta) =>
+        ruta.fulfill({ status: 200, json: { solicitudes: [SOLICITUD_RECIENTE] } }),
+    );
+    await page.route(`${API}/estudiante/solicitudes/${SOLICITUD_RECIENTE.id}/analisis`, (ruta) =>
+        ruta.fulfill({ status: estado, json: detalle }),
+    );
+}
+
 /** 320 px equivale a un zoom del 400 % en 1280 (WCAG 1.4.10, reflujo). */
 export const ANCHOS = [320, 360, 768, 1280] as const;
 

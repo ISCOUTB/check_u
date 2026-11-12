@@ -18,7 +18,7 @@ const CARPETA_CAPTURAS = path.resolve(__dirname, "../../docs/pruebas/tarea53/cap
 export const DOCUMENTO = "1000000001";
 // Identidad inventada: las evidencias van a un repositorio público (ver #141). Coincide con levantar-entorno.ps1.
 export const ESTUDIANTE = { usuario: "estudiante@ejemplo.edu.co", clave: "flujo-estudiante" };
-const NOMBRES = "Estudiante";
+export const NOMBRES = "Estudiante";
 const APELLIDOS = "Prueba";
 export const FUNCIONARIA = { usuario: "funcionaria@ejemplo.edu.co", clave: "flujo-funcionaria" };
 

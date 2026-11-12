@@ -62,7 +62,8 @@ test('Tarea 35: futuros informativos y guardado sin periodo conserva el formular
     await page.keyboard.press('Escape');
     await page.locator('#campo-nombres').fill('Conservar información');
     await page.getByRole('button', { name: 'Guardar para continuar después' }).click();
-    const alerta = page.getByRole('alert').filter({ hasText: 'Actualmente no hay un periodo' });
+    // Tarea 67 (#181): el aviso fijo de la sección también es una alerta; aquí se busca la del guardado.
+    const alerta = page.getByRole('alert').filter({ hasText: 'Tu información permanece en el formulario' });
     await expect(alerta).toBeVisible();
     await expect(alerta).not.toContainText('SQL');
     await expect(page.locator('#campo-nombres')).toHaveValue('Conservar información');

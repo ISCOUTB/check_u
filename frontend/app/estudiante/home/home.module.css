@@ -387,8 +387,8 @@
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1;
-  background: var(--color-primario, #1a56db);
-  color: #fff;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .accionesBienvenida {

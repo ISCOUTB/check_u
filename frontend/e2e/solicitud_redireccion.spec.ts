@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { API, sesionComo } from "./soporte";
+import { API, conSolicitudReciente, sesionComo } from "./soporte";
 import { DEMO_PREGRADO } from "@/app/components/informacion_estudiante/datos_demo";
 
 const RUTA_BIENVENIDA = "/estudiante/bienvenida";
@@ -8,7 +8,8 @@ const RUTA_PREINSCRIPCION = "/estudiante/preinscripcion";
 
 test.describe("decisión de bienvenida basada en solicitud_grado", () => {
     test.describe("en /estudiante/home", () => {
-        test("sin solicitud redirige a /estudiante/bienvenida", async ({ page }) => {
+        // Tarea 46 (#123): sin solicitud el estudiante se queda en el inicio; la bienvenida se abre a mano.
+        test("sin solicitud permanece en /estudiante/home y no redirige a bienvenida", async ({ page }) => {
             await sesionComo(page, "estudiante");
             await page.route(`${API}/solicitudes/estado`, (ruta) =>
                 ruta.fulfill({
@@ -18,11 +19,13 @@ test.describe("decisión de bienvenida basada en solicitud_grado", () => {
             );
 
             await page.goto(RUTA_HOME);
-            await expect(page).toHaveURL(RUTA_BIENVENIDA);
+            await expect(page.getByRole("heading", { name: "Aún no tienes solicitudes de grado" })).toBeVisible();
+            await expect(page).toHaveURL(RUTA_HOME);
         });
 
         test("con solicitud permanece en /estudiante/home y no redirige", async ({ page }) => {
             await sesionComo(page, "estudiante");
+            await conSolicitudReciente(page);
             await page.route(`${API}/solicitudes/estado`, (ruta) =>
                 ruta.fulfill({
                     status: 200,

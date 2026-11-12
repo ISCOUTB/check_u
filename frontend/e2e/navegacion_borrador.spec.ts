@@ -58,7 +58,8 @@ test("un estado de borrador sin nivel válido termina en error recuperable, sin 
     page.getByRole("button", { name: "Reintentar", exact: true }),
   ).toBeVisible();
 });
-test("entrar sin nivel y sin solicitud conduce una sola vez a bienvenida", async ({
+// Tarea 46 (#123): sin solicitud, el destino de navegación es el inicio, no la bienvenida.
+test("entrar sin nivel y sin solicitud conduce una sola vez al inicio", async ({
   page,
 }) => {
   await sesionComo(page, "estudiante");
@@ -74,9 +75,9 @@ test("entrar sin nivel y sin solicitud conduce una sola vez a bienvenida", async
     });
   });
   await page.goto(FORM);
-  await expect(page).toHaveURL("/estudiante/bienvenida");
+  await expect(page).toHaveURL("/estudiante/home");
   await expect(
-    page.getByRole("link", { name: "Iniciar preinscripción para pregrado" }),
+    page.getByRole("heading", { name: "Aún no tienes solicitudes de grado" }),
   ).toBeVisible();
   expect(consultas).toBeLessThanOrEqual(2);
 });

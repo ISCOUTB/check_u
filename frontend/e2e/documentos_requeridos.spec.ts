@@ -43,8 +43,12 @@ test("segundo programa en pregrado agrega al final la segunda evaluación de Ban
     expect(new Set(documentos.map((d) => d.id)).size).toBe(6);
 });
 
-test("segundo programa en posgrado no agrega comprobante", () => {
-    expect(documentosRequeridos("POSGRADO", true)).toEqual(documentosRequeridos("POSGRADO", false));
+// Tarea 62 (#182, H-08): en posgrado cada programa lleva su estampilla.
+test("segundo programa en posgrado agrega la segunda estampilla", () => {
+    expect(documentosRequeridos("POSGRADO", true).map((d) => d.id)).toEqual([
+        ...documentosRequeridos("POSGRADO", false).map((d) => d.id),
+        "estampilla_pro_cultura-2",
+    ]);
 });
 
 test("el paz y salvo se consulta con Biblioteca, no se sube (Tarea 50)", () => {

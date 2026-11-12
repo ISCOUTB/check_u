@@ -64,7 +64,8 @@ test.describe("página de bienvenida para estudiante sin preinscripciones", () =
         await expect(page.getByText("Evaluación de grado expedida por Banner.")).toBeVisible();
         await expect(page.getByText("Paz y Salvo Biblioteca.")).toHaveCount(2);
         await expect(page.getByText("Comprobante de pago estampilla Pro Cultura.")).toHaveCount(2);
-        await expect(page.getByText("(En caso de doble programa, 2 comprobantes.)")).toBeVisible();
+        // Tarea 62 (#182, H-08): también en posgrado cada programa lleva su estampilla.
+        await expect(page.getByText("(En caso de doble programa, 2 comprobantes.)")).toHaveCount(2);
         await expect(page.getByText("Resultados Pruebas Saber Pro.")).toBeVisible();
         await expect(page.getByText("Documento de identidad.")).toBeVisible();
 
@@ -131,10 +132,13 @@ test.describe("página de bienvenida para estudiante sin preinscripciones", () =
         await expect(page).toHaveURL("/");
     });
 
-    test("home sin solicitud redirige a bienvenida", async ({ page }) => {
+    // Tarea 46 (#123): sin solicitud el estudiante se queda en el inicio; la bienvenida se abre a mano.
+    test("home sin solicitud no redirige a bienvenida y ofrece iniciar una preinscripción", async ({ page }) => {
         await sesionComo(page, "estudiante");
         await sinSolicitud(page);
         await page.goto("/estudiante/home");
-        await expect(page).toHaveURL(RUTA_BIENVENIDA);
+        await expect(page.getByRole("heading", { name: "Aún no tienes solicitudes de grado" })).toBeVisible();
+        await expect(page).toHaveURL("/estudiante/home");
+        await expect(page.getByRole("link", { name: "Nueva preinscripción" })).toHaveAttribute("href", RUTA_BIENVENIDA);
     });
 });

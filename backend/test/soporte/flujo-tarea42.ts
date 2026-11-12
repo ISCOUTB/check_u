@@ -111,7 +111,17 @@ export function datosPreinscripcion(nivel = 'PREGRADO', doble = false) {
     nombres: 'Estudiante',
     apellidos: 'Prueba',
     codigoEstudiantil: 'T00000001',
-    perfil: { tipoDocumento: 'CC', numeroDocumento: '1000000001' },
+    perfil: {
+      tipoDocumento: 'CC',
+      numeroDocumento: '1000000001',
+      fechaNacimiento: '2001-05-10',
+      genero: 'FEMENINO',
+      departamento: 'Bolivar',
+      ciudad: 'Cartagena',
+      direccion: 'Calle 1 #2-3',
+      celular: '3000000000',
+      tieneDiscapacidad: false,
+    },
     segundoPrograma: doble,
     programas: [
       {
@@ -131,8 +141,17 @@ export function datosPreinscripcion(nivel = 'PREGRADO', doble = false) {
           ]
         : []),
     ],
-    pregrado: { conoceRegistroSaberPro: false },
-    posgrado: { nivelEstudios: 'PROFESIONAL', tituloObtenido: 'Ingeniero' },
+    pregrado: {
+      conoceRegistroSaberPro: false,
+      fechaExamenSaberPro: '2026-03-15',
+      esEmpleadoUtb: false,
+      esHijoDeEmpleadoUtb: false,
+    },
+    posgrado: {
+      nivelEstudios: 'PROFESIONAL',
+      tituloObtenido: 'Ingeniero',
+      esEgresadoPregradoUtb: false,
+    },
   };
 }
 

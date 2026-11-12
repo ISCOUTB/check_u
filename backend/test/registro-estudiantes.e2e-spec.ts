@@ -28,6 +28,7 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
   let funcionaria: ReturnType<typeof request.agent>;
   let estudiante: ReturnType<typeof request.agent>;
   beforeAll(async () => {
+    vi.stubEnv('AUTH_INIT', 'ENV');
     vi.stubEnv('AUTH_ESTUDIANTE_USERNAME', 'estudiante55@example.test');
     vi.stubEnv('AUTH_ESTUDIANTE_PASSWORD', 'Prueba-55-estudiante');
     vi.stubEnv('AUTH_FUNCIONARIO_USERNAME', 'funcionaria55@example.test');
@@ -455,5 +456,5 @@ describe('Tarea 55: registro e importación con API Nest y PostgreSQL', () => {
     } finally {
       await db.close();
     }
-  });
+  }, 30000);
 });

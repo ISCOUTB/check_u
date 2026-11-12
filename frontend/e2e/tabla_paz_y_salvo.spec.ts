@@ -157,6 +157,8 @@ test("detalle de la funcionaria: misma tabla y su propio «Consultar de nuevo»"
         await r.fulfill({ status: 201, json: { ok: true, estadoSolicitud: "VALIDA" } });
     });
     await page.goto("/funcionario/detalle_preinscripcion/1");
+    // Tarea 52 (#131): los documentos están en su propia pestaña.
+    await page.getByRole("tab", { name: "Documentos" }).click();
     await revisarTabla(page);
     await revisarAxe(page);
     await page.getByRole("button", { name: "Consultar de nuevo: Paz y Salvo de Biblioteca" }).click();
@@ -184,6 +186,8 @@ test("la funcionaria también vuelve a consultar un Paz y Salvo en PDF de antes 
     const detalle = { ...structuredClone(DETALLE_FUNCIONARIA), estadoSolicitud: "NO_VALIDA", documentos: [...DETALLE_FUNCIONARIA.documentos, documentoPaz(null, true, PAZ_EN_PDF)] };
     await page.route(`${API}/funcionario/solicitudes/1`, (r) => r.fulfill({ json: detalle }));
     await page.goto("/funcionario/detalle_preinscripcion/1");
+    // Tarea 52 (#131): los documentos están en su propia pestaña.
+    await page.getByRole("tab", { name: "Documentos" }).click();
     await expect(page.getByRole("button", { name: "Consultar de nuevo: Paz y Salvo de Biblioteca" })).toBeVisible();
 });
 
@@ -195,6 +199,8 @@ test("la resolución manual de la funcionaria se ve junto a la tabla en el inici
     const detalle = { ...structuredClone(DETALLE_FUNCIONARIA), estadoSolicitud: "NO_VALIDA", documentos: [...DETALLE_FUNCIONARIA.documentos, documentoPaz(SIN_RESPUESTA, true, RESUELTO_A_MANO)] };
     await page.route(`${API}/funcionario/solicitudes/1`, (r) => r.fulfill({ json: detalle }));
     await page.goto("/funcionario/detalle_preinscripcion/1");
+    // Tarea 52 (#131): los documentos están en su propia pestaña.
+    await page.getByRole("tab", { name: "Documentos" }).click();
     await expect(page.locator("article", { hasText: "Paz y Salvo de Biblioteca" })).toContainText(COMENTARIO_FUNCIONARIA);
 });
 
@@ -224,6 +230,8 @@ test("la funcionaria puede marcar un Paz y Salvo Inconsistente", async ({ page }
         await r.fulfill({ status: 201, json: { ok: true, estadoSolicitud: "VALIDA" } });
     });
     await page.goto("/funcionario/detalle_preinscripcion/1");
+    // Tarea 52 (#131): los documentos están en su propia pestaña.
+    await page.getByRole("tab", { name: "Documentos" }).click();
     await expect(page.getByRole("button", { name: "Marcar no válido: Paz y Salvo de Biblioteca" })).toBeVisible();
     await page.getByRole("button", { name: "Marcar válido: Paz y Salvo de Biblioteca" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Confirmar" }).click();

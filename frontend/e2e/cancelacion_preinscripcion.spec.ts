@@ -313,7 +313,8 @@ for (const ruta of ['/estudiante/bienvenida', '/estudiante/home', `${RUTA}?solic
         await page.goto(ruta);
         await expect(page.getByRole('heading', {level:1})).toBeVisible();
         await expect(page.getByRole('region', {name:'Historial de preinscripciones'})).toHaveCount(0);
-        expect(consultas).toEqual([]);
+        // Tarea 46 (#123): el inicio sí consulta el listado, para mostrar la solicitud más reciente.
+        if (!ruta.endsWith('/home')) expect(consultas).toEqual([]);
     });
 }
 test('un detalle histórico ajeno o inexistente no muestra la solicitud actual ni redirige', async ({
