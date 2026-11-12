@@ -7,7 +7,7 @@ import Button from '@/app/components/ui/Button';
 import Card from '@/app/components/ui/Card';
 import StatusBadge from '@/app/components/ui/StatusBadge';
 import type { SolicitudListado } from '../solicitudes/listado';
-import { presentarEstado } from '../solicitudes/listado';
+import { enCurso, presentarEstado } from '../solicitudes/listado';
 import type { SolicitudDetalle } from './api';
 import { useConsultaPazYSalvo } from '../preinscripcion/useConsultaPazYSalvo';
 import {
@@ -131,7 +131,9 @@ export default function TarjetaSolicitudReciente({
       if (await consultarBiblioteca(solicitud.id)) onReintentar();
     } catch (error) {
       setErrorConsulta(
-        error instanceof Error ? error.message : 'No fue posible consultar Biblioteca.',
+        error instanceof Error
+          ? error.message
+          : 'No fue posible consultar Biblioteca.',
       );
     } finally {
       setConsultando(false);
@@ -164,8 +166,13 @@ export default function TarjetaSolicitudReciente({
               etiqueta={ETIQUETA_PARA_ESTUDIANTE[requisito.estado]}
             />
           </div>
-          {requisito.biblioteca && <TablaPazYSalvo resultado={requisito.biblioteca} />}
-          {mensajesFueraDeTabla(requisito.observaciones, requisito.biblioteca).map((observacion, indice) => (
+          {requisito.biblioteca && (
+            <TablaPazYSalvo resultado={requisito.biblioteca} />
+          )}
+          {mensajesFueraDeTabla(
+            requisito.observaciones,
+            requisito.biblioteca,
+          ).map((observacion, indice) => (
             <p
               key={`${requisito.clave}-observacion-${indice}`}
               className={
@@ -213,18 +220,24 @@ export default function TarjetaSolicitudReciente({
       titulo="Mi solicitud de grado"
       id="mi-solicitud"
       acciones={
-        <Button href="/estudiante/solicitudes" variante="sutil">
+        <Button href="/estudiante/solicitudes" variante="terciario">
           Ver todas mis solicitudes
         </Button>
       }
     >
-      {!resumenListado.reciente.activa && (
+      {!enCurso(resumenListado.reciente) && (
         <p className={styles.textoSecundario}>
           Estado:{' '}
           <StatusBadge
             estado={estadoListado.tono}
             etiqueta={estadoListado.etiqueta}
           />
+        </p>
+      )}
+
+      {solicitud.estadoSolicitud === 'CERRADA' && solicitud.motivoAnulacion && (
+        <p className={styles.motivoAnulacion}>
+          <strong>Motivo de anulación:</strong> {solicitud.motivoAnulacion}
         </p>
       )}
 

@@ -743,16 +743,13 @@ describe('Tarea 42: flujo de la solicitud', () => {
       return { id, envio, docs, paz: docs.paz_y_salvo_bib.id_documento };
     }
 
-    it('aceptar una solicitud que no es VALIDA responde 409 y no crea revisión', async () => {
+    it('aceptar una solicitud marcada NO_VALIDA la deja ACEPTADA y registra la revisión', async () => {
       flujo.clasificacion.saber_pro = 'invalid';
       const envio = await enviar(flujo).expect(201);
       const id = envio.body.id_solicitud as number;
-      const r = await decidir(id, 'aceptada').expect(409);
-      expect(r.body.message).toBe(
-        'Solo se puede aceptar una solicitud válida.',
-      );
-      expect(await revisiones(id)).toEqual([]);
-      expect(await estadoSolicitud(flujo, id)).toBe('NO_VALIDA');
+      await decidir(id, 'aceptada').expect(201);
+      expect(await revisiones(id)).toEqual(['APROBADA']);
+      expect(await estadoSolicitud(flujo, id)).toBe('ACEPTADA');
     });
 
     it('aceptar una VALIDA la deja ACEPTADA y bloquea reenvíos y otra decisión', async () => {

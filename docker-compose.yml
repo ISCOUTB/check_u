@@ -36,7 +36,11 @@ services:
     restart: unless-stopped
     environment:
       PORT: "3000"
+      CHECKU_FRONTEND_ORIGIN: https://checku.${DOMINIO:-iscoutb.dev}
+      CHECKU_TRUST_PROXY_HOPS: "${CHECKU_TRUST_PROXY_HOPS:-0}"
       NODE_OPTIONS: --max-old-space-size=192
+      # Traefik/Dokploy está delante del backend: confía en un salto para usar la IP del cliente.
+      CHECKU_TRUST_PROXY_HOPS: ${CHECKU_TRUST_PROXY_HOPS:-1}
       OCR_ENGINE_URL: http://ocr:5001
       MOTOR_URL: http://ocr:5001
       DB_HOST: db

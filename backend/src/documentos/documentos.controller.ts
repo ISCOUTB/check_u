@@ -11,6 +11,7 @@ import { memoryStorage } from 'multer';
 import { DocumentosService } from './documentos.service.js';
 import type { RespuestaAnalisis } from './documentos.types.js';
 import { Throttle } from '@nestjs/throttler';
+import { limiteCargas } from '../limites.js';
 
 // Igual que en SolicitudesController: en pruebas se apagan los límites de
 // frecuencia para que la suite pueda repetir peticiones desde una sola IP.

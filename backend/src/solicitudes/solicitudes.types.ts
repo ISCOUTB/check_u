@@ -45,6 +45,15 @@ export interface RespuestaObtenerBorrador {
   id_solicitud: number | null;
   estado: string | null;
   borrador: (DatosEnvioPreinscripcion & { guardadoEn: string }) | null;
+  /** Identidad registrada del estudiante: precarga el formulario aunque aún no haya borrador. */
+  estudiante: IdentidadEstudiante | null;
+}
+
+export interface IdentidadEstudiante {
+  nombres: string;
+  apellidos: string;
+  correo: string | null;
+  codigoEstudiantil: string | null;
 }
 
 export interface PerfilEstudianteDTO {

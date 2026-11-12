@@ -238,7 +238,7 @@ export default function Home() {
               <>
                 <BotonSolicitudes />
                 {!resumenListado.hayActiva && (
-                  <Button href="/estudiante/bienvenida" variante="secundario">
+                  <Button href="/estudiante/bienvenida" variante="primario">
                     Nueva preinscripción
                   </Button>
                 )}

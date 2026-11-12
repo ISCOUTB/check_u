@@ -1,9 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { API, conSolicitudReciente, sesionComo, revisarAxe } from "./soporte";
 
+const comentarioCompleto = "Primera línea del comentario.\nSegunda línea con el mensaje completo.";
 const avisos = [
     {
         id: "4",
+        solicitudId: "1",
+        documentoId: "10",
         tipo: "error",
         titulo: "No válido",
         msg: "Documento de identidad: no fue posible verificar la estructura. Sube un documento legible.",
@@ -28,6 +31,7 @@ const avisos = [
     },
     {
         id: "1",
+        solicitudId: "1",
         tipo: "info",
         titulo: "Nuevo comentario",
         msg: "La funcionaria te dejó un comentario: Revisa tus datos…",
@@ -52,6 +56,12 @@ for (const tema of ["light", "dark"] as const)
             await page.route(`${API}/estudiante/notificaciones`, (r) =>
                 r.fulfill({ json: { notificaciones: avisos, noLeidas: 3 } }),
             );
+            await page.route(`${API}/estudiante/notificaciones?completas=1`, (r) =>
+                r.fulfill({ json: {
+                    notificaciones: avisos.map((n) => n.id === "1" ? { ...n, msg: comentarioCompleto } : n),
+                    noLeidas: 3,
+                } }),
+            );
             await page.goto("/estudiante/home");
             const panel = page.getByRole("region", {
                 name: "Notificaciones",
@@ -65,13 +75,22 @@ for (const tema of ["light", "dark"] as const)
             await expect(panel).toContainText("Análisis documental");
             await expect(panel).toContainText("Sistema");
             await panel
-                .getByRole("button", { name: "Ver todas las notificaciones" })
+                .getByRole("link", { name: "Ver todas las notificaciones" })
                 .click();
-            await expect(panel.getByRole("listitem")).toHaveCount(4);
-            await expect(panel).toContainText("Oficina de grados");
+            await expect(page).toHaveURL(/\/estudiante\/notificaciones$/);
+            const historial = page.getByRole("region", { name: "Historial de notificaciones" });
+            await expect(historial.getByRole("listitem")).toHaveCount(4);
+            await expect(historial).toContainText("Oficina de grados");
+            await expect(historial.getByRole("heading", { level: 3 })).toHaveText([
+                "No válido", "Plazo por vencer", "Válido", "Nuevo comentario",
+            ]);
+            await expect(historial.getByText("Primera línea del comentario.", { exact: false })).toHaveJSProperty("textContent", comentarioCompleto);
+            await expect(historial.getByRole("link", { name: "Ver documento" })).toHaveAttribute("href", "/estudiante/preinscripcion?solicitud=1&documento=10");
+            await expect(historial.getByRole("link", { name: "Ver solicitud" })).toHaveAttribute("href", "/estudiante/preinscripcion?solicitud=1");
+            await expect(historial.locator("time").first()).toContainText("10:30");
             for (const tipo of ["success", "warning", "error", "info"])
                 await expect(
-                    panel.locator(`[data-tipo="${tipo}"]`),
+                    historial.locator(`[data-tipo="${tipo}"]`),
                 ).toHaveCount(1);
             await revisarAxe(page);
             expect(
@@ -81,6 +100,31 @@ for (const tema of ["light", "dark"] as const)
             ).toBeLessThanOrEqual(0);
         });
     }
+
+test("el resumen enlaza al mensaje completo con un ancla única", async ({ page }) => {
+    await sesionComo(page, "estudiante");
+    const aviso = avisos[3];
+    await page.route(`${API}/estudiante/notificaciones`, (r) =>
+        r.fulfill({ json: { notificaciones: [aviso], noLeidas: 1 } }),
+    );
+    await page.route(`${API}/estudiante/notificaciones?completas=1`, (r) =>
+        r.fulfill({ json: { notificaciones: [{ ...aviso, msg: comentarioCompleto }], noLeidas: 1 } }),
+    );
+    await page.goto("/estudiante/home");
+    const panel = page.getByRole("region", {
+        name: "Notificaciones",
+        exact: true,
+    });
+    const enlace = panel.getByRole("link", {
+        name: "Ver notificación completa: Nuevo comentario",
+    });
+    await expect(enlace).toHaveAttribute("href", "/estudiante/notificaciones#notificacion-1");
+    await enlace.click();
+    await expect(page).toHaveURL(/\/estudiante\/notificaciones#notificacion-1$/);
+    const completo = page.locator("#notificacion-1");
+    await expect(completo).toContainText(comentarioCompleto);
+    await expect(completo).toBeFocused();
+});
 
 test("un estado vacío no inventa avisos del OCR ni de la funcionaria", async ({
     page,
@@ -93,6 +137,15 @@ test("un estado vacío no inventa avisos del OCR ni de la funcionaria", async ({
     });
     await expect(panel).toContainText("No tienes notificaciones.");
     await expect(panel.getByRole("listitem")).toHaveCount(0);
+    await page.route(`${API}/estudiante/notificaciones?completas=1`, (r) =>
+        r.fulfill({ json: { notificaciones: [], noLeidas: 0 } }),
+    );
+    const menu = page.getByRole("navigation", { name: "Principal", exact: true });
+    await menu.getByRole("button").press("Enter");
+    await menu.getByRole("link", { name: "Notificaciones", exact: true }).press("Enter");
+    await expect(page).toHaveURL(/\/estudiante\/notificaciones$/);
+    await expect(page.getByRole("region", { name: "Historial de notificaciones" }))
+        .toContainText("No tienes notificaciones.");
 });
 
 test("marca como leída solo después de confirmarlo y conserva el estado tras recargar", async ({
@@ -191,7 +244,7 @@ test("un error de notificaciones no bloquea el home y permite reintentar", async
     await expect(panel).not.toContainText("SQL privado");
     await expect(
         page.getByRole("heading", {
-            name: "Tu solicitud de grado está en curso",
+            name: "Mi solicitud de grado", exact: true,
         }),
     ).toBeVisible();
     fallar = false;
@@ -229,7 +282,7 @@ test("una consulta detenida termina con un mensaje y mantiene el resto del home 
         await expect(panel.getByRole("alert")).toContainText("tardó demasiado");
         await expect(
             page.getByRole("heading", {
-                name: "Tu solicitud de grado está en curso",
+                name: "Mi solicitud de grado", exact: true,
             }),
         ).toBeVisible();
     } finally {
@@ -274,4 +327,54 @@ test("un listado malformado presenta error en lugar de inventar notificaciones",
     });
     await expect(panel.getByRole("alert")).toContainText("inválida");
     await expect(panel.getByRole("listitem")).toHaveCount(0);
+});
+
+
+test("la página completa permite reintentar y refleja la lectura al volver al inicio", async ({ page }) => {
+    await sesionComo(page, "estudiante");
+    let fallar = true;
+    let leida = false;
+    const respuesta = () => ({ notificaciones: [{ ...avisos[0], leida }], noLeidas: leida ? 0 : 1 });
+    await page.route(`${API}/estudiante/notificaciones`, (r) => r.fulfill({ json: respuesta() }));
+    await page.route(`${API}/estudiante/notificaciones?completas=1`, (r) =>
+        fallar ? r.fulfill({ status: 503 }) : r.fulfill({ json: respuesta() }),
+    );
+    await page.route(`${API}/estudiante/notificaciones/4/leida`, (r) => {
+        leida = true;
+        return r.fulfill({ json: { id: "4", leida: true } });
+    });
+    await page.goto("/estudiante/notificaciones");
+    const historial = page.getByRole("region", { name: "Historial de notificaciones" });
+    await expect(historial.getByRole("alert")).toContainText("No fue posible consultar");
+    fallar = false;
+    await historial.getByRole("button", { name: "Reintentar notificaciones" }).click();
+    await historial.getByRole("button", { name: "Marcar como leída: No válido" }).press("Enter");
+    await expect(historial).toContainText("0 sin leer");
+    await page.getByRole("link", { name: "Inicio", exact: true }).click();
+    await expect(page.getByRole("region", { name: "Notificaciones", exact: true })).toContainText("0 sin leer");
+});
+
+test("la página de notificaciones redirige a la funcionaria sin consultar el historial", async ({ page }) => {
+    await sesionComo(page, "funcionario");
+    let consultas = 0;
+    await page.route(`${API}/estudiante/notificaciones?completas=1`, (r) => {
+        consultas++;
+        return r.abort();
+    });
+    await page.goto("/estudiante/notificaciones");
+    await expect(page).toHaveURL(/\/funcionario\/dashboard$/);
+    expect(consultas).toBe(0);
+});
+
+test("el enlace de documento lleva el foco al documento de la solicitud", async ({ page }) => {
+    await sesionComo(page, "estudiante");
+    await page.route(`${API}/estudiante/notificaciones?completas=1`, (r) =>
+        r.fulfill({ json: { notificaciones: [avisos[0]], noLeidas: 1 } }),
+    );
+    await page.route(`${API}/estudiante/solicitudes/1/analisis`, (r) =>
+        r.fulfill({ json: DETALLE_ESTUDIANTE }),
+    );
+    await page.goto("/estudiante/notificaciones");
+    await page.getByRole("link", { name: "Ver documento" }).click();
+    await expect(page.locator("#documento-10")).toBeFocused();
 });

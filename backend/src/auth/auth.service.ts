@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { DatabaseService } from '../database/database.service.js';
+import { DURACION_SESION_MS } from './session.js';
 
 export type UserRole = 'estudiante' | 'funcionario';
 
@@ -84,7 +85,7 @@ export class AuthService {
 
     this.sessions.set(sessionId, {
       user: safeUser,
-      expiresAt: Date.now() + 30 * 60 * 1000,
+      expiresAt: Date.now() + DURACION_SESION_MS,
     });
 
     return { sessionId, user: safeUser };

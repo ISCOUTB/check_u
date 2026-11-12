@@ -94,8 +94,9 @@ export interface BorradorPreinscripcion {
     nivel: Nivel;
     nombres: string;
     apellidos: string;
-    /** Viene de la sesión: de solo lectura */
+    /** Viene de la cuenta institucional: de solo lectura */
     correo: string;
+    /** Viene de la cuenta institucional cuando ya está registrado: de solo lectura */
     codigoEstudiantil: string;
     perfil: PerfilEstudiante;
     /** ¿Solicita grado en un segundo programa? */
@@ -121,6 +122,14 @@ function programaVacio(orden: 1 | 2): ProgramaSolicitud {
 
 function experienciaVacia(orden: 1 | 2): ExperienciaLaboral {
     return { orden, empresa: "", cargo: "", tiempo: "" };
+}
+
+/** Identidad registrada en la tabla `usuarios`, tal como la devuelve el backend. */
+export interface IdentidadEstudiante {
+    nombres: string;
+    apellidos: string;
+    correo: string | null;
+    codigoEstudiantil: string | null;
 }
 
 /** Un borrador sin llenar, con el correo de la sesión. Cada llamada da objetos nuevos. */

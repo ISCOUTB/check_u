@@ -23,6 +23,7 @@ const esTest =
   process.env.VITEST === 'true' ||
   !!process.env.VITEST_WORKER_ID;
 
+import { limiteCargas } from '../limites.js';
 @Controller('funcionario/estudiantes')
 @UseGuards(FuncionariaGuard)
 export class EstudiantesController {

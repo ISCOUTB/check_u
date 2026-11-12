@@ -2,20 +2,30 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Post,
   Req,
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
-import { COOKIE_NAME, readSessionId } from './session.js';
+import {
+  COOKIE_NAME,
+  DURACION_SESION_MS,
+  opcionesCookieSesion,
+  readSessionId,
+} from './session.js';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @Header('Cache-Control', 'private, no-store')
+  @SkipThrottle({ uploads: true })
+  @Throttle({ default: { limit: 5, ttl: 15 * 60 * 1000 } })
   async login(
     @Body() body: { username: string; password: string },
     @Res({ passthrough: true }) res: Response,
@@ -26,22 +36,20 @@ export class AuthController {
     );
 
     res.cookie(COOKIE_NAME, sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 30 * 60 * 1000,
+      ...opcionesCookieSesion(),
+      maxAge: DURACION_SESION_MS,
     });
 
     return { user };
   }
 
+  // El frontend consulta la sesión al abrir cada página; esa consulta no debe consumir el límite general.
+  @SkipThrottle()
   @Get('me')
+  @Header('Cache-Control', 'private, no-store')
   me(@Req() req: Request) {
     const sessionId = readSessionId(req);
-    const user = sessionId
-      ? this.authService.getUser(sessionId)
-      : null;
+    const user = sessionId ? this.authService.getUser(sessionId) : null;
 
     if (!user) {
       throw new UnauthorizedException('Sesión no válida o expirada');
@@ -51,18 +59,11 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  @Header('Cache-Control', 'private, no-store')
+  logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     this.authService.logout(readSessionId(req));
 
-    res.clearCookie(COOKIE_NAME, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-    });
+    res.clearCookie(COOKIE_NAME, opcionesCookieSesion());
 
     return { message: 'Sesión cerrada correctamente' };
   }

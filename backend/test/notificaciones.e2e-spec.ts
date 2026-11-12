@@ -313,6 +313,13 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     });
     expect(r.body.noLeidas).toBe(2);
     expect(JSON.stringify(r.body)).not.toContain('Privada');
+    const completo = await estudiante
+      .get('/api/estudiante/notificaciones?completas=1&estudiante_id=999')
+      .expect(200);
+    expect(completo.body.notificaciones.map((n) => n.id)).toEqual(
+      r.body.notificaciones.map((n) => n.id),
+    );
+    expect(completo.body.noLeidas).toBe(2);
   });
   it.each([
     ['aceptada', 'Solicitud aceptada', 'info', 'ACEPTADA'],
@@ -338,9 +345,72 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
     },
   );
   it.each([
+    {
+      comentario:
+        '  Motivo administrativo.\n' +
+        'Texto íntegro. '.repeat(300) +
+        'Fin del motivo.  ',
+    },
+    { comentario: '   ' },
+    {},
+  ])(
+    'H-04: la anulación manual publica un aviso neutro y conserva el motivo completo',
+    async (datos) => {
+      const id = await solicitud('VALIDA');
+      const motivo = datos.comentario?.trim() || null;
+      await revisar(id, { accion: 'anulada', ...datos }).expect(201);
+
+      const {
+        body: { notificaciones },
+      } = await estudiante.get('/api/estudiante/notificaciones').expect(200);
+      expect(notificaciones).toHaveLength(1);
+      expect(notificaciones[0]).toMatchObject({
+        titulo: 'Solicitud anulada',
+        msg:
+          'Tu solicitud de grado fue anulada.' +
+          (motivo ? ` Motivo: ${motivo}` : ''),
+      });
+      const detalle = await estudiante
+        .get(`/api/estudiante/solicitudes/${id}/analisis`)
+        .expect(200);
+      expect(detalle.body).toMatchObject({
+        estadoSolicitud: 'CERRADA',
+        motivoAnulacion: motivo,
+      });
+    },
+  );
+
+  it('H-04: aplicar dos veces la migración conserva el aviso histórico y el motivo de la revisión', async () => {
+    const id = await solicitud('VALIDA');
+    await revisar(id, {
+      accion: 'anulada',
+      comentario: 'Motivo histórico.',
+    }).expect(201);
+    // Simula una notificación escrita antes de H-04.
+    await base.db.query('UPDATE notificaciones SET msg=$1, leida=true', [
+      'Tu solicitud fue anulada. Incumpliste ciertos requisitos.',
+    ]);
+    const avisos = () =>
+      base.db.query('SELECT * FROM notificaciones ORDER BY id');
+    const antes = (await avisos()).rows;
+    const sql = await readFile(
+      new URL('../../db/migrations/012-motivo-anulacion.sql', import.meta.url),
+      'utf8',
+    );
+    await base.db.exec(sql);
+    await base.db.exec(sql);
+
+    expect((await avisos()).rows).toEqual(antes);
+    const detalle = await estudiante
+      .get(`/api/estudiante/solicitudes/${id}/analisis`)
+      .expect(200);
+    expect(detalle.body.motivoAnulacion).toBe('Motivo histórico.');
+  });
+  it.each([
     'Corto',
     'QuinceCaracteres',
     'QuinceCaracteres y más',
+    'Primera línea.\nSegunda línea del comentario.',
     '😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀X',
   ])(
     'el comentario limita su vista previa sin perder el original: %s',
@@ -355,6 +425,15 @@ describe('Tarea 41: notificaciones persistidas, actores y propiedad', () => {
       const n = (await estudiante.get('/api/estudiante/notificaciones')).body
         .notificaciones[0];
       expect(n.msg).toBe('La funcionaria te dejó un comentario: ' + esperado);
+      const ruta = '/api/estudiante/notificaciones?completas=1';
+      const completa = await estudiante.get(ruta).expect(200).expect('Cache-Control', 'private, no-store');
+      expect(completa.body.notificaciones[0]).toMatchObject({
+        id: n.id,
+        solicitudId: String(id),
+        documentoId: null,
+        msg: 'La funcionaria te dejó un comentario: ' + texto,
+      });
+      await funcionaria.get(ruta).expect(403);
       expect(
         (await base.db.query('SELECT comentario FROM revisiones')).rows[0]
           .comentario,
