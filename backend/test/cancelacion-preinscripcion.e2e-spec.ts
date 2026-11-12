@@ -32,7 +32,13 @@ const DATOS = {
   perfil: {
     tipoDocumento: 'CC',
     numeroDocumento: '1000000001',
+    fechaNacimiento: '2001-05-10',
+    genero: 'FEMENINO',
+    departamento: 'Bolivar',
+    ciudad: 'Cartagena',
+    direccion: 'Calle 1 #2-3',
     celular: '3001234567',
+    tieneDiscapacidad: false,
   },
   segundoPrograma: false,
   programas: [
@@ -43,7 +49,12 @@ const DATOS = {
       tipoOpcionGrado: 'PROYECTO',
     },
   ],
-  pregrado: { conoceRegistroSaberPro: false },
+  pregrado: {
+    conoceRegistroSaberPro: false,
+    fechaExamenSaberPro: '2026-03-15',
+    esEmpleadoUtb: false,
+    esHijoDeEmpleadoUtb: false,
+  },
 };
 
 describe('Tarea 44: cancelación lógica y consulta histórica', () => {
@@ -434,7 +445,9 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
       (await estudiante.get('/api/solicitudes/estado').expect(200)).body,
     ).toMatchObject({
       estado: 'SIN_SOLICITUD',
-      destino: '/estudiante/bienvenida',
+      // Tarea 46: sin solicitud activa el estudiante se queda en su home,
+      // ya no se le manda a bienvenida.
+      destino: '/estudiante/home',
     });
     const lista = await estudiante
       .get('/api/estudiante/solicitudes')
@@ -561,6 +574,13 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
       .send({ username: 'lizapata@utb.edu.co', password: '12345' })
       .expect(201);
     expect((await detalle()).body.cancelacion.diasRestantes).toBe(0);
+    // El reloj congelado envejece la sesión: se restaura el tiempo real y se
+    // renueva para no romper los tests que siguen.
+    vi.useRealTimers();
+    await estudiante
+      .post('/api/auth/login')
+      .send({ username: 'lizapata@utb.edu.co', password: '12345' })
+      .expect(201);
   });
   it('no inventa fechas si una solicitud histórica no tiene periodo', async () => {
     await crear('EN_PROCESO', 1, null);
@@ -571,8 +591,7 @@ describe('Tarea 44: cancelación lógica y consulta histórica', () => {
       diasRestantes: null,
     });
     await cancelar().expect(201);
-  });
-  it.skipIf(process.env.CANCELACION_UI_REAL !== '1')(
+  });  it.skipIf(process.env.CANCELACION_UI_REAL !== '1')(
     'cancelación desde el navegador con API y PostgreSQL reales, consulta histórica y nuevo periodo',
     async () => {
       await enviar().expect(201);
