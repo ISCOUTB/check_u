@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Card from '@/app/components/ui/Card';
 import Button from '@/app/components/ui/Button';
 import {
@@ -22,12 +22,6 @@ const TIPO = {
   error: 'Error',
   info: 'Información',
 };
-
-const FORMATO_FECHA = new Intl.DateTimeFormat("es-CO", {
-    dateStyle: "long",
-    timeStyle: "short",
-    timeZone: "America/Bogota",
-});
 
 /** Ancla única de cada aviso en el historial completo. */
 const anclaNotificacion = (id: string) => `notificacion-${id}`;
