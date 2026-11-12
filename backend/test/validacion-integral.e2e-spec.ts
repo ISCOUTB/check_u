@@ -985,7 +985,7 @@ describe('Tarea 42: flujo de la solicitud', () => {
       ).toEqual(['POR_REVISAR', 'VALIDA', 'ACEPTADA']);
     });
 
-    it('una POR_REVISAR por corrección pedida y nunca corregida se anula si sus documentos no son válidos', async () => {
+    it('una corrección pedida y nunca corregida se anula al cierre si sus documentos no son válidos', async () => {
       flujo.clasificacion.saber_pro = 'invalid';
       const envio = await enviar(flujo).expect(201);
       const id = envio.body.id_solicitud as number;
@@ -994,7 +994,9 @@ describe('Tarea 42: flujo de la solicitud', () => {
         .post(`/api/funcionario/solicitudes/${id}/revisiones`)
         .send({ accion: 'recarga', documentos: [docs.saber_pro.id_documento] })
         .expect(201);
-      expect(await estadoSolicitud(flujo, id)).toBe('POR_REVISAR');
+      // H-06 (Tarea #153): pedir corrección no fuerza POR_REVISAR; el estado
+      // calculado por documentos conserva NO_VALIDA si los docs no cambiaron.
+      expect(await estadoSolicitud(flujo, id)).toBe('NO_VALIDA');
       await flujo.base.db.query(
         "UPDATE periodos_grado SET fecha_fin=(CURRENT_TIMESTAMP AT TIME ZONE 'America/Bogota')::date-1",
       );
