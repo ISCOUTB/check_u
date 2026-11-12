@@ -25,9 +25,9 @@ export function limiteCargas(esTest = ES_TEST) {
 /**
  * Saltos de proxy de confianza para Express (`trust proxy`). En Dokploy el backend está
  * detrás de un proxy, así que por defecto se confía en un salto y `req.ip` es la IP del
- * cliente. Si hay más proxies, se ajusta con la variable TRUST_PROXY.
+ * cliente. Si hay más proxies, se ajusta con la variable CHECKU_TRUST_PROXY_HOPS.
  */
-export function saltosDeProxy(valor = process.env.TRUST_PROXY): number {
+export function saltosDeProxy(valor = process.env.CHECKU_TRUST_PROXY_HOPS): number {
   if (valor === undefined || valor.trim() === '') return 1;
   const saltos = Number(valor);
   return Number.isInteger(saltos) && saltos >= 0 ? saltos : 1;
