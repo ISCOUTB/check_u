@@ -15,6 +15,14 @@ import { EstudiantesService } from './estudiantes.service.js';
 import { FuncionariaGuard } from './funcionaria.guard.js';
 import { MAXIMO_BYTES_CSV } from './estudiantes-csv.js';
 import { Throttle } from '@nestjs/throttler';
+
+// Igual que en SolicitudesController: en pruebas se apagan los límites de
+// frecuencia para que la suite pueda repetir peticiones desde una sola IP.
+const esTest =
+  process.env.NODE_ENV === 'test' ||
+  process.env.VITEST === 'true' ||
+  !!process.env.VITEST_WORKER_ID;
+
 @Controller('funcionario/estudiantes')
 @UseGuards(FuncionariaGuard)
 export class EstudiantesController {
@@ -22,7 +30,7 @@ export class EstudiantesController {
 
   @Post()
   @Header('Cache-Control', 'private, no-store')
-  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Throttle({ default: { limit: esTest ? 10_000 : 60, ttl: 60_000 } })
   registrar(@Body() input: unknown) {
     return this.estudiantes.registrar(input);
   }
@@ -30,7 +38,7 @@ export class EstudiantesController {
   @Post('importar')
   @HttpCode(200)
   @Header('Cache-Control', 'private, no-store')
-  @Throttle({ uploads: { limit: 8, ttl: 60_000 } })
+  @Throttle({ uploads: { limit: esTest ? 10_000 : 8, ttl: 60_000 } })
   @UseInterceptors(
     FileInterceptor('archivo', {
       storage: memoryStorage(),
