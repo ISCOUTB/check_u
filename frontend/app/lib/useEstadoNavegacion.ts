@@ -21,35 +21,31 @@ export interface EstadoNavegacionHook {
 export function useEstadoNavegacion(
   habilitado: boolean = true,
 ): EstadoNavegacionHook {
-  const [cargando, setCargando] = useState(habilitado);
+  const [cargandoInterno, setCargandoInterno] = useState(habilitado);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<RespuestaEstadoNavegacion | null>(null);
   const [intento, setIntento] = useState(0);
 
   const reintentar = useCallback(() => {
-    setCargando(true);
+    setCargandoInterno(true);
     setError(null);
     setIntento((n) => n + 1);
   }, []);
 
   useEffect(() => {
     if (!habilitado) {
-      setCargando(false);
       return;
     }
 
     let vigente = true;
     const ac = new AbortController();
 
-    setCargando(true);
-    setError(null);
-
     void obtenerEstadoNavegacion(ac.signal)
       .then((res) => {
         if (!vigente) return;
         setData(res);
         setError(null);
-        setCargando(false);
+        setCargandoInterno(false);
       })
       .catch((err: unknown) => {
         if (!vigente) return;
@@ -60,7 +56,7 @@ export function useEstadoNavegacion(
             ? err.message
             : 'No se pudo obtener el estado de la solicitud.',
         );
-        setCargando(false);
+        setCargandoInterno(false);
       });
 
     return () => {
@@ -69,5 +65,10 @@ export function useEstadoNavegacion(
     };
   }, [habilitado, intento]);
 
-  return { cargando, error, data, reintentar };
+  return {
+    cargando: habilitado && cargandoInterno,
+    error,
+    data,
+    reintentar,
+  };
 }
