@@ -8,6 +8,7 @@ import { crearMockDatabaseService } from './soporte/mock-db.js';
 
 // La aplicación se arma igual que en main.ts (prefijo /api) para probar las rutas reales.
 // Usa los usuarios de prueba fijos de AuthService (se reemplazan en la Tarea 13).
+// Las pruebas de API no dependen de la base: se fuerza el origen ENV de autenticación.
 const ESTUDIANTE = { username: 'lizapata@utb.edu.co', password: '12345' };
 const FUNCIONARIO = { username: 'rmarriaga@utb.edu.co', password: '12345' };
 const USUARIO_ESTUDIANTE = {
@@ -16,6 +17,11 @@ const USUARIO_ESTUDIANTE = {
   name: 'Lisandro Zapata',
   role: 'estudiante',
 };
+
+beforeAll(() => {
+  vi.stubEnv('AUTH_INIT', 'ENV');
+  vi.stubEnv('AUTH_ESTUDIANTE_NAME', 'Lisandro Zapata');
+});
 
 describe('API (e2e)', () => {
   let app: INestApplication<App>;
@@ -154,7 +160,7 @@ describe('Borrador de solicitud (Tarea 28, PostgreSQL)', () => {
     await app.init();
     agente = request.agent(app.getHttpServer());
     await agente.post('/api/auth/login').send(ESTUDIANTE).expect(201);
-  });
+  }, 30000);
   afterEach(async () => {
     await app?.close();
     await base?.db.close();
