@@ -510,7 +510,7 @@ export function mensajeRechazoArchivo(archivo: {
   const tipo = tipoArchivoVisible(archivo.name, archivo.type);
   const megas = Math.max(0.1, archivo.size / (1024 * 1024));
   const n = FORMATO_MEGAS.format(megas);
-  return `Intento subir un archivo ${tipo} de ${n} MB. Solo se aceptan PDF de máximo ${TAMANO_MAXIMO_PDF_MB} MB. Verifica e intenta de nuevo.`;
+  return `Intentó subir un archivo ${tipo} de ${n} MB. Solo se aceptan PDF de máximo ${TAMANO_MAXIMO_PDF_MB} MB. Verifica e intenta de nuevo.`;
 }
 
 /**
